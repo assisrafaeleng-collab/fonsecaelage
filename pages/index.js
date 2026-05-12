@@ -54,7 +54,7 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>Dashboard de Obra — Edifício Alameda</title>
+        <title>Dashboard de Obra — Flats BH</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
 
@@ -64,7 +64,7 @@ export default function Home() {
           <div className="header-top">
             <div>
               <div className="obra-eye">Obra predial · Torre A</div>
-              <div className="obra-nome">Edifício Alameda Comercial</div>
+              <div className="obra-nome">Flats BH</div>
               <div className="obra-info">Orçamento: R$&nbsp;15.000k &nbsp;·&nbsp; Prazo: Out/2026</div>
             </div>
 
