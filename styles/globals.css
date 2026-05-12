@@ -1,10 +1,14 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg:       #ffffff;
-  --bg2:      #f5f4f0;
-  --bg3:      #eeecea;
-  --text:     #1a1a18;
+  --bg:       #1c1c1a;
+  --bg2:      #252523;
+  --bg3:      #2e2e2c;
+  --text:     #f0efe8;
+  --text2:    #a8a8a0;
+  --text3:    #6e6e68;
+  --border:   rgba(255,255,255,0.10);
+  --border2:  rgba(255,255,255,0.18);
   --text2:    #6b6b66;
   --text3:    #9b9b96;
   --border:   rgba(0,0,0,0.10);
