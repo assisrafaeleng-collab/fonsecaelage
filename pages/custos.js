@@ -27,6 +27,7 @@ const GRUPO_COLORS = {
   '5. Locações':              '#F0DDEA',
   '6. Canteiro de Obras':     '#DDF0EE',
   '7. Mão de Obra':           '#F0DDDD',
+  '8. Ferramentas':           '#FFE4CC',
 }
 
 function fmt(v) {
