@@ -70,7 +70,7 @@ export default async function handler(req, res) {
     .eq('obra_id', obra_id)
     .order('data_emissao', { ascending: true })
 
-  if (competencia) query = query.eq('competencia', competencia)
+  if (competencia) query = query.like('competencia', `${competencia}%`)
   if (grupo_custo) query = query.eq('grupo_custo', grupo_custo)
   if (fase_obra)   query = query.eq('fase_obra', fase_obra)
   if (status)      query = query.eq('status', status)
