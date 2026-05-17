@@ -256,12 +256,28 @@ textarea { min-height: 100px; resize: vertical; font-family: inherit; }
   padding: 8px; 
   font-size: 12px; 
 }
-/* TEMA ESCURO PARA /custos */
-body {
-  background: var(--bg) !important;
-  color: var(--text) !important;
+/* TEMA ESCURO PARA /custos - FORÇADO */
+body,
+html,
+#__next,
+.container,
+main {
+  background: #0F0F0F !important;
+  color: #E8E8E8 !important;
 }
 
-#__next {
-  background: var(--bg);
+/* Cards e inputs */
+input,
+select,
+button {
+  background: #1A1A1A !important;
+  color: #E8E8E8 !important;
+  border-color: #2A2A2A !important;
+}
+
+/* Área de upload */
+[class*="upload"],
+[class*="drop"] {
+  background: #1A1A1A !important;
+  border-color: #2A2A2A !important;
 }
