@@ -1,197 +1,383 @@
-import { useEffect, useRef } from 'react'
-import { Chart, registerables } from 'chart.js'
-import { DISCIPLINAS, CURVA_PLANEJADA, monthIdx, fmtMoeda } from '../lib/constants'
+// components/Dashboard.jsx
+// 
+// Dashboard principal com gráfico de 4 curvas (Curva S integrada)
+// Versão atualizada com cronograma planejado + realizado
 
-Chart.register(...registerables)
+import { useEffect, useState } from 'react'
+import { Line } from 'react-chartjs-2'
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+} from 'chart.js'
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+)
+
+const fmtMoeda = (val) => {
+  if (!val) return 'R$ 0'
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    minimumFractionDigits: 0
+  }).format(val)
+}
+
+const fmtPerc = (val) => {
+  if (val == null) return '-'
+  return `${val.toFixed(1)}%`
+}
 
 export default function Dashboard({ updates, selectedId, onSelectId }) {
-  const chartRef = useRef(null)
-  const chartInst = useRef(null)
+  const [dados, setDados] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [erro, setErro] = useState(null)
 
-  const cur = updates.find(u => u.id === selectedId) || updates.at(-1)
-
-  // Monta os dados da Curva S
   useEffect(() => {
-    if (!chartRef.current || !cur) return
-    if (chartInst.current) { chartInst.current.destroy() }
+    async function fetchDados() {
+      try {
+        setLoading(true)
+        const res = await fetch('/api/dashboard-integrado')
+        if (!res.ok) throw new Error('Erro ao carregar dados')
+        const data = await res.json()
+        setDados(data)
+      } catch (err) {
+        console.error('Erro ao buscar dashboard:', err)
+        setErro(err.message)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchDados()
+  }, [selectedId])
 
-    const selDate = cur.data
-    const realFis = CURVA_PLANEJADA.map(row => {
-      const us = updates.filter(u => monthIdx(u.data) === row.idx && u.data <= selDate)
-      const u = us.at(-1)
-      return u ? u.avanco_real : null
-    })
-    const realFin = CURVA_PLANEJADA.map(row => {
-      const us = updates.filter(u => monthIdx(u.data) === row.idx && u.data <= selDate)
-      const u = us.at(-1)
-      return u ? +(u.custo_real / u.orcamento * 100).toFixed(1) : null
-    })
+  if (loading) {
+    return <div className="loading">Carregando dados integrados...</div>
+  }
 
-    const isDark = window.matchMedia('(prefers-color-scheme:dark)').matches
-    const gc = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)'
-    const tc = isDark ? '#aaa' : '#888'
-
-    chartInst.current = new Chart(chartRef.current, {
-      type: 'line',
-      data: {
-        labels: CURVA_PLANEJADA.map(r => r.mes),
-        datasets: [
-          { label: 'Físico plan.', data: CURVA_PLANEJADA.map(r => r.pf), borderColor: '#B0AEA6', borderWidth: 1.5, borderDash: [5,3], pointRadius: 0, fill: false, tension: 0.3, spanGaps: false },
-          { label: 'Fin. plan.',   data: CURVA_PLANEJADA.map(r => r.pn), borderColor: '#9AB8E8', borderWidth: 1.5, borderDash: [3,3], pointRadius: 0, fill: false, tension: 0.3, spanGaps: false },
-          { label: 'Físico real',  data: realFis, borderColor: '#C8860A', borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: '#C8860A', fill: false, tension: 0.3, spanGaps: false },
-          { label: 'Fin. real',    data: realFin, borderColor: '#B03030', borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: '#B03030', fill: false, tension: 0.3, spanGaps: false },
-        ],
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: { callbacks: { label: c => c.dataset.label + ': ' + (c.parsed.y != null ? c.parsed.y.toFixed(1) + '%' : '—') } },
-        },
-        scales: {
-          x: { grid: { color: gc }, ticks: { color: tc, font: { size: 10 }, autoSkip: false } },
-          y: { grid: { color: gc }, ticks: { color: tc, font: { size: 10 }, callback: v => v + '%' }, min: 0, max: 100 },
-        },
-      },
-    })
-  }, [updates, selectedId])
-
-  useEffect(() => { return () => { if (chartInst.current) chartInst.current.destroy() } }, [])
-
-  if (!cur) {
+  if (erro) {
     return (
       <div className="empty-state">
-        <h3>Nenhuma atualização lançada ainda.</h3>
-        <p>Use a aba "Lançar atualização" para registrar o primeiro período.</p>
+        <h3>Erro ao carregar dados</h3>
+        <p>{erro}</p>
       </div>
     )
   }
 
-  const diffFis = cur.avanco_real - cur.avanco_plan
-  const finPct  = (cur.custo_real / cur.orcamento * 100).toFixed(1)
-  const devFin  = cur.projecao - cur.orcamento
+  if (!dados) {
+    return (
+      <div className="empty-state">
+        <h3>Nenhum dado disponível</h3>
+        <p>Execute os scripts SQL de importação do cronograma.</p>
+      </div>
+    )
+  }
 
-  const kpis = [
-    { label: 'Avanço físico real', value: cur.avanco_real + '%', sub: 'Planejado: ' + cur.avanco_plan + '% · ' + (diffFis >= 0 ? '+' : '') + diffFis + '%', acent: diffFis < 0 ? '#C8860A' : '#4D9B6A', color: diffFis < 0 ? '#8A5D00' : '#2E6E48' },
-    { label: 'Desvio de prazo',    value: (cur.desvio_dias > 0 ? '+' : '') + cur.desvio_dias + ' dias', sub: 'Semana ' + (cur.semana || '—') + ' de 52', acent: cur.desvio_dias < 0 ? '#B03030' : '#4D9B6A', color: cur.desvio_dias < 0 ? '#922020' : '#2E6E48' },
-    { label: 'Custo realizado',    value: fmtMoeda(cur.custo_real), sub: finPct + '% do orçamento', acent: '#B03030', color: '#922020' },
-    { label: 'Projeção final',     value: fmtMoeda(cur.projecao),   sub: 'Orçado: ' + fmtMoeda(cur.orcamento) + ' · ' + (devFin >= 0 ? '+' : '') + fmtMoeda(devFin), acent: '#4361C2', color: '#185FA5' },
-  ]
+  const { kpis, meses_alinhados } = dados
 
-  const disc = cur.disciplinas || []
+  // ========================================================================
+  // PREPARAR DADOS PARA O GRÁFICO
+  // ========================================================================
+  const labels = meses_alinhados.map(m => {
+    if (!m.competencia) return `M${m.mes_numero}`
+    const d = new Date(m.competencia + 'T12:00:00')
+    return d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' })
+  })
+
+  // Converter financeiro para milhares de reais (eixo Y esquerdo)
+  const finPlan = meses_alinhados.map(m => m.financeiro_planejado ? m.financeiro_planejado / 1000 : null)
+  const finReal = meses_alinhados.map(m => m.financeiro_realizado ? m.financeiro_realizado / 1000 : null)
+
+  // Físico já está em % (eixo Y direito)
+  const fisPlan = meses_alinhados.map(m => m.fisico_planejado)
+  const fisReal = meses_alinhados.map(m => m.fisico_realizado)
+
+  const chartData = {
+    labels,
+    datasets: [
+      {
+        label: '💰 Financeiro Planejado',
+        data: finPlan,
+        borderColor: '#C8860A',
+        backgroundColor: 'rgba(200, 134, 10, 0.1)',
+        borderWidth: 2,
+        pointRadius: 3,
+        pointHoverRadius: 5,
+        yAxisID: 'y-financeiro',
+        tension: 0.3
+      },
+      {
+        label: '💵 Financeiro Realizado',
+        data: finReal,
+        borderColor: '#4D9B6A',
+        backgroundColor: 'rgba(77, 155, 106, 0.1)',
+        borderWidth: 3,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        yAxisID: 'y-financeiro',
+        tension: 0.3
+      },
+      {
+        label: '🔨 Físico Planejado',
+        data: fisPlan,
+        borderColor: '#5B9BD5',
+        backgroundColor: 'rgba(91, 155, 213, 0.1)',
+        borderWidth: 2,
+        borderDash: [5, 5],
+        pointRadius: 3,
+        pointHoverRadius: 5,
+        yAxisID: 'y-fisico',
+        tension: 0.3
+      },
+      {
+        label: '⚙️ Físico Realizado',
+        data: fisReal,
+        borderColor: '#2E5C8A',
+        backgroundColor: 'rgba(46, 92, 138, 0.1)',
+        borderWidth: 3,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        yAxisID: 'y-fisico',
+        tension: 0.3
+      }
+    ]
+  }
+
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: {
+      mode: 'index',
+      intersect: false
+    },
+    plugins: {
+      legend: {
+        display: true,
+        position: 'top',
+        labels: {
+          color: '#E8E8E8',
+          font: { size: 11 },
+          usePointStyle: true,
+          padding: 15
+        }
+      },
+      tooltip: {
+        backgroundColor: 'rgba(26, 26, 26, 0.95)',
+        titleColor: '#E8E8E8',
+        bodyColor: '#E8E8E8',
+        borderColor: '#2A2A2A',
+        borderWidth: 1,
+        padding: 12,
+        displayColors: true,
+        callbacks: {
+          label: function(context) {
+            const label = context.dataset.label || ''
+            const value = context.parsed.y
+            if (value == null) return null
+            
+            if (context.dataset.yAxisID === 'y-financeiro') {
+              return `${label}: R$ ${value.toFixed(0)}k`
+            } else {
+              return `${label}: ${value.toFixed(1)}%`
+            }
+          }
+        }
+      }
+    },
+    scales: {
+      'y-financeiro': {
+        type: 'linear',
+        position: 'left',
+        title: {
+          display: true,
+          text: 'Financeiro (R$ mil)',
+          color: '#A8A8A8',
+          font: { size: 11 }
+        },
+        ticks: {
+          color: '#A8A8A8',
+          font: { size: 10 },
+          callback: function(value) {
+            return `R$ ${value}k`
+          }
+        },
+        grid: {
+          color: 'rgba(255, 255, 255, 0.05)'
+        }
+      },
+      'y-fisico': {
+        type: 'linear',
+        position: 'right',
+        min: 0,
+        max: 100,
+        title: {
+          display: true,
+          text: 'Físico (%)',
+          color: '#A8A8A8',
+          font: { size: 11 }
+        },
+        ticks: {
+          color: '#A8A8A8',
+          font: { size: 10 },
+          callback: function(value) {
+            return `${value}%`
+          }
+        },
+        grid: {
+          drawOnChartArea: false
+        }
+      },
+      x: {
+        ticks: {
+          color: '#A8A8A8',
+          font: { size: 10 },
+          maxRotation: 45,
+          minRotation: 45
+        },
+        grid: {
+          color: 'rgba(255, 255, 255, 0.05)'
+        }
+      }
+    }
+  }
+
+  // ========================================================================
+  // STATUS DOS INDICADORES
+  // ========================================================================
+  const cpiStatus = kpis.cpi >= 1 ? 'ok' : kpis.cpi >= 0.9 ? 'warn' : 'bad'
+  const spiStatus = kpis.spi >= 1 ? 'ok' : kpis.spi >= 0.9 ? 'warn' : 'bad'
 
   return (
     <div>
-      {/* KPIs */}
+      {/* KPIs PRINCIPAIS */}
       <div className="kpi-grid">
-        {kpis.map(k => (
-          <div key={k.label} className="kpi" style={{ borderLeftColor: k.acent }}>
-            <div className="kpi-label">{k.label}</div>
-            <div className="kpi-value" style={{ color: k.color }}>{k.value}</div>
-            <div className="kpi-sub">{k.sub}</div>
+        <div className="kpi" style={{ borderLeftColor: '#C8860A' }}>
+          <div className="kpi-label">Orçamento Total</div>
+          <div className="kpi-value">{fmtMoeda(kpis.orcamento_total)}</div>
+          <div className="kpi-sub">Planejado para 18 meses</div>
+        </div>
+
+        <div className="kpi" style={{ borderLeftColor: '#4D9B6A' }}>
+          <div className="kpi-label">Custo Realizado</div>
+          <div className="kpi-value">{fmtMoeda(kpis.custo_realizado)}</div>
+          <div className="kpi-sub">
+            {fmtPerc((kpis.custo_realizado / kpis.orcamento_total) * 100)} do orçamento
           </div>
-        ))}
+        </div>
+
+        <div className="kpi" style={{ borderLeftColor: '#5B9BD5' }}>
+          <div className="kpi-label">Avanço Físico</div>
+          <div className="kpi-value">{fmtPerc(kpis.avanco_fisico_realizado)}</div>
+          <div className="kpi-sub">
+            Planejado: {fmtPerc(kpis.avanco_fisico_planejado)}
+          </div>
+        </div>
+
+        <div className="kpi" style={{ borderLeftColor: kpis.saldo_orcamento > 0 ? '#4D9B6A' : '#B03030' }}>
+          <div className="kpi-label">Saldo Orçamento</div>
+          <div className="kpi-value">{fmtMoeda(kpis.saldo_orcamento)}</div>
+          <div className="kpi-sub">
+            {fmtPerc((kpis.saldo_orcamento / kpis.orcamento_total) * 100)} restante
+          </div>
+        </div>
       </div>
 
-      {/* Curva S */}
+      {/* GRÁFICO CURVA S */}
       <div className="card">
-        <div className="card-title">Curva S — avanço físico e financeiro acumulado (%)</div>
-        <p style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 10, lineHeight: 1.55 }}>
-          Quando o custo (vermelho) sobe mais rápido que o físico (laranja), está se gastando mais do que produzindo.
-        </p>
-        <div className="legend">
-          {[['#B0AEA6','Físico planejado'],['#C8860A','Físico realizado'],['#9AB8E8','Fin. planejado'],['#B03030','Fin. realizado']].map(([c,l]) => (
-            <span key={l}><span className="legend-dot" style={{ background: c }}></span>{l}</span>
-          ))}
-        </div>
-        <div style={{ position: 'relative', height: 230 }}>
-          <canvas ref={chartRef} aria-label="Curva S de avanço físico e financeiro acumulado" role="img" />
+        <div className="card-title">📊 Curva S — Acompanhamento Físico-Financeiro</div>
+        <div style={{ height: '400px', position: 'relative' }}>
+          <Line data={chartData} options={chartOptions} />
         </div>
       </div>
 
-      {/* Duas colunas */}
+      {/* INDICADORES DE DESEMPENHO */}
       <div className="two-col">
-        {/* Barras de disciplina */}
-        <div className="card" style={{ marginBottom: 0 }}>
-          <div className="card-title">Avanço físico por disciplina</div>
-          {DISCIPLINAS.map((d, i) => {
-            const di = disc[i] || {}
-            const fr = di.fr || 0, fp = di.fp || 0, diff = fr - fp
-            const bc = diff >= 0 ? '#4D9B6A' : diff >= -8 ? '#C8860A' : '#B03030'
-            return (
-              <div key={d.key} className="prog-row">
-                <div className="prog-lbl">{d.label}</div>
-                <div className="prog-track">
-                  <div className="prog-fill" style={{ width: Math.min(100, fr) + '%', background: bc }} />
-                  {fp > 0 && <div className="prog-mark" style={{ left: Math.min(100, fp) + '%' }} />}
-                </div>
-                <div className="prog-pct">{fr}%</div>
-                <div className={`prog-delta ${diff >= 0 ? 'pos' : 'neg'}`}>{diff >= 0 ? '+' : ''}{diff}%</div>
-              </div>
-            )
-          })}
-        </div>
-
-        {/* Resumo + notas */}
-        <div>
-          <div className="card">
-            <div className="card-title">Resumo do período</div>
-            {[
-              { label: 'Data do lançamento', val: new Date(cur.data + 'T12:00:00').toLocaleDateString('pt-BR'), color: null },
-              { label: 'Desvio físico acumulado', val: (diffFis >= 0 ? '+' : '') + diffFis + '%', color: diffFis >= 0 ? '#2E6E48' : '#922020' },
-              { label: 'Custo vs previsto',        val: fmtMoeda(cur.custo_real - cur.orcamento * (cur.avanco_real / 100)), color: '#922020' },
-              { label: 'Projeção vs orçamento',    val: (devFin >= 0 ? '+' : '') + fmtMoeda(devFin), color: devFin > 0 ? '#922020' : '#2E6E48' },
-            ].map(it => (
-              <div key={it.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '.5px solid var(--border)' }}>
-                <span style={{ fontSize: 11, color: 'var(--text2)' }}>{it.label}</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: it.color || 'var(--text)' }}>{it.val}</span>
-              </div>
-            ))}
-          </div>
-          {cur.notas && (
-            <div className="card">
-              <div className="card-title">Observações</div>
-              <div className="notas-box">{cur.notas}</div>
+        <div className="card">
+          <div className="card-title">📈 Indicadores de Desempenho</div>
+          
+          <div style={{ marginBottom: '20px' }}>
+            <div style={{ fontSize: '11px', color: 'var(--text2)', marginBottom: '8px' }}>
+              CPI (Cost Performance Index)
             </div>
-          )}
-        </div>
-      </div>
+            <div style={{ fontSize: '24px', fontWeight: '700', marginBottom: '4px' }}>
+              {kpis.cpi.toFixed(2)}
+            </div>
+            <div className={`badge badge-${cpiStatus}`}>
+              {kpis.cpi >= 1 ? 'Dentro do orçamento' : 'Acima do orçamento'}
+            </div>
+          </div>
 
-      {/* Tabela financeira */}
-      <div className="card">
-        <div className="card-title">Desvio financeiro por disciplina (R$ mil)</div>
-        <table>
-          <thead>
-            <tr>
-              <th style={{ width: '20%' }}>Disciplina</th>
-              <th style={{ width: '16%' }}>Orçado</th>
-              <th style={{ width: '16%' }}>Realizado</th>
-              <th style={{ width: '18%' }}>Desvio</th>
-              <th style={{ width: '12%' }}>%</th>
-              <th style={{ width: '18%' }}>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {DISCIPLINAS.map((d, i) => {
-              const di = disc[i] || {}
-              const fn = di.fn || 0, orc = d.orc
-              const dev = fn - orc
-              const dp = +(dev / orc * 100).toFixed(1)
-              const cls = dev > orc * 0.1 ? 'badge-bad' : dev > 0 ? 'badge-warn' : dev < 0 ? 'badge-ok' : 'badge-gray'
-              const lbl = cls === 'badge-bad' ? 'Crítico' : cls === 'badge-warn' ? 'Alerta' : cls === 'badge-ok' ? 'No orçamento' : '—'
-              return (
-                <tr key={d.key}>
-                  <td>{d.label}</td>
-                  <td>{fmtMoeda(orc)}</td>
-                  <td>{fmtMoeda(fn)}</td>
-                  <td style={{ color: dev > 0 ? '#922020' : '#2E6E48', fontWeight: 600 }}>{dev >= 0 ? '+' : ''}{fmtMoeda(dev)}</td>
-                  <td style={{ color: dev > 0 ? '#922020' : '#2E6E48' }}>{dp >= 0 ? '+' : ''}{dp}%</td>
-                  <td><span className={`badge ${cls}`}>{lbl}</span></td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
+          <div style={{ marginBottom: '20px' }}>
+            <div style={{ fontSize: '11px', color: 'var(--text2)', marginBottom: '8px' }}>
+              SPI (Schedule Performance Index)
+            </div>
+            <div style={{ fontSize: '24px', fontWeight: '700', marginBottom: '4px' }}>
+              {kpis.spi.toFixed(2)}
+            </div>
+            <div className={`badge badge-${spiStatus}`}>
+              {kpis.spi >= 1 ? 'No prazo' : 'Atrasado'}
+            </div>
+          </div>
+
+          <div>
+            <div style={{ fontSize: '11px', color: 'var(--text2)', marginBottom: '8px' }}>
+              Desvio Físico
+            </div>
+            <div style={{ fontSize: '20px', fontWeight: '700', color: kpis.desvio_fisico >= 0 ? '#4D9B6A' : '#B03030' }}>
+              {kpis.desvio_fisico >= 0 ? '+' : ''}{fmtPerc(kpis.desvio_fisico)}
+            </div>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-title">💰 Projeção Financeira</div>
+          
+          <div style={{ marginBottom: '20px' }}>
+            <div style={{ fontSize: '11px', color: 'var(--text2)', marginBottom: '8px' }}>
+              Projeção de Custo Final
+            </div>
+            <div style={{ fontSize: '24px', fontWeight: '700', marginBottom: '4px' }}>
+              {fmtMoeda(kpis.projecao_custo_final)}
+            </div>
+            <div className="kpi-sub">
+              {kpis.projecao_custo_final > kpis.orcamento_total ? (
+                <span style={{ color: '#B03030' }}>
+                  ⚠️ {fmtMoeda(kpis.projecao_custo_final - kpis.orcamento_total)} acima do orçado
+                </span>
+              ) : (
+                <span style={{ color: '#4D9B6A' }}>
+                  ✓ Dentro do orçamento
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <div style={{ fontSize: '11px', color: 'var(--text2)', marginBottom: '8px' }}>
+              Desvio Financeiro
+            </div>
+            <div style={{ fontSize: '20px', fontWeight: '700', color: kpis.desvio_financeiro <= 0 ? '#4D9B6A' : '#B03030' }}>
+              {fmtMoeda(Math.abs(kpis.desvio_financeiro))}
+            </div>
+            <div className="kpi-sub">
+              {kpis.desvio_financeiro <= 0 ? 'Economia' : 'Acima do planejado'} ({fmtPerc(Math.abs(kpis.desvio_financeiro_perc))})
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )
