@@ -256,3 +256,12 @@ textarea { min-height: 100px; resize: vertical; font-family: inherit; }
   padding: 8px; 
   font-size: 12px; 
 }
+/* TEMA ESCURO PARA /custos */
+body {
+  background: var(--bg) !important;
+  color: var(--text) !important;
+}
+
+#__next {
+  background: var(--bg);
+}
