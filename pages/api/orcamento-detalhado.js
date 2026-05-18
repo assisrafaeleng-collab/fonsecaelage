@@ -1,6 +1,7 @@
 // pages/api/orcamento-detalhado.js
 //
 // API que retorna orçamento planejado agrupado por grupo de custo
+// COM FILTRO DE PERÍODO
 
 import { supabase } from '../../lib/supabase'
 
@@ -10,10 +11,11 @@ export default async function handler(req, res) {
   }
 
   const obra_id = req.query.obra_id || 'flats_pampulha'
+  const mesLimite = parseInt(req.query.mes) || 18 // Padrão: todos os 18 meses
 
   try {
     // ========================================================================
-    // 1. BUSCAR CUSTOS INDIRETOS
+    // 1. BUSCAR CUSTOS INDIRETOS (sempre inclui todos)
     // ========================================================================
     const { data: indiretos, error: errInd } = await supabase
       .from('custos_indiretos_planejados')
@@ -25,12 +27,13 @@ export default async function handler(req, res) {
     const totalIndiretos = indiretos.reduce((sum, c) => sum + parseFloat(c.valor_total), 0)
 
     // ========================================================================
-    // 2. BUSCAR CUSTOS DIRETOS (CRONOGRAMA FINANCEIRO)
+    // 2. BUSCAR CUSTOS DIRETOS (CRONOGRAMA FINANCEIRO) - FILTRADO POR MÊS
     // ========================================================================
     const { data: diretos, error: errDir } = await supabase
       .from('cronograma_financeiro_planejado')
-      .select('macrogrupo_nome, valor_mensal')
+      .select('macrogrupo_nome, valor_mensal, mes_numero')
       .eq('obra_id', obra_id)
+      .lte('mes_numero', mesLimite) // Apenas até o mês selecionado
 
     if (errDir) throw new Error(`Erro custos diretos: ${errDir.message}`)
 
@@ -75,6 +78,11 @@ export default async function handler(req, res) {
     const totalDiretos = Object.values(gruposDiretos).reduce((sum, v) => sum + v, 0)
     const total = totalDiretos + totalIndiretos
 
+    // Label do período
+    const periodoLabel = mesLimite === 18 
+      ? 'Orçamento completo (18 meses)'
+      : `Orçamento acumulado até M${mesLimite}`
+
     // ========================================================================
     // 4. RETORNAR
     // ========================================================================
@@ -83,6 +91,8 @@ export default async function handler(req, res) {
       total,
       custos_diretos: totalDiretos,
       custos_indiretos: totalIndiretos,
+      mes_limite: mesLimite,
+      periodo_label: periodoLabel,
       obra_id
     })
 
