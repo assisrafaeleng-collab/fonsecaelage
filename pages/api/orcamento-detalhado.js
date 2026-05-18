@@ -29,7 +29,7 @@ export default async function handler(req, res) {
     // ========================================================================
     const { data: diretos, error: errDir } = await supabase
       .from('cronograma_financeiro_planejado')
-      .select('grupo_custo, valor_mensal')
+      .select('macrogrupo_nome, valor_mensal')
       .eq('obra_id', obra_id)
 
     if (errDir) throw new Error(`Erro custos diretos: ${errDir.message}`)
@@ -37,7 +37,7 @@ export default async function handler(req, res) {
     // Agrupar por macrogrupo
     const gruposDiretos = {}
     diretos.forEach(item => {
-      const grupo = item.grupo_custo
+      const grupo = item.macrogrupo_nome
       if (!gruposDiretos[grupo]) {
         gruposDiretos[grupo] = 0
       }
