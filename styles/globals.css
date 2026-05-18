@@ -207,4 +207,43 @@ textarea { min-height: 80px; resize: vertical; line-height: 1.6; }
   .two-col { grid-template-columns: 1fr; } 
   .kpi-grid { grid-template-columns: 1fr 1fr; } 
   .form-grid-3, .form-grid-2 { grid-template-columns: 1fr; }
+}/* ===== CORREÇÃO: ABAS ESCURAS ===== */
+/* Adicione isso no FINAL do globals.css */
+
+.nav-btn, .tab {
+  background: transparent !important;
+  color: var(--text2) !important;
+  border: .5px solid var(--border2) !important;
+}
+
+.nav-btn:hover, .tab:hover {
+  background: var(--bg2) !important;
+  color: var(--text) !important;
+}
+
+.nav-btn.active, .tab.active {
+  background: var(--bg3) !important;
+  color: var(--text) !important;
+  border-color: var(--text) !important;
+}
+
+
+/* ===== CORREÇÃO: ABAS ESCURAS ===== */
+/* Adicione isso no FINAL do globals.css */
+
+.nav-btn, .tab {
+  background: transparent !important;
+  color: var(--text2) !important;
+  border: .5px solid var(--border2) !important;
+}
+
+.nav-btn:hover, .tab:hover {
+  background: var(--bg2) !important;
+  color: var(--text) !important;
+}
+
+.nav-btn.active, .tab.active {
+  background: var(--bg3) !important;
+  color: var(--text) !important;
+  border-color: var(--text) !important;
 }

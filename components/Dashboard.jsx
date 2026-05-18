@@ -274,7 +274,7 @@ export default function Dashboard({ updates, selectedId, onSelectId }) {
         <div 
           className="kpi kpi-clickable" 
           style={{ borderLeftColor: '#C8860A' }}
-          onClick={() => router.push('/custos')}
+          onClick={() => router.push('/orcamento')}
           title="Clique para ver detalhamento"
         >
           <div className="kpi-label">Orçamento Total</div>
@@ -316,7 +316,7 @@ export default function Dashboard({ updates, selectedId, onSelectId }) {
         <div 
           className="kpi kpi-clickable" 
           style={{ borderLeftColor: kpis.saldo_orcamento > 0 ? '#4D9B6A' : '#B03030' }}
-          onClick={() => router.push('/custos')}
+          onClick={() => router.push('/orcamento')}
           title="Clique para ver detalhamento"
         >
           <div className="kpi-label">Saldo Orçamento</div>
