@@ -1,4 +1,9 @@
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+/* ===== RESET E VARIÁVEIS ===== */
+*, *::before, *::after { 
+  box-sizing: border-box; 
+  margin: 0; 
+  padding: 0; 
+}
 
 :root {
   --bg:       #1c1c1a;
@@ -26,22 +31,15 @@
   --shadow:   0 1px 4px rgba(0,0,0,0.06);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg:     #1c1c1a;
-    --bg2:    #252523;
-    --bg3:    #2e2e2c;
-    --text:   #f0efe8;
-    --text2:  #a8a8a0;
-    --text3:  #6e6e68;
-    --border: rgba(255,255,255,0.10);
-    --border2:rgba(255,255,255,0.18);
-  }
+html, body { 
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
+  font-size: 14px; 
+  background: var(--bg); 
+  color: var(--text); 
+  line-height: 1.5; 
 }
 
-html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; background: var(--bg); color: var(--text); line-height: 1.5; }
-
-/* Layout */
+/* ===== LAYOUT ===== */
 .page   { max-width: 960px; margin: 0 auto; padding: 0 1rem 3rem; }
 .header { border-bottom: .5px solid var(--border); padding: .9rem 0 .85rem; margin-bottom: 1.1rem; }
 .header-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
@@ -56,7 +54,7 @@ select.periodo { font-size: 12px; padding: 5px 10px; border-radius: 6px; border:
 .nav-btn:hover { background: var(--bg2); }
 .nav-btn.active { background: var(--text); color: var(--bg); border-color: var(--text); }
 
-/* Cards & grid */
+/* ===== CARDS & GRID ===== */
 .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px,1fr)); gap: 9px; margin-bottom: 10px; }
 .kpi { background: var(--bg2); border-radius: var(--radius); padding: .8rem 1rem; border-left: 3px solid var(--border); }
 .kpi-label { font-size: 10px; color: var(--text2); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 4px; }
@@ -65,13 +63,74 @@ select.periodo { font-size: 12px; padding: 5px 10px; border-radius: 6px; border:
 .card { background: var(--bg); border: .5px solid var(--border); border-radius: var(--radius-lg); padding: 1rem 1.2rem; margin-bottom: 10px; box-shadow: var(--shadow); }
 .card-title { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--text2); margin-bottom: 10px; }
 .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
-@media (max-width: 600px) { .two-col { grid-template-columns: 1fr; } .kpi-grid { grid-template-columns: 1fr 1fr; } }
 
-/* Legend */
-.legend { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 10px; font-size: 11px; color: var(--text2); align-items: center; }
-.legend-dot { display: inline-block; width: 20px; height: 2.5px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+/* ===== KPIs EXPANSÍVEIS ===== */
+.kpi-clickable {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
 
-/* Progress bars */
+.kpi-clickable:hover {
+  background: rgba(255, 255, 255, 0.03);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.kpi-clickable:active {
+  transform: translateY(0);
+}
+
+.kpi-expandable {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.kpi-expandable:hover {
+  background: rgba(255, 255, 255, 0.03);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.kpi-expandable:active {
+  transform: translateY(0);
+}
+
+.kpi-small {
+  padding: 12px 16px !important;
+}
+
+.kpi-small .kpi-label {
+  font-size: 11px !important;
+}
+
+.kpi-small .kpi-value {
+  font-size: 20px !important;
+  margin: 4px 0 !important;
+}
+
+.kpi-small .kpi-sub {
+  font-size: 10px !important;
+}
+
+.kpi-grid-expanded {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  padding: 0 !important;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ===== PROGRESS BARS ===== */
 .prog-row  { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
 .prog-lbl  { font-size: 11px; color: var(--text2); width: 110px; flex-shrink: 0; }
 .prog-track{ flex: 1; height: 10px; background: var(--bg2); border-radius: 4px; overflow: hidden; position: relative; }
@@ -82,12 +141,12 @@ select.periodo { font-size: 12px; padding: 5px 10px; border-radius: 6px; border:
 .pos { color: var(--green-tx); }
 .neg { color: var(--red-tx); }
 
-/* Tables */
+/* ===== TABLES ===== */
 table { width: 100%; border-collapse: collapse; font-size: 12px; }
 th { font-size: 10px; text-transform: uppercase; letter-spacing: .07em; color: var(--text2); font-weight: 600; padding: 0 8px 8px 0; border-bottom: .5px solid var(--border); text-align: left; }
 td { padding: 7px 8px 7px 0; border-bottom: .5px solid var(--border); color: var(--text); vertical-align: middle; word-wrap: break-word; }
 
-/* Badges */
+/* ===== BADGES ===== */
 .badge { font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 600; display: inline-block; white-space: nowrap; }
 .badge-ok   { background: var(--green-bg); color: var(--green-tx); }
 .badge-warn { background: var(--amber-bg); color: var(--amber-tx); }
@@ -95,12 +154,11 @@ td { padding: 7px 8px 7px 0; border-bottom: .5px solid var(--border); color: var
 .badge-blue { background: var(--blue-bg);  color: var(--blue-tx);  }
 .badge-gray { background: var(--bg2);      color: var(--text2);    }
 
-/* Form */
+/* ===== FORMS ===== */
 .form-section { background: var(--bg); border: .5px solid var(--border); border-radius: var(--radius-lg); padding: 1rem 1.2rem; margin-bottom: 10px; box-shadow: var(--shadow); }
 .form-section-title { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--text2); margin-bottom: 10px; }
 .form-grid-3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
 .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-@media (max-width: 600px) { .form-grid-3, .form-grid-2 { grid-template-columns: 1fr; } }
 .field label { font-size: 10px; color: var(--text2); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 3px; display: block; }
 input[type="text"], input[type="number"], input[type="date"], textarea, select.styled {
   width: 100%; padding: 7px 9px; font-size: 12px; border-radius: 6px;
@@ -111,8 +169,11 @@ input:focus, textarea:focus { outline: none; border-color: var(--blue); }
 textarea { min-height: 80px; resize: vertical; line-height: 1.6; }
 .disc-grid-hdr { display: grid; grid-template-columns: 110px 1fr 1fr 1fr; gap: 6px 10px; margin-bottom: 5px; font-size: 10px; color: var(--text2); text-transform: uppercase; letter-spacing: .06em; }
 .disc-grid-row { display: grid; grid-template-columns: 110px 1fr 1fr 1fr; gap: 6px 10px; margin-bottom: 7px; align-items: center; font-size: 12px; }
+.disc-grid-hdr-simple { display: grid; grid-template-columns: 200px 120px 1fr; gap: 10px; padding: 8px 10px; background: rgba(255,255,255,0.03); border-radius: 6px; font-size: 11px; font-weight: 600; margin-bottom: 8px; }
+.disc-grid-row-simple { display: grid; grid-template-columns: 200px 120px 1fr; gap: 10px; align-items: center; margin-bottom: 6px; }
+.disc-grid-row-simple input { padding: 8px; font-size: 12px; }
 
-/* Buttons */
+/* ===== BUTTONS ===== */
 .btn-primary { padding: 8px 20px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; background: var(--text); color: var(--bg); border: none; transition: opacity .15s; }
 .btn-primary:hover { opacity: .85; }
 .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
@@ -122,605 +183,28 @@ textarea { min-height: 80px; resize: vertical; line-height: 1.6; }
 .btn-sm:hover { background: var(--bg2); }
 .btn-row { display: flex; gap: 10px; align-items: center; }
 
-/* Toast */
+/* ===== TOAST ===== */
 .toast { padding: 10px 14px; border-radius: 8px; font-size: 12px; margin-bottom: 12px; }
 .toast-ok  { background: var(--green-bg); color: var(--green-tx); }
 .toast-err { background: var(--red-bg);   color: var(--red-tx);   }
 
-/* Empty state */
+/* ===== EMPTY STATE & LOADING ===== */
 .empty-state { text-align: center; padding: 3.5rem 0; color: var(--text2); }
 .empty-state h3 { font-size: 15px; margin-bottom: 12px; color: var(--text); }
-
-/* Loading */
 .loading { text-align: center; padding: 3rem 0; color: var(--text2); font-size: 13px; }
 
-/* Notas box */
+/* ===== MISC ===== */
 .notas-box { background: var(--bg2); border-radius: var(--radius); padding: .8rem 1rem; font-size: 12px; color: var(--text); line-height: 1.7; }
-/* ===== DASHBOARD THEME ===== */
-:root {
-  --bg: #0F0F0F;
-  --card: #1A1A1A;
-  --border: #2A2A2A;
-  --text: #E8E8E8;
-  --text2: #A8A8A8;
-  --accent: #C8860A;
-  --green: #4D9B6A;
-  --red: #B03030;
-}
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); }
-
-.container { max-width: 1400px; margin: 0 auto; padding: 20px; }
-.header { display: flex; justify-content: space-between; align-items: center; padding: 20px 0; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
-.header h1 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
-.header-meta { font-size: 11px; color: var(--text2); }
-.period-sel { display: flex; gap: 10px; align-items: center; font-size: 12px; }
-.status-badge { background: var(--accent); color: #000; padding: 4px 10px; border-radius: 4px; font-weight: 600; }
-
-.tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
-.tab { background: none; border: none; color: var(--text2); padding: 12px 20px; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; font-size: 13px; font-weight: 500; }
-.tab:hover { color: var(--text); background: rgba(255,255,255,0.03); }
-.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-
-.main { min-height: 60vh; }
-.loading { text-align: center; padding: 60px 20px; color: var(--text2); }
-.empty-state { text-align: center; padding: 60px 20px; }
-.empty-state h3 { font-size: 18px; margin-bottom: 8px; }
-.empty-state p { color: var(--text2); font-size: 13px; }
-
-.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 24px; }
-.kpi { background: var(--card); border-radius: 8px; padding: 16px; border-left: 3px solid; }
-.kpi-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text2); margin-bottom: 6px; }
-.kpi-value { font-size: 24px; font-weight: 700; margin-bottom: 4px; }
-.kpi-sub { font-size: 11px; color: var(--text2); }
-
-.card { background: var(--card); border-radius: 8px; padding: 20px; margin-bottom: 24px; border: 1px solid var(--border); }
-.card-title { font-size: 14px; font-weight: 600; margin-bottom: 14px; }
-
-.legend { display: flex; gap: 16px; font-size: 11px; margin-bottom: 12px; flex-wrap: wrap; }
-.legend span { display: flex; align-items: center; gap: 6px; }
-.legend-dot { width: 10px; height: 10px; border-radius: 2px; }
-
-.two-col { display: grid; grid-template-columns: 1.2fr 1fr; gap: 24px; margin-bottom: 24px; }
-@media (max-width: 900px) { .two-col { grid-template-columns: 1fr; } }
-
-.prog-row { display: grid; grid-template-columns: 140px 1fr 50px 50px; align-items: center; gap: 10px; margin-bottom: 10px; }
-.prog-lbl { font-size: 11px; color: var(--text); }
-.prog-track { position: relative; height: 10px; background: rgba(255,255,255,0.05); border-radius: 5px; overflow: hidden; }
-.prog-fill { position: absolute; left: 0; top: 0; height: 100%; border-radius: 5px; }
-.prog-mark { position: absolute; top: 0; width: 2px; height: 100%; background: rgba(255,255,255,0.4); }
-.prog-pct { font-size: 12px; font-weight: 600; text-align: right; }
-.prog-delta { font-size: 11px; text-align: right; }
-.prog-delta.pos { color: var(--green); }
-.prog-delta.neg { color: var(--red); }
-
-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-thead th { text-align: left; padding: 10px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--border); font-weight: 600; font-size: 11px; }
-tbody td { padding: 10px; border-bottom: 0.5px solid var(--border); }
-
-.badge { padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; text-transform: uppercase; }
-.badge-ok { background: rgba(77,155,106,0.2); color: #4D9B6A; }
-.badge-warn { background: rgba(200,134,10,0.2); color: #C8860A; }
-.badge-bad { background: rgba(176,48,48,0.2); color: #B03030; }
-.badge-gray { background: rgba(168,168,168,0.2); color: #A8A8A8; }
-
-.notas-box { background: rgba(255,255,255,0.03); padding: 12px; border-radius: 6px; font-size: 12px; line-height: 1.6; white-space: pre-wrap; }
-
-.form-section { margin-bottom: 28px; }
-.form-section-title { font-size: 13px; font-weight: 600; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
-.form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-.form-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-.field label { display: block; font-size: 11px; margin-bottom: 6px; color: var(--text2); }
-.field input, textarea { width: 100%; padding: 10px; background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 13px; }
-textarea { min-height: 100px; resize: vertical; font-family: inherit; }
-
-.disc-grid-hdr { display: grid; grid-template-columns: 200px 1fr 1fr 40px; gap: 10px; padding: 8px 10px; background: rgba(255,255,255,0.03); border-radius: 6px; font-size: 11px; font-weight: 600; margin-bottom: 8px; }
-.disc-grid-row { display: grid; grid-template-columns: 200px 1fr 1fr 40px; gap: 10px; align-items: center; margin-bottom: 6px; }
-.disc-grid-row input { padding: 8px; font-size: 12px; }
-
-.btn-row { display: flex; gap: 10px; margin-top: 24px; }
-.btn-primary { background: var(--accent); color: #000; border: none; padding: 12px 24px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
-.btn-primary:hover { background: #E09B0C; }
-.btn-secondary { background: transparent; color: var(--text2); border: 1px solid var(--border); padding: 12px 24px; border-radius: 6px; font-size: 13px; cursor: pointer; }
-.btn-sm { padding: 6px 12px; font-size: 11px; background: rgba(255,255,255,0.1); border: none; color: var(--text); border-radius: 4px; cursor: pointer; }
-.btn-danger { padding: 6px 12px; font-size: 11px; background: var(--red); color: #fff; border: none; border-radius: 4px; cursor: pointer; }
-
-.toast { position: fixed; top: 20px; right: 20px; background: var(--card); border: 1px solid var(--border); padding: 14px 20px; border-radius: 8px; font-size: 13px; z-index: 9999; animation: slideIn 0.3s; }
-.toast-ok { border-left: 3px solid var(--green); }
-.toast-err { border-left: 3px solid var(--red); }
-@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-/* CSS ADICIONAL - Formulário simplificado */
-
-.disc-grid-hdr-simple { 
-  display: grid; 
-  grid-template-columns: 200px 120px 1fr; 
-  gap: 10px; 
-  padding: 8px 10px; 
-  background: rgba(255,255,255,0.03); 
-  border-radius: 6px; 
-  font-size: 11px; 
-  font-weight: 600; 
-  margin-bottom: 8px; 
-}
-
-.disc-grid-row-simple { 
-  display: grid; 
-  grid-template-columns: 200px 120px 1fr; 
-  gap: 10px; 
-  align-items: center; 
-  margin-bottom: 6px; 
-}
-
-.disc-grid-row-simple input { 
-  padding: 8px; 
-  font-size: 12px; 
-}
-/* TEMA ESCURO GLOBAL - FORÇADO */
-* {
-  background-color: #0F0F0F !important;
-  color: #E8E8E8 !important;
-}
-
-body, html, #__next {
-  background: #0F0F0F !important;
-}
-
-table, tr, td, th {
-  background: #1A1A1A !important;
-  border-color: #2A2A2A !important;
-}
-
-input, select, button, textarea {
-  background: #1A1A1A !important;
-  color: #E8E8E8 !important;
-  border: 1px solid #2A2A2A !important;
-}
-
-.dark-theme {
-  background: #0F0F0F !important;
-}
-
-// components/Dashboard.jsx
-// 
-// Dashboard com KPIs expansíveis - mostra detalhamento por grupo ao clicar
-
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/router'
-import { Line } from 'react-chartjs-2'
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-} from 'chart.js'
-
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-)
-
-const fmtMoeda = (val) => {
-  if (!val) return 'R$ 0'
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-    minimumFractionDigits: 0
-  }).format(val)
-}
-
-const fmtPerc = (val) => {
-  if (val == null) return '-'
-  return `${val.toFixed(1)}%`
-}
-
-export default function Dashboard({ updates, selectedId, onSelectId }) {
-  const router = useRouter()
-  const [dados, setDados] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [erro, setErro] = useState(null)
-  const [expanded, setExpanded] = useState(false) // ← Estado de expansão
-
-  useEffect(() => {
-    async function fetchDados() {
-      try {
-        setLoading(true)
-        const res = await fetch('/api/dashboard-integrado')
-        if (!res.ok) throw new Error('Erro ao carregar dados')
-        const data = await res.json()
-        setDados(data)
-      } catch (err) {
-        console.error('Erro ao buscar dashboard:', err)
-        setErro(err.message)
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchDados()
-  }, [selectedId])
-
-  if (loading) {
-    return <div className="loading">Carregando dados integrados...</div>
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+  .kpi-grid-expanded {
+    grid-template-columns: repeat(2, 1fr);
   }
+}
 
-  if (erro) {
-    return (
-      <div className="empty-state">
-        <h3>Erro ao carregar dados</h3>
-        <p>{erro}</p>
-      </div>
-    )
-  }
-
-  if (!dados) {
-    return (
-      <div className="empty-state">
-        <h3>Nenhum dado disponível</h3>
-        <p>Execute os scripts SQL de importação do cronograma.</p>
-      </div>
-    )
-  }
-
-  const { kpis, meses_alinhados, custos_por_grupo } = dados
-
-  // ========================================================================
-  // PREPARAR DADOS PARA O GRÁFICO
-  // ========================================================================
-  const labels = meses_alinhados.map(m => {
-    if (!m.competencia) return `M${m.mes_numero}`
-    const d = new Date(m.competencia + 'T12:00:00')
-    return d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' })
-  })
-
-  const finPlan = meses_alinhados.map(m => m.financeiro_planejado ? m.financeiro_planejado / 1000 : null)
-  const finReal = meses_alinhados.map(m => m.financeiro_realizado ? m.financeiro_realizado / 1000 : null)
-  const fisPlan = meses_alinhados.map(m => m.fisico_planejado)
-  const fisReal = meses_alinhados.map(m => m.fisico_realizado)
-
-  const chartData = {
-    labels,
-    datasets: [
-      {
-        label: '💰 Financeiro Planejado',
-        data: finPlan,
-        borderColor: '#C8860A',
-        backgroundColor: 'rgba(200, 134, 10, 0.1)',
-        borderWidth: 2,
-        pointRadius: 3,
-        pointHoverRadius: 5,
-        yAxisID: 'y-financeiro',
-        tension: 0.3
-      },
-      {
-        label: '💵 Financeiro Realizado',
-        data: finReal,
-        borderColor: '#4D9B6A',
-        backgroundColor: 'rgba(77, 155, 106, 0.1)',
-        borderWidth: 3,
-        pointRadius: 4,
-        pointHoverRadius: 6,
-        yAxisID: 'y-financeiro',
-        tension: 0.3
-      },
-      {
-        label: '🔨 Físico Planejado',
-        data: fisPlan,
-        borderColor: '#5B9BD5',
-        backgroundColor: 'rgba(91, 155, 213, 0.1)',
-        borderWidth: 2,
-        borderDash: [5, 5],
-        pointRadius: 3,
-        pointHoverRadius: 5,
-        yAxisID: 'y-fisico',
-        tension: 0.3
-      },
-      {
-        label: '⚙️ Físico Realizado',
-        data: fisReal,
-        borderColor: '#2E5C8A',
-        backgroundColor: 'rgba(46, 92, 138, 0.1)',
-        borderWidth: 3,
-        pointRadius: 4,
-        pointHoverRadius: 6,
-        yAxisID: 'y-fisico',
-        tension: 0.3
-      }
-    ]
-  }
-
-  const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    interaction: {
-      mode: 'index',
-      intersect: false
-    },
-    plugins: {
-      legend: {
-        display: true,
-        position: 'top',
-        labels: {
-          color: '#E8E8E8',
-          font: { size: 11 },
-          usePointStyle: true,
-          padding: 15
-        }
-      },
-      tooltip: {
-        backgroundColor: 'rgba(26, 26, 26, 0.95)',
-        titleColor: '#E8E8E8',
-        bodyColor: '#E8E8E8',
-        borderColor: '#2A2A2A',
-        borderWidth: 1,
-        padding: 12,
-        displayColors: true,
-        callbacks: {
-          label: function(context) {
-            const label = context.dataset.label || ''
-            const value = context.parsed.y
-            if (value == null) return null
-            
-            if (context.dataset.yAxisID === 'y-financeiro') {
-              return `${label}: R$ ${value.toFixed(0)}k`
-            } else {
-              return `${label}: ${value.toFixed(1)}%`
-            }
-          }
-        }
-      }
-    },
-    scales: {
-      'y-financeiro': {
-        type: 'linear',
-        position: 'left',
-        title: {
-          display: true,
-          text: 'Financeiro (R$ mil)',
-          color: '#A8A8A8',
-          font: { size: 11 }
-        },
-        ticks: {
-          color: '#A8A8A8',
-          font: { size: 10 },
-          callback: function(value) {
-            return `R$ ${value}k`
-          }
-        },
-        grid: {
-          color: 'rgba(255, 255, 255, 0.05)'
-        }
-      },
-      'y-fisico': {
-        type: 'linear',
-        position: 'right',
-        min: 0,
-        max: 100,
-        title: {
-          display: true,
-          text: 'Físico (%)',
-          color: '#A8A8A8',
-          font: { size: 11 }
-        },
-        ticks: {
-          color: '#A8A8A8',
-          font: { size: 10 },
-          callback: function(value) {
-            return `${value}%`
-          }
-        },
-        grid: {
-          drawOnChartArea: false
-        }
-      },
-      x: {
-        ticks: {
-          color: '#A8A8A8',
-          font: { size: 10 },
-          maxRotation: 45,
-          minRotation: 45
-        },
-        grid: {
-          color: 'rgba(255, 255, 255, 0.05)'
-        }
-      }
-    }
-  }
-
-  const cpiStatus = kpis.cpi >= 1 ? 'ok' : kpis.cpi >= 0.9 ? 'warn' : 'bad'
-  const spiStatus = kpis.spi >= 1 ? 'ok' : kpis.spi >= 0.9 ? 'warn' : 'bad'
-
-  // Ícones dos grupos
-  const grupoIcons = {
-    'Terreno': '🏗️',
-    'Projetos e Consultorias': '📐',
-    'Mão de Obra': '👷',
-    'Materiais': '🔨',
-    'Equipamentos': '⚙️',
-    'Outros': '📦'
-  }
-
-  return (
-    <div>
-      {/* KPIs PRINCIPAIS */}
-      <div className="kpi-grid">
-        <div 
-          className="kpi kpi-clickable" 
-          style={{ borderLeftColor: '#C8860A' }}
-          onClick={() => router.push('/custos')}
-          title="Clique para ver detalhamento"
-        >
-          <div className="kpi-label">Orçamento Total</div>
-          <div className="kpi-value">{fmtMoeda(kpis.orcamento_total)}</div>
-          <div className="kpi-sub">Planejado para 18 meses · 📊 Ver detalhes</div>
-        </div>
-
-        <div 
-          className="kpi kpi-expandable" 
-          style={{ borderLeftColor: '#4D9B6A' }}
-          onClick={() => setExpanded(!expanded)}
-          title={expanded ? "Clique para colapsar" : "Clique para expandir detalhamento"}
-        >
-          <div className="kpi-label">
-            Custo Realizado 
-            <span style={{ 
-              marginLeft: '8px', 
-              fontSize: '12px',
-              transition: 'transform 0.3s'
-            }}>
-              {expanded ? '▼' : '▶'}
-            </span>
-          </div>
-          <div className="kpi-value">{fmtMoeda(kpis.custo_realizado)}</div>
-          <div className="kpi-sub">
-            {fmtPerc((kpis.custo_realizado / kpis.orcamento_total) * 100)} do orçamento
-            {expanded ? ' · ▼ Ver menos' : ' · ▶ Ver por grupo'}
-          </div>
-        </div>
-
-        <div className="kpi" style={{ borderLeftColor: '#5B9BD5' }}>
-          <div className="kpi-label">Avanço Físico</div>
-          <div className="kpi-value">{fmtPerc(kpis.avanco_fisico_realizado)}</div>
-          <div className="kpi-sub">
-            Planejado: {fmtPerc(kpis.avanco_fisico_planejado)}
-          </div>
-        </div>
-
-        <div 
-          className="kpi kpi-clickable" 
-          style={{ borderLeftColor: kpis.saldo_orcamento > 0 ? '#4D9B6A' : '#B03030' }}
-          onClick={() => router.push('/custos')}
-          title="Clique para ver detalhamento"
-        >
-          <div className="kpi-label">Saldo Orçamento</div>
-          <div className="kpi-value">{fmtMoeda(kpis.saldo_orcamento)}</div>
-          <div className="kpi-sub">
-            {fmtPerc((kpis.saldo_orcamento / kpis.orcamento_total) * 100)} restante · 📊 Ver detalhes
-          </div>
-        </div>
-      </div>
-
-      {/* CUSTOS POR GRUPO - EXPANSÍVEL */}
-      {expanded && custos_por_grupo && custos_por_grupo.length > 0 && (
-        <div className="kpi-grid kpi-grid-expanded" style={{ 
-          marginTop: '-10px',
-          animation: 'slideDown 0.3s ease-out'
-        }}>
-          {custos_por_grupo.map(({ grupo, valor }) => (
-            <div 
-              key={grupo}
-              className="kpi kpi-small kpi-clickable"
-              style={{ borderLeftColor: '#6B9BD5' }}
-              onClick={() => router.push(`/custos?grupo=${encodeURIComponent(grupo)}`)}
-              title={`Clique para ver custos de ${grupo}`}
-            >
-              <div className="kpi-label" style={{ fontSize: '11px' }}>
-                {grupoIcons[grupo] || '📦'} {grupo}
-              </div>
-              <div className="kpi-value" style={{ fontSize: '20px' }}>
-                {fmtMoeda(valor)}
-              </div>
-              <div className="kpi-sub" style={{ fontSize: '10px' }}>
-                {fmtPerc((valor / kpis.custo_realizado) * 100)} do total · 📊
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* GRÁFICO CURVA S */}
-      <div className="card">
-        <div className="card-title">📊 Curva S — Acompanhamento Físico-Financeiro</div>
-        <div style={{ height: '400px', position: 'relative' }}>
-          <Line data={chartData} options={chartOptions} />
-        </div>
-      </div>
-
-      {/* INDICADORES DE DESEMPENHO */}
-      <div className="two-col">
-        <div className="card">
-          <div className="card-title">📈 Indicadores de Desempenho</div>
-          
-          <div style={{ marginBottom: '20px' }}>
-            <div style={{ fontSize: '11px', color: 'var(--text2)', marginBottom: '8px' }}>
-              CPI (Cost Performance Index)
-            </div>
-            <div style={{ fontSize: '24px', fontWeight: '700', marginBottom: '4px' }}>
-              {kpis.cpi.toFixed(2)}
-            </div>
-            <div className={`badge badge-${cpiStatus}`}>
-              {kpis.cpi >= 1 ? 'Dentro do orçamento' : 'Acima do orçamento'}
-            </div>
-          </div>
-
-          <div style={{ marginBottom: '20px' }}>
-            <div style={{ fontSize: '11px', color: 'var(--text2)', marginBottom: '8px' }}>
-              SPI (Schedule Performance Index)
-            </div>
-            <div style={{ fontSize: '24px', fontWeight: '700', marginBottom: '4px' }}>
-              {kpis.spi.toFixed(2)}
-            </div>
-            <div className={`badge badge-${spiStatus}`}>
-              {kpis.spi >= 1 ? 'No prazo' : 'Atrasado'}
-            </div>
-          </div>
-
-          <div>
-            <div style={{ fontSize: '11px', color: 'var(--text2)', marginBottom: '8px' }}>
-              Desvio Físico
-            </div>
-            <div style={{ fontSize: '20px', fontWeight: '700', color: kpis.desvio_fisico >= 0 ? '#4D9B6A' : '#B03030' }}>
-              {kpis.desvio_fisico >= 0 ? '+' : ''}{fmtPerc(kpis.desvio_fisico)}
-            </div>
-          </div>
-        </div>
-
-        <div className="card">
-          <div className="card-title">💰 Projeção Financeira</div>
-          
-          <div style={{ marginBottom: '20px' }}>
-            <div style={{ fontSize: '11px', color: 'var(--text2)', marginBottom: '8px' }}>
-              Projeção de Custo Final
-            </div>
-            <div style={{ fontSize: '24px', fontWeight: '700', marginBottom: '4px' }}>
-              {fmtMoeda(kpis.projecao_custo_final)}
-            </div>
-            <div className="kpi-sub">
-              {kpis.projecao_custo_final > kpis.orcamento_total ? (
-                <span style={{ color: '#B03030' }}>
-                  ⚠️ {fmtMoeda(kpis.projecao_custo_final - kpis.orcamento_total)} acima do orçado
-                </span>
-              ) : (
-                <span style={{ color: '#4D9B6A' }}>
-                  ✓ Dentro do orçamento
-                </span>
-              )}
-            </div>
-          </div>
-
-          <div>
-            <div style={{ fontSize: '11px', color: 'var(--text2)', marginBottom: '8px' }}>
-              Desvio Financeiro
-            </div>
-            <div style={{ fontSize: '20px', fontWeight: '700', color: kpis.desvio_financeiro <= 0 ? '#4D9B6A' : '#B03030' }}>
-              {fmtMoeda(Math.abs(kpis.desvio_financeiro))}
-            </div>
-            <div className="kpi-sub">
-              {kpis.desvio_financeiro <= 0 ? 'Economia' : 'Acima do planejado'} ({fmtPerc(Math.abs(kpis.desvio_financeiro_perc))})
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
+@media (max-width: 600px) { 
+  .two-col { grid-template-columns: 1fr; } 
+  .kpi-grid { grid-template-columns: 1fr 1fr; } 
+  .form-grid-3, .form-grid-2 { grid-template-columns: 1fr; }
 }
