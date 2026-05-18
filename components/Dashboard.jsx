@@ -1,9 +1,9 @@
 // components/Dashboard.jsx
 // 
-// Dashboard principal com gráfico de 4 curvas (Curva S integrada)
-// Versão atualizada com cronograma planejado + realizado
+// Dashboard com KPIs expansíveis - mostra detalhamento por grupo ao clicar
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/router'
 import { Line } from 'react-chartjs-2'
 import {
   Chart as ChartJS,
@@ -43,9 +43,11 @@ const fmtPerc = (val) => {
 }
 
 export default function Dashboard({ updates, selectedId, onSelectId }) {
+  const router = useRouter()
   const [dados, setDados] = useState(null)
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState(null)
+  const [expanded, setExpanded] = useState(false) // ← Estado de expansão
 
   useEffect(() => {
     async function fetchDados() {
@@ -87,7 +89,7 @@ export default function Dashboard({ updates, selectedId, onSelectId }) {
     )
   }
 
-  const { kpis, meses_alinhados } = dados
+  const { kpis, meses_alinhados, custos_por_grupo } = dados
 
   // ========================================================================
   // PREPARAR DADOS PARA O GRÁFICO
@@ -98,11 +100,8 @@ export default function Dashboard({ updates, selectedId, onSelectId }) {
     return d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' })
   })
 
-  // Converter financeiro para milhares de reais (eixo Y esquerdo)
   const finPlan = meses_alinhados.map(m => m.financeiro_planejado ? m.financeiro_planejado / 1000 : null)
   const finReal = meses_alinhados.map(m => m.financeiro_realizado ? m.financeiro_realizado / 1000 : null)
-
-  // Físico já está em % (eixo Y direito)
   const fisPlan = meses_alinhados.map(m => m.fisico_planejado)
   const fisReal = meses_alinhados.map(m => m.fisico_realizado)
 
@@ -255,27 +254,54 @@ export default function Dashboard({ updates, selectedId, onSelectId }) {
     }
   }
 
-  // ========================================================================
-  // STATUS DOS INDICADORES
-  // ========================================================================
   const cpiStatus = kpis.cpi >= 1 ? 'ok' : kpis.cpi >= 0.9 ? 'warn' : 'bad'
   const spiStatus = kpis.spi >= 1 ? 'ok' : kpis.spi >= 0.9 ? 'warn' : 'bad'
+
+  // Ícones dos grupos
+  const grupoIcons = {
+    'Terreno': '🏗️',
+    'Projetos e Consultorias': '📐',
+    'Mão de Obra': '👷',
+    'Materiais': '🔨',
+    'Equipamentos': '⚙️',
+    'Outros': '📦'
+  }
 
   return (
     <div>
       {/* KPIs PRINCIPAIS */}
       <div className="kpi-grid">
-        <div className="kpi" style={{ borderLeftColor: '#C8860A' }}>
+        <div 
+          className="kpi kpi-clickable" 
+          style={{ borderLeftColor: '#C8860A' }}
+          onClick={() => router.push('/custos')}
+          title="Clique para ver detalhamento"
+        >
           <div className="kpi-label">Orçamento Total</div>
           <div className="kpi-value">{fmtMoeda(kpis.orcamento_total)}</div>
-          <div className="kpi-sub">Planejado para 18 meses</div>
+          <div className="kpi-sub">Planejado para 18 meses · 📊 Ver detalhes</div>
         </div>
 
-        <div className="kpi" style={{ borderLeftColor: '#4D9B6A' }}>
-          <div className="kpi-label">Custo Realizado</div>
+        <div 
+          className="kpi kpi-expandable" 
+          style={{ borderLeftColor: '#4D9B6A' }}
+          onClick={() => setExpanded(!expanded)}
+          title={expanded ? "Clique para colapsar" : "Clique para expandir detalhamento"}
+        >
+          <div className="kpi-label">
+            Custo Realizado 
+            <span style={{ 
+              marginLeft: '8px', 
+              fontSize: '12px',
+              transition: 'transform 0.3s'
+            }}>
+              {expanded ? '▼' : '▶'}
+            </span>
+          </div>
           <div className="kpi-value">{fmtMoeda(kpis.custo_realizado)}</div>
           <div className="kpi-sub">
             {fmtPerc((kpis.custo_realizado / kpis.orcamento_total) * 100)} do orçamento
+            {expanded ? ' · ▼ Ver menos' : ' · ▶ Ver por grupo'}
           </div>
         </div>
 
@@ -287,14 +313,47 @@ export default function Dashboard({ updates, selectedId, onSelectId }) {
           </div>
         </div>
 
-        <div className="kpi" style={{ borderLeftColor: kpis.saldo_orcamento > 0 ? '#4D9B6A' : '#B03030' }}>
+        <div 
+          className="kpi kpi-clickable" 
+          style={{ borderLeftColor: kpis.saldo_orcamento > 0 ? '#4D9B6A' : '#B03030' }}
+          onClick={() => router.push('/custos')}
+          title="Clique para ver detalhamento"
+        >
           <div className="kpi-label">Saldo Orçamento</div>
           <div className="kpi-value">{fmtMoeda(kpis.saldo_orcamento)}</div>
           <div className="kpi-sub">
-            {fmtPerc((kpis.saldo_orcamento / kpis.orcamento_total) * 100)} restante
+            {fmtPerc((kpis.saldo_orcamento / kpis.orcamento_total) * 100)} restante · 📊 Ver detalhes
           </div>
         </div>
       </div>
+
+      {/* CUSTOS POR GRUPO - EXPANSÍVEL */}
+      {expanded && custos_por_grupo && custos_por_grupo.length > 0 && (
+        <div className="kpi-grid kpi-grid-expanded" style={{ 
+          marginTop: '-10px',
+          animation: 'slideDown 0.3s ease-out'
+        }}>
+          {custos_por_grupo.map(({ grupo, valor }) => (
+            <div 
+              key={grupo}
+              className="kpi kpi-small kpi-clickable"
+              style={{ borderLeftColor: '#6B9BD5' }}
+              onClick={() => router.push(`/custos?grupo=${encodeURIComponent(grupo)}`)}
+              title={`Clique para ver custos de ${grupo}`}
+            >
+              <div className="kpi-label" style={{ fontSize: '11px' }}>
+                {grupoIcons[grupo] || '📦'} {grupo}
+              </div>
+              <div className="kpi-value" style={{ fontSize: '20px' }}>
+                {fmtMoeda(valor)}
+              </div>
+              <div className="kpi-sub" style={{ fontSize: '10px' }}>
+                {fmtPerc((valor / kpis.custo_realizado) * 100)} do total · 📊
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* GRÁFICO CURVA S */}
       <div className="card">

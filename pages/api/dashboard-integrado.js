@@ -4,6 +4,7 @@
 // - 4 curvas (Financeiro Plan/Real + Físico Plan/Real)
 // - KPIs calculados (CPI, SPI, desvios)
 // - Dados mensais estruturados
+// - Custos agrupados por grupo (para drill-down)
 
 import { supabase } from '../../lib/supabase'
 
@@ -40,10 +41,9 @@ export default async function handler(req, res) {
     // ========================================================================
     // 3. CUSTOS REALIZADOS (Financeiro Real)
     // ========================================================================
-    // Buscar todos os custos agrupados por competência
     const { data: custosRealizados, error: errCustos } = await supabase
       .from('custos_lancamentos')
-      .select('competencia, valor, status')
+      .select('competencia, valor, status, grupo_custo')
       .eq('obra_id', obra_id)
       .order('competencia')
 
@@ -60,6 +60,23 @@ export default async function handler(req, res) {
         }
         custosAgrupados[comp] += parseFloat(c.valor)
       })
+
+    // Agrupar por grupo_custo para drill-down
+    const custosPorGrupo = {}
+    custosRealizados
+      .filter(c => c.status === 'Normal')
+      .forEach(c => {
+        const grupo = c.grupo_custo || 'Outros'
+        if (!custosPorGrupo[grupo]) {
+          custosPorGrupo[grupo] = 0
+        }
+        custosPorGrupo[grupo] += parseFloat(c.valor)
+      })
+
+    // Converter para array ordenado
+    const gruposArray = Object.entries(custosPorGrupo)
+      .map(([grupo, valor]) => ({ grupo, valor }))
+      .sort((a, b) => b.valor - a.valor) // Ordenar por valor (maior primeiro)
 
     // Converter para array ordenado com acumulado
     const finRealizada = []
@@ -161,7 +178,6 @@ export default async function handler(req, res) {
     // ========================================================================
     // 6. PREPARAR DADOS PARA O GRÁFICO
     // ========================================================================
-    // Criar array de 18 meses com todos os dados alinhados
     const meses = []
     for (let i = 1; i <= 18; i++) {
       const finPlan = finPlanejada.find(f => f.mes_numero === i)
@@ -190,6 +206,7 @@ export default async function handler(req, res) {
         fisico_planejado: fisPlanejada,
         fisico_realizado: fisRealizada
       },
+      custos_por_grupo: gruposArray, // ← NOVO: para drill-down
       meses_alinhados: meses,
       metadata: {
         obra_id,
