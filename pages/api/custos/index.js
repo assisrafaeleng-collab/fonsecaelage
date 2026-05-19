@@ -3,7 +3,7 @@
 // Página principal do dashboard COM FILTRO DE PERÍODO
 
 import { useState } from 'react'
-
+import Dashboard from '../components/Dashboard'
 
 export default function Home() {
   const [mesAtual, setMesAtual] = useState(18) // Padrão: todos os 18 meses
