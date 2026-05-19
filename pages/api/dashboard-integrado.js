@@ -138,8 +138,9 @@ export default async function handler(req, res) {
       1
     )
 
-    const finPlanMesAtual = finPlanejada.find(f => f.mes_numero === mesAtual) || finPlanejada[finPlanejada.length - 1]
-    const fisPlanMesAtual = fisPlanejada.find(f => f.mes_numero === mesAtual) || fisPlanejada[fisPlanejada.length - 1]
+    // Buscar valores planejados no período selecionado (mesLimite)
+    const finPlanMesAtual = finPlanejada.find(f => f.mes_numero === mesLimite) || finPlanejada[finPlanejada.length - 1]
+    const fisPlanMesAtual = fisPlanejada.find(f => f.mes_numero === mesLimite) || fisPlanejada[fisPlanejada.length - 1]
 
     const valorPlanejado = finPlanMesAtual ? finPlanMesAtual.valor_acumulado : 0
     const percPlanejado = fisPlanMesAtual ? fisPlanMesAtual.percentual_acumulado * 100 : 0
