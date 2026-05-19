@@ -49,7 +49,7 @@ export default async function handler(req, res) {
     if (errCustos) throw new Error(`Erro custos realizados: ${errCustos.message}`)
 
     // Filtrar custos até a competência correspondente ao mesLimite
-    const dataInicio = '2024-06-01' // M1
+    const dataInicio = '2025-04-01' // M1 = Abril/2025
     const dataLimite = new Date(dataInicio)
     dataLimite.setMonth(dataLimite.getMonth() + (mesLimite - 1))
     const dataLimiteStr = dataLimite.toISOString().slice(0, 10)

@@ -9,7 +9,7 @@ export default function Home() {
   const [mesAtual, setMesAtual] = useState(18) // Padrão: todos os 18 meses
 
   // Gerar opções de meses formatadas como Mês/Ano
-  const dataInicio = new Date('2024-06-01')
+  const dataInicio = new Date('2025-04-01') // M1 = Abril/2025
   const mesesOpcoes = Array.from({ length: 18 }, (_, i) => {
     const mes = i + 1
     const data = new Date(dataInicio)
