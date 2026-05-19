@@ -42,7 +42,7 @@ const fmtPerc = (val) => {
   return `${val.toFixed(1)}%`
 }
 
-export default function Dashboard({ updates, selectedId, onSelectId }) {
+export default function Dashboard({ updates, selectedId, onSelectId, mesLimite = 18 }) {
   const router = useRouter()
   const [dados, setDados] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -53,7 +53,7 @@ export default function Dashboard({ updates, selectedId, onSelectId }) {
     async function fetchDados() {
       try {
         setLoading(true)
-        const res = await fetch('/api/dashboard-integrado')
+        const res = await fetch(`/api/dashboard-integrado?mes=${mesLimite}`)
         if (!res.ok) throw new Error('Erro ao carregar dados')
         const data = await res.json()
         setDados(data)
@@ -65,7 +65,7 @@ export default function Dashboard({ updates, selectedId, onSelectId }) {
       }
     }
     fetchDados()
-  }, [selectedId])
+  }, [selectedId, mesLimite])
 
   if (loading) {
     return <div className="loading">Carregando dados integrados...</div>
