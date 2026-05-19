@@ -8,8 +8,21 @@ import Dashboard from '../components/Dashboard'
 export default function Home() {
   const [mesAtual, setMesAtual] = useState(18) // Padrão: todos os 18 meses
 
-  // Gerar opções de meses
-  const mesesOpcoes = Array.from({ length: 18 }, (_, i) => i + 1)
+  // Gerar opções de meses formatadas como Mês/Ano
+  const dataInicio = new Date('2024-06-01')
+  const mesesOpcoes = Array.from({ length: 18 }, (_, i) => {
+    const mes = i + 1
+    const data = new Date(dataInicio)
+    data.setMonth(dataInicio.getMonth() + i)
+    
+    const mesNome = data.toLocaleDateString('pt-BR', { month: 'short' })
+    const ano = data.getFullYear()
+    
+    return {
+      valor: mes,
+      label: `${mesNome}/${ano}`
+    }
+  })
 
   return (
     <div className="page">
@@ -33,9 +46,9 @@ export default function Home() {
               value={mesAtual}
               onChange={(e) => setMesAtual(parseInt(e.target.value))}
             >
-              {mesesOpcoes.map(mes => (
-                <option key={mes} value={mes}>
-                  {mes === 18 ? 'Todos os 18 meses' : `Até M${mes}`}
+              {mesesOpcoes.map(opcao => (
+                <option key={opcao.valor} value={opcao.valor}>
+                  {opcao.valor === 18 ? 'Todos os 18 meses' : opcao.label}
                 </option>
               ))}
             </select>
