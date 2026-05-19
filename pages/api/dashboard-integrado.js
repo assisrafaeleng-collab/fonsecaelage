@@ -1,10 +1,6 @@
 // pages/api/dashboard-integrado.js
 //
-// API MESTRE que retorna TUDO para o dashboard:
-// - 4 curvas (Financeiro Plan/Real + Físico Plan/Real)
-// - KPIs calculados (CPI, SPI, desvios)
-// - Dados mensais estruturados
-// - Custos agrupados por grupo (para drill-down)
+// API MESTRE que retorna TUDO para o dashboard COM FILTRO DE PERÍODO
 
 import { supabase } from '../../lib/supabase'
 
@@ -14,32 +10,35 @@ export default async function handler(req, res) {
   }
 
   const obra_id = req.query.obra_id || 'flats_pampulha'
+  const mesLimite = parseInt(req.query.mes) || 18 // Padrão: todos os 18 meses
 
   try {
     // ========================================================================
-    // 1. CURVA S FINANCEIRA PLANEJADA
+    // 1. CURVA S FINANCEIRA PLANEJADA - FILTRADA ATÉ mesLimite
     // ========================================================================
     const { data: finPlanejada, error: errFinPlan } = await supabase
       .from('v_curva_s_financeira_planejada')
       .select('*')
       .eq('obra_id', obra_id)
+      .lte('mes_numero', mesLimite)
       .order('mes_numero')
 
     if (errFinPlan) throw new Error(`Erro financeiro planejado: ${errFinPlan.message}`)
 
     // ========================================================================
-    // 2. CURVA S FÍSICA PLANEJADA
+    // 2. CURVA S FÍSICA PLANEJADA - FILTRADA ATÉ mesLimite
     // ========================================================================
     const { data: fisPlanejada, error: errFisPlan } = await supabase
       .from('v_curva_s_fisica_planejada')
       .select('*')
       .eq('obra_id', obra_id)
+      .lte('mes_numero', mesLimite)
       .order('mes_numero')
 
     if (errFisPlan) throw new Error(`Erro físico planejado: ${errFisPlan.message}`)
 
     // ========================================================================
-    // 3. CUSTOS REALIZADOS (Financeiro Real)
+    // 3. CUSTOS REALIZADOS (Financeiro Real) - FILTRADOS POR DATA
     // ========================================================================
     const { data: custosRealizados, error: errCustos } = await supabase
       .from('custos_lancamentos')
@@ -49,10 +48,16 @@ export default async function handler(req, res) {
 
     if (errCustos) throw new Error(`Erro custos realizados: ${errCustos.message}`)
 
+    // Filtrar custos até a competência correspondente ao mesLimite
+    const dataInicio = '2024-06-01' // M1
+    const dataLimite = new Date(dataInicio)
+    dataLimite.setMonth(dataLimite.getMonth() + (mesLimite - 1))
+    const dataLimiteStr = dataLimite.toISOString().slice(0, 10)
+
     // Agrupar por competência e calcular acumulado
     const custosAgrupados = {}
     custosRealizados
-      .filter(c => c.status === 'Normal')
+      .filter(c => c.status === 'Normal' && c.competencia <= dataLimiteStr)
       .forEach(c => {
         const comp = c.competencia
         if (!custosAgrupados[comp]) {
@@ -64,7 +69,7 @@ export default async function handler(req, res) {
     // Agrupar por grupo_custo para drill-down
     const custosPorGrupo = {}
     custosRealizados
-      .filter(c => c.status === 'Normal')
+      .filter(c => c.status === 'Normal' && c.competencia <= dataLimiteStr)
       .forEach(c => {
         const grupo = c.grupo_custo || 'Outros'
         if (!custosPorGrupo[grupo]) {
@@ -73,10 +78,9 @@ export default async function handler(req, res) {
         custosPorGrupo[grupo] += parseFloat(c.valor)
       })
 
-    // Converter para array ordenado
     const gruposArray = Object.entries(custosPorGrupo)
       .map(([grupo, valor]) => ({ grupo, valor }))
-      .sort((a, b) => b.valor - a.valor) // Ordenar por valor (maior primeiro)
+      .sort((a, b) => b.valor - a.valor)
 
     // Converter para array ordenado com acumulado
     const finRealizada = []
@@ -95,17 +99,17 @@ export default async function handler(req, res) {
       })
 
     // ========================================================================
-    // 4. AVANÇO FÍSICO REALIZADO
+    // 4. AVANÇO FÍSICO REALIZADO - FILTRADO POR DATA
     // ========================================================================
     const { data: atualizacoes, error: errAtual } = await supabase
       .from('atualizacoes_obra')
       .select('*')
       .eq('obra_id', obra_id)
+      .lte('data', dataLimiteStr)
       .order('data')
 
     if (errAtual) throw new Error(`Erro atualizações: ${errAtual.message}`)
 
-    // Converter para formato de curva acumulada
     const fisRealizada = atualizacoes.map((a, idx) => ({
       mes_numero: idx + 1,
       competencia: a.data,
@@ -128,34 +132,27 @@ export default async function handler(req, res) {
       ? fisRealizada[fisRealizada.length - 1].percentual_acumulado * 100
       : 0
 
-    // Mês atual baseado no último lançamento
     const mesAtual = Math.max(
       finRealizada.length,
       fisRealizada.length,
       1
     )
 
-    // Buscar valores planejados no mês atual
-    const finPlanMesAtual = finPlanejada.find(f => f.mes_numero === mesAtual) || finPlanejada[0]
-    const fisPlanMesAtual = fisPlanejada.find(f => f.mes_numero === mesAtual) || fisPlanejada[0]
+    const finPlanMesAtual = finPlanejada.find(f => f.mes_numero === mesAtual) || finPlanejada[finPlanejada.length - 1]
+    const fisPlanMesAtual = fisPlanejada.find(f => f.mes_numero === mesAtual) || fisPlanejada[fisPlanejada.length - 1]
 
     const valorPlanejado = finPlanMesAtual ? finPlanMesAtual.valor_acumulado : 0
     const percPlanejado = fisPlanMesAtual ? fisPlanMesAtual.percentual_acumulado * 100 : 0
 
-    // CPI = Valor Planejado / Valor Realizado (quanto maior, melhor)
     const cpi = custoRealTotal > 0 ? valorPlanejado / custoRealTotal : 0
-
-    // SPI = % Executado / % Planejado
     const spi = percPlanejado > 0 ? avisoFisicoTotal / percPlanejado : 0
 
-    // Desvios
     const desvioFinanceiro = custoRealTotal - valorPlanejado
     const desvioFisico = avisoFisicoTotal - percPlanejado
     const desvioFinanceiroPerc = valorPlanejado > 0 
       ? (desvioFinanceiro / valorPlanejado) * 100 
       : 0
 
-    // Projeção de custo final (baseado no ritmo atual)
     const projecaoCustoFinal = avisoFisicoTotal > 0
       ? (custoRealTotal / avisoFisicoTotal) * 100
       : custoRealTotal
@@ -179,7 +176,7 @@ export default async function handler(req, res) {
     // 6. PREPARAR DADOS PARA O GRÁFICO
     // ========================================================================
     const meses = []
-    for (let i = 1; i <= 18; i++) {
+    for (let i = 1; i <= mesLimite; i++) {
       const finPlan = finPlanejada.find(f => f.mes_numero === i)
       const fisPlan = fisPlanejada.find(f => f.mes_numero === i)
       const finReal = finRealizada.find(f => f.mes_numero === i)
@@ -206,12 +203,13 @@ export default async function handler(req, res) {
         fisico_planejado: fisPlanejada,
         fisico_realizado: fisRealizada
       },
-      custos_por_grupo: gruposArray, // ← NOVO: para drill-down
+      custos_por_grupo: gruposArray,
       meses_alinhados: meses,
       metadata: {
         obra_id,
         total_meses_planejado: 18,
         total_meses_com_dados: mesAtual,
+        mes_limite: mesLimite,
         ultima_atualizacao: atualizacoes.length > 0 
           ? atualizacoes[atualizacoes.length - 1].data 
           : null
