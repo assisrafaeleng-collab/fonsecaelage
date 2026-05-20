@@ -72,12 +72,12 @@ export default async function handler(req, res) {
 
     // Adicionar custos indiretos (filtrar nulos e ordenar por valor)
     indiretos
-      .filter(item => item.descricao && item.descricao.trim() !== '')
+      .filter(item => item.categoria && item.categoria.trim() !== '')
       .map(item => ({
-        nome: item.descricao,
+        nome: item.categoria,
         valor: parseFloat(item.valor_total),
         tipo: 'Indireto',
-        icone: getIcone(item.descricao)
+        icone: getIcone(item.categoria)
       }))
       .sort((a, b) => b.valor - a.valor)
       .forEach(item => gruposIndiretosArray.push(item))
