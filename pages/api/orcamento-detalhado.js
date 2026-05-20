@@ -58,13 +58,20 @@ export default async function handler(req, res) {
     // ========================================================================
     const grupos = []
 
-    // Adicionar custos indiretos
+    // Adicionar custos indiretos (filtrar nulos)
     indiretos.forEach(item => {
+      const descricao = item.descricao
+      
+      // Ignorar se for null, undefined ou vazio
+      if (!descricao || descricao.trim() === '') {
+        return
+      }
+      
       grupos.push({
-        nome: item.descricao,
+        nome: descricao,
         valor: parseFloat(item.valor_total),
         tipo: 'Indireto',
-        icone: getIcone(item.descricao)
+        icone: getIcone(descricao)
       })
     })
 
