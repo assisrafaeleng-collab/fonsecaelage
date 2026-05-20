@@ -39,13 +39,19 @@ export default async function handler(req, res) {
 
     // Agrupar por macrogrupo
     const gruposDiretos = {}
+    // Agrupar por macrogrupo (filtrar nulos)
+    const gruposDiretos = {}
     diretos.forEach(item => {
-      const grupo = item.macrogrupo_nome
-      if (!gruposDiretos[grupo]) {
-        gruposDiretos[grupo] = 0
-      }
-      gruposDiretos[grupo] += parseFloat(item.valor_mensal)
-    })
+    const grupo = item.macrogrupo_nome || 'Sem Classificação' // ← Previne nulos
+  
+     // Ignorar se for vazio ou null
+    if (!grupo || grupo.trim() === '') return
+  
+    if (!gruposDiretos[grupo]) {
+    gruposDiretos[grupo] = 0
+   }
+    gruposDiretos[grupo] += parseFloat(item.valor_mensal)
+})
 
     // ========================================================================
     // 3. MONTAR ARRAY DE GRUPOS
