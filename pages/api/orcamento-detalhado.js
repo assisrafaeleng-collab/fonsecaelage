@@ -1,7 +1,7 @@
 // pages/api/orcamento-detalhado.js
 //
 // API que retorna orçamento planejado agrupado por grupo de custo
-// COM FILTRO DE PERÍODO
+// COM FILTRO DE PERÍODO E SEPARAÇÃO DIRETO/INDIRETO
 
 import { supabase } from '../../lib/supabase'
 
@@ -54,39 +54,33 @@ export default async function handler(req, res) {
     })
 
     // ========================================================================
-    // 3. MONTAR ARRAY DE GRUPOS
+    // 3. MONTAR ARRAYS SEPARADOS DE GRUPOS (DIRETOS E INDIRETOS)
     // ========================================================================
-    const grupos = []
+    const gruposDiretosArray = []
+    const gruposIndiretosArray = []
 
-    // Adicionar custos indiretos (filtrar nulos)
-    indiretos.forEach(item => {
-      const descricao = item.descricao
-      
-      // Ignorar se for null, undefined ou vazio
-      if (!descricao || descricao.trim() === '') {
-        return
-      }
-      
-      grupos.push({
-        nome: descricao,
-        valor: parseFloat(item.valor_total),
-        tipo: 'Indireto',
-        icone: getIcone(descricao)
-      })
-    })
-
-    // Adicionar custos diretos
-    Object.entries(gruposDiretos).forEach(([nome, valor]) => {
-      grupos.push({
+    // Adicionar custos diretos (ordenar por valor)
+    Object.entries(gruposDiretos)
+      .map(([nome, valor]) => ({
         nome,
         valor,
         tipo: 'Direto',
         icone: getIcone(nome)
-      })
-    })
+      }))
+      .sort((a, b) => b.valor - a.valor)
+      .forEach(item => gruposDiretosArray.push(item))
 
-    // Ordenar por valor (maior primeiro)
-    grupos.sort((a, b) => b.valor - a.valor)
+    // Adicionar custos indiretos (filtrar nulos e ordenar por valor)
+    indiretos
+      .filter(item => item.descricao && item.descricao.trim() !== '')
+      .map(item => ({
+        nome: item.descricao,
+        valor: parseFloat(item.valor_total),
+        tipo: 'Indireto',
+        icone: getIcone(item.descricao)
+      }))
+      .sort((a, b) => b.valor - a.valor)
+      .forEach(item => gruposIndiretosArray.push(item))
 
     const totalDiretos = Object.values(gruposDiretos).reduce((sum, v) => sum + v, 0)
     const total = totalDiretos + totalIndiretos
@@ -100,7 +94,8 @@ export default async function handler(req, res) {
     // 4. RETORNAR
     // ========================================================================
     return res.status(200).json({
-      grupos,
+      gruposDiretos: gruposDiretosArray,
+      gruposIndiretos: gruposIndiretosArray,
       total,
       custos_diretos: totalDiretos,
       custos_indiretos: totalIndiretos,

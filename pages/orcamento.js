@@ -1,6 +1,7 @@
 // pages/orcamento.js
 //
 // Página de Orçamento Planejado Detalhado com FILTRO DE PERÍODO
+// TABELAS SEPARADAS: CUSTOS DIRETOS vs INDIRETOS
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
@@ -68,7 +69,7 @@ export default function OrcamentoPage() {
     )
   }
 
-  const { grupos, total, custos_indiretos, periodo_label } = dados
+  const { gruposDiretos, gruposIndiretos, total, custos_indiretos, periodo_label } = dados
 
   return (
     <div className="page">
@@ -114,22 +115,22 @@ export default function OrcamentoPage() {
         </div>
 
         <div className="kpi" style={{ borderLeftColor: '#4D9B6A' }}>
-          <div className="kpi-label">Custos Diretos</div>
+          <div className="kpi-label">Custos Diretos ({gruposDiretos.length} grupos)</div>
           <div className="kpi-value">{fmtMoeda(total - custos_indiretos)}</div>
           <div className="kpi-sub">{fmtPerc(((total - custos_indiretos) / total) * 100)} do total</div>
         </div>
 
         <div className="kpi" style={{ borderLeftColor: '#5B9BD5' }}>
-          <div className="kpi-label">Custos Indiretos</div>
+          <div className="kpi-label">Custos Indiretos ({gruposIndiretos.length} categorias)</div>
           <div className="kpi-value">{fmtMoeda(custos_indiretos)}</div>
           <div className="kpi-sub">{fmtPerc((custos_indiretos / total) * 100)} do total</div>
         </div>
       </div>
 
-      {/* TABELA DE GRUPOS */}
+      {/* TABELA DE CUSTOS DIRETOS */}
       <div className="card">
         <div className="card-title">
-          📊 Orçamento por Grupo de Custo {mesAtual === 18 ? '' : `(até M${mesAtual})`}
+          🏗️ Custos Diretos — {gruposDiretos.length} Macrogrupos {mesAtual === 18 ? '' : `(até M${mesAtual})`}
         </div>
         
         <table>
@@ -142,7 +143,7 @@ export default function OrcamentoPage() {
             </tr>
           </thead>
           <tbody>
-            {grupos.map((grupo) => (
+            {gruposDiretos.map((grupo) => (
               <tr key={grupo.nome}>
                 <td>
                   <span style={{ marginRight: '8px' }}>{grupo.icone}</span>
@@ -155,21 +156,88 @@ export default function OrcamentoPage() {
                   {fmtPerc((grupo.valor / total) * 100)}
                 </td>
                 <td style={{ textAlign: 'right' }}>
-                  <span className={`badge ${grupo.tipo === 'Direto' ? 'badge-ok' : 'badge-blue'}`}>
-                    {grupo.tipo}
-                  </span>
+                  <span className="badge badge-ok">Direto</span>
                 </td>
               </tr>
             ))}
           </tbody>
           <tfoot>
             <tr style={{ borderTop: '2px solid var(--border)', fontWeight: '700' }}>
-              <td>TOTAL</td>
-              <td style={{ textAlign: 'right' }}>{fmtMoeda(total)}</td>
-              <td style={{ textAlign: 'right' }}>100,00%</td>
+              <td>SUBTOTAL DIRETOS</td>
+              <td style={{ textAlign: 'right' }}>{fmtMoeda(total - custos_indiretos)}</td>
+              <td style={{ textAlign: 'right' }}>{fmtPerc(((total - custos_indiretos) / total) * 100)}</td>
               <td></td>
             </tr>
           </tfoot>
+        </table>
+      </div>
+
+      {/* TABELA DE CUSTOS INDIRETOS */}
+      <div className="card">
+        <div className="card-title">
+          💳 Custos Indiretos Previstos — {gruposIndiretos.length} Categorias
+        </div>
+        <div className="card-description" style={{ marginBottom: '16px', fontSize: '13px', color: 'var(--color-text-secondary)' }}>
+          Despesas complementares necessárias ao projeto, não incluídas na construção física (terreno, projetos, aprovações, jurídico, taxas, contingências)
+        </div>
+        
+        <table>
+          <thead>
+            <tr>
+              <th>Categoria</th>
+              <th style={{ textAlign: 'right' }}>Valor Total</th>
+              <th style={{ textAlign: 'right' }}>% do Orçamento</th>
+              <th style={{ textAlign: 'right' }}>Tipo</th>
+            </tr>
+          </thead>
+          <tbody>
+            {gruposIndiretos.map((grupo) => (
+              <tr key={grupo.nome}>
+                <td>
+                  <span style={{ marginRight: '8px' }}>{grupo.icone}</span>
+                  {grupo.nome}
+                </td>
+                <td style={{ textAlign: 'right', fontWeight: '600' }}>
+                  {fmtMoeda(grupo.valor)}
+                </td>
+                <td style={{ textAlign: 'right' }}>
+                  {fmtPerc((grupo.valor / total) * 100)}
+                </td>
+                <td style={{ textAlign: 'right' }}>
+                  <span className="badge badge-blue">Indireto</span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr style={{ borderTop: '2px solid var(--border)', fontWeight: '700' }}>
+              <td>SUBTOTAL INDIRETOS</td>
+              <td style={{ textAlign: 'right' }}>{fmtMoeda(custos_indiretos)}</td>
+              <td style={{ textAlign: 'right' }}>{fmtPerc((custos_indiretos / total) * 100)}</td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      {/* RESUMO FINAL */}
+      <div className="card">
+        <div className="card-title">📊 Resumo Final do Orçamento</div>
+        <table>
+          <tbody>
+            <tr>
+              <td style={{ fontWeight: '600' }}>Custos Diretos ({gruposDiretos.length} macrogrupos)</td>
+              <td style={{ textAlign: 'right', fontWeight: '600' }}>{fmtMoeda(total - custos_indiretos)}</td>
+            </tr>
+            <tr>
+              <td style={{ fontWeight: '600' }}>Custos Indiretos ({gruposIndiretos.length} categorias)</td>
+              <td style={{ textAlign: 'right', fontWeight: '600' }}>{fmtMoeda(custos_indiretos)}</td>
+            </tr>
+            <tr style={{ borderTop: '2px solid var(--border)', fontWeight: '700', fontSize: '16px' }}>
+              <td>TOTAL GERAL</td>
+              <td style={{ textAlign: 'right' }}>{fmtMoeda(total)}</td>
+            </tr>
+          </tbody>
         </table>
       </div>
 
@@ -179,9 +247,11 @@ export default function OrcamentoPage() {
         <div className="notas-box">
           <strong>Período selecionado:</strong> {periodo_label}
           <br /><br />
-          <strong>Custos Diretos:</strong> Relacionados diretamente à execução da obra (materiais, mão de obra, equipamentos).
+          <strong>Custos Diretos:</strong> Relacionados diretamente à execução da obra (materiais, mão de obra, equipamentos). Agrupados em {gruposDiretos.length} macrogrupos conforme cronograma de desembolso.
           <br /><br />
-          <strong>Custos Indiretos:</strong> Necessários para o projeto mas não relacionados à construção física (terreno, projetos, taxas, jurídico).
+          <strong>Custos Indiretos:</strong> Necessários para o projeto mas não relacionados à construção física. Incluem: terreno, projetos técnicos, consultorias, aprovações e licenças, assessoria jurídica, taxas de registro, emolumentos, compensações ambientais e contingências.
+          <br /><br />
+          <strong>Total do Orçamento:</strong> Somatório dos custos diretos e indiretos, representando o investimento total previsto para a obra.
         </div>
       </div>
     </div>
