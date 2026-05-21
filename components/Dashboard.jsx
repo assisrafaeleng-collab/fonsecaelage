@@ -355,8 +355,8 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
         </div>
       </div>
 
-      {/* LINHA 2: CUSTOS INDIRETOS + AVANÇO FÍSICO REALIZADO */}
-      <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginTop: '-10px' }}>
+      {/* LINHA 2: CUSTOS INDIRETOS + AVANÇO FÍSICO REALIZADO - ALINHADOS COM LINHA 1 */}
+      <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '16px', marginTop: '-10px' }}>
         <div 
           className="kpi" 
           style={{ borderLeftColor: '#5B9BD5' }}
@@ -392,6 +392,9 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
           <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2' }}>{fmtPerc(avancoFisicoReal)}</div>
           <div className="kpi-sub">Realizado até agora</div>
         </div>
+
+        {/* COLUNA VAZIA PARA ALINHAMENTO */}
+        <div style={{ visibility: 'hidden' }}></div>
       </div>
 
       {/* CUSTOS POR GRUPO - EXPANSÍVEL */}
