@@ -12,7 +12,7 @@ export default async function handler(req, res) {
       .from('custos_lancamentos')
       .select('*')
       .eq('obra_id', obra_id)
-      .in('grupo_custo', ['1.Terreno', '2.Projetos e Consultoria', '3.Serviços Jurídicos', '4.Taxas e Licenças'])
+      .in('grupo_custo', ['1. Terreno', '2. Projetos e Consultoria', '3. Serviços Jurídicos', '4. Taxas e Licenças'])
       .eq('status', 'Normal')
       .order('data_emissao', { ascending: false })
 
