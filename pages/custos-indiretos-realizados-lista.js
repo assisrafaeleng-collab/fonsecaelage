@@ -26,20 +26,20 @@ export default function CustosIndiretosRealizadosLista() {
     fetchDados()
   }, [])
 
-  if (loading) return <div class="page"><div class="loading">Carregando custos indiretos realizados...</div></div>
-  if (!dados) return <div class="page"><div class="empty-state"><h3>Erro ao carregar dados</h3></div></div>
+  if (loading) return <div className="page"><div className="loading">Carregando custos indiretos realizados...</div></div>
+  if (!dados) return <div className="page"><div className="empty-state"><h3>Erro ao carregar dados</h3></div></div>
 
   return (
-    <div class="page">
-      <div class="header">
-        <div class="header-top">
+    <div className="page">
+      <div className="header">
+        <div className="header-top">
           <div>
-            <div class="obra-eye">CUSTOS INDIRETOS REALIZADOS</div>
-            <div class="obra-nome">Flats Pampulha</div>
-            <div class="obra-info">{dados.quantidade} lançamentos</div>
+            <div className="obra-eye">CUSTOS INDIRETOS REALIZADOS</div>
+            <div className="obra-nome">Flats Pampulha</div>
+            <div className="obra-info">{dados.quantidade} lançamentos</div>
           </div>
         </div>
-        <div class="nav">
+        <div className="nav">
           <button className="nav-btn" onClick={() => router.push('/')}>← Voltar ao Dashboard</button>
         </div>
       </div>
