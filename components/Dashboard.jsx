@@ -1,6 +1,7 @@
 // components/Dashboard.jsx
 // 
 // Dashboard com KPIs expansíveis - mostra detalhamento por grupo ao clicar
+// COM CABEÇALHO COMPARATIVO DIRETO/INDIRETO ANTES DO GRÁFICO
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
@@ -45,6 +46,7 @@ const fmtPerc = (val) => {
 export default function Dashboard({ updates, selectedId, onSelectId, mesLimite = 18 }) {
   const router = useRouter()
   const [dados, setDados] = useState(null)
+  const [dadosOrcamento, setDadosOrcamento] = useState(null)
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState(null)
   const [expanded, setExpanded] = useState(false) // ← Estado de expansão
@@ -53,10 +55,19 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
     async function fetchDados() {
       try {
         setLoading(true)
-        const res = await fetch(`/api/dashboard-integrado?mes=${mesLimite}`)
-        if (!res.ok) throw new Error('Erro ao carregar dados')
-        const data = await res.json()
-        setDados(data)
+        
+        // Buscar dados integrados (realizados)
+        const res1 = await fetch(`/api/dashboard-integrado?mes=${mesLimite}`)
+        if (!res1.ok) throw new Error('Erro ao carregar dados integrados')
+        const data1 = await res1.json()
+        setDados(data1)
+
+        // Buscar dados de orçamento (planejados)
+        const res2 = await fetch(`/api/orcamento-detalhado?mes=${mesLimite}`)
+        if (!res2.ok) throw new Error('Erro ao carregar orçamento')
+        const data2 = await res2.json()
+        setDadosOrcamento(data2)
+
       } catch (err) {
         console.error('Erro ao buscar dashboard:', err)
         setErro(err.message)
@@ -267,6 +278,20 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
     'Outros': '📦'
   }
 
+  // ========================================================================
+  // CALCULAR DADOS PLANEJADOS E REALIZADOS
+  // ========================================================================
+  const custoDiretoPlano = dadosOrcamento ? dadosOrcamento.custos_diretos : 0
+  const custoIndiretoPlano = dadosOrcamento ? dadosOrcamento.custos_indiretos : 0
+  const avancoFisicoPlano = kpis.avanco_fisico_planejado || 0
+  const avancoFisicoReal = kpis.avanco_fisico_realizado || 0
+  
+  const custoDiretoReal = kpis.custo_realizado - (kpis.custo_indireto_realizado || 0)
+  const custoIndiretoReal = kpis.custo_indireto_realizado || 0
+
+  const saldoCustoDireto = custoDiretoPlano - custoDiretoReal
+  const saldoCustoIndireto = custoIndiretoPlano - custoIndiretoReal
+
   return (
     <div>
       {/* KPIs PRINCIPAIS */}
@@ -354,6 +379,78 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
           ))}
         </div>
       )}
+
+      {/* CABEÇALHO COMPARATIVO DIRETO/INDIRETO */}
+      <div className="card" style={{ marginTop: '20px' }}>
+        <div className="card-title">📊 Comparativo Físico-Financeiro</div>
+        
+        <table style={{
+          width: '100%',
+          borderCollapse: 'collapse',
+          fontSize: '12px'
+        }}>
+          <thead>
+            <tr style={{ backgroundColor: 'var(--bg2)', borderBottom: '2px solid var(--border)' }}>
+              <th colSpan="4" style={{ textAlign: 'center', padding: '12px', borderRight: '1px solid var(--border)', color: '#C8860A', fontWeight: '700' }}>
+                💰 CUSTOS DIRETOS
+              </th>
+              <th colSpan="4" style={{ textAlign: 'center', padding: '12px', color: '#5B9BD5', fontWeight: '700' }}>
+                💳 CUSTOS INDIRETOS
+              </th>
+            </tr>
+            <tr style={{ backgroundColor: 'var(--bg2)', borderBottom: '1px solid var(--border)' }}>
+              <th style={{ padding: '12px', textAlign: 'right', borderRight: '1px solid var(--border)' }}>Planejado</th>
+              <th style={{ padding: '12px', textAlign: 'right', borderRight: '1px solid var(--border)' }}>Realizado</th>
+              <th style={{ padding: '12px', textAlign: 'right', borderRight: '1px solid var(--border)' }}>Saldo</th>
+              <th style={{ padding: '12px', textAlign: 'right', borderRight: '1px solid var(--border)' }}>Avanço Físico</th>
+              <th style={{ padding: '12px', textAlign: 'right', borderRight: '1px solid var(--border)' }}>Planejado</th>
+              <th style={{ padding: '12px', textAlign: 'right', borderRight: '1px solid var(--border)' }}>Realizado</th>
+              <th style={{ padding: '12px', textAlign: 'right', borderRight: '1px solid var(--border)' }}>Saldo</th>
+              <th style={{ padding: '12px', textAlign: 'right' }}>Realizado</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style={{ borderBottom: '2px solid var(--border)' }}>
+              <td style={{ padding: '16px 12px', textAlign: 'right', borderRight: '1px solid var(--border)', fontWeight: '600', color: '#C8860A' }}>
+                {fmtMoeda(custoDiretoPlano)}
+              </td>
+              <td style={{ padding: '16px 12px', textAlign: 'right', borderRight: '1px solid var(--border)', fontWeight: '600', color: '#4D9B6A' }}>
+                {fmtMoeda(custoDiretoReal)}
+              </td>
+              <td style={{ 
+                padding: '16px 12px', 
+                textAlign: 'right', 
+                borderRight: '1px solid var(--border)', 
+                fontWeight: '600',
+                color: saldoCustoDireto >= 0 ? '#4D9B6A' : '#B03030'
+              }}>
+                {fmtMoeda(saldoCustoDireto)}
+              </td>
+              <td style={{ padding: '16px 12px', textAlign: 'right', borderRight: '1px solid var(--border)', fontWeight: '600', color: '#5B9BD5' }}>
+                {fmtPerc(avancoFisicoPlano)}
+              </td>
+              <td style={{ padding: '16px 12px', textAlign: 'right', borderRight: '1px solid var(--border)', fontWeight: '600', color: '#5B9BD5' }}>
+                {fmtMoeda(custoIndiretoPlano)}
+              </td>
+              <td style={{ padding: '16px 12px', textAlign: 'right', borderRight: '1px solid var(--border)', fontWeight: '600', color: '#4D9B6A' }}>
+                {fmtMoeda(custoIndiretoReal)}
+              </td>
+              <td style={{ 
+                padding: '16px 12px', 
+                textAlign: 'right', 
+                borderRight: '1px solid var(--border)', 
+                fontWeight: '600',
+                color: saldoCustoIndireto >= 0 ? '#4D9B6A' : '#B03030'
+              }}>
+                {fmtMoeda(saldoCustoIndireto)}
+              </td>
+              <td style={{ padding: '16px 12px', textAlign: 'right', fontWeight: '600', color: '#2E5C8A' }}>
+                {fmtPerc(avancoFisicoReal)}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
       {/* GRÁFICO CURVA S */}
       <div className="card">
