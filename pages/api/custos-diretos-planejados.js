@@ -1,4 +1,7 @@
 // pages/custos-diretos-planejados.js
+//
+// Página detalhada de custos diretos planejados
+
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 
@@ -57,6 +60,7 @@ export default function CustosDiretosPlanejados() {
 
   return (
     <div className="page">
+      {/* HEADER */}
       <div className="header">
         <div className="header-top">
           <div>
@@ -90,6 +94,7 @@ export default function CustosDiretosPlanejados() {
         </div>
       </div>
 
+      {/* RESUMO */}
       <div className="kpi-grid">
         <div className="kpi" style={{ borderLeftColor: '#4D9B6A' }}>
           <div className="kpi-label">Total Custos Diretos</div>
@@ -98,6 +103,7 @@ export default function CustosDiretosPlanejados() {
         </div>
       </div>
 
+      {/* TABELA */}
       <div className="card">
         <div className="card-title">🏗️ Custos Diretos Planejados por Macrogrupo</div>
 

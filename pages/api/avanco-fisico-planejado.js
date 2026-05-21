@@ -1,4 +1,7 @@
-// pages/avanco-fisico-planejado.js
+// pages/avanço-fisico-planejado.js
+//
+// Página detalhada de avanço físico planejado
+
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 
@@ -57,6 +60,7 @@ export default function AvancoFisicoPlanejado() {
 
   return (
     <div className="page">
+      {/* HEADER */}
       <div className="header">
         <div className="header-top">
           <div>
@@ -90,6 +94,7 @@ export default function AvancoFisicoPlanejado() {
         </div>
       </div>
 
+      {/* RESUMO */}
       <div className="kpi-grid">
         <div className="kpi" style={{ borderLeftColor: '#5B9BD5' }}>
           <div className="kpi-label">Avanço Físico Médio</div>
@@ -98,6 +103,7 @@ export default function AvancoFisicoPlanejado() {
         </div>
       </div>
 
+      {/* TABELA */}
       <div className="card">
         <div className="card-title">📊 Avanço Físico Planejado por Macrogrupo</div>
 
@@ -143,6 +149,7 @@ export default function AvancoFisicoPlanejado() {
         </table>
       </div>
 
+      {/* BARRA DE PROGRESSO */}
       <div className="card">
         <div className="card-title">📈 Visualização do Avanço</div>
         
