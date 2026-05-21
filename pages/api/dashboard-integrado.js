@@ -10,11 +10,11 @@ export default async function handler(req, res) {
   }
 
   const obra_id = req.query.obra_id || 'flats_pampulha'
-  const mesLimite = parseInt(req.query.mes) || 18 // Padrão: todos os 18 meses
+  const mesLimite = parseInt(req.query.mes) || 18
 
   try {
     // ========================================================================
-    // 1. CURVA S FINANCEIRA PLANEJADA - FILTRADA ATÉ mesLimite
+    // 1. CURVA S FINANCEIRA PLANEJADA
     // ========================================================================
     const { data: finPlanejada, error: errFinPlan } = await supabase
       .from('v_curva_s_financeira_planejada')
@@ -26,7 +26,7 @@ export default async function handler(req, res) {
     if (errFinPlan) throw new Error(`Erro financeiro planejado: ${errFinPlan.message}`)
 
     // ========================================================================
-    // 2. CURVA S FÍSICA PLANEJADA - FILTRADA ATÉ mesLimite
+    // 2. CURVA S FÍSICA PLANEJADA
     // ========================================================================
     const { data: fisPlanejada, error: errFisPlan } = await supabase
       .from('v_curva_s_fisica_planejada')
@@ -38,7 +38,7 @@ export default async function handler(req, res) {
     if (errFisPlan) throw new Error(`Erro físico planejado: ${errFisPlan.message}`)
 
     // ========================================================================
-    // 3. CUSTOS REALIZADOS (Financeiro Real) - FILTRADOS POR DATA
+    // 3. CUSTOS REALIZADOS - SEPARANDO DIRETOS E INDIRETOS
     // ========================================================================
     const { data: custosRealizados, error: errCustos } = await supabase
       .from('custos_lancamentos')
@@ -48,58 +48,70 @@ export default async function handler(req, res) {
 
     if (errCustos) throw new Error(`Erro custos realizados: ${errCustos.message}`)
 
-    // Filtrar custos até a competência correspondente ao mesLimite
-    const dataInicio = '2025-04-01' // M1 = Abril/2025
+    const dataInicio = '2025-04-01'
     const dataLimite = new Date(dataInicio)
     dataLimite.setMonth(dataLimite.getMonth() + (mesLimite - 1))
     const dataLimiteStr = dataLimite.toISOString().slice(0, 10)
 
-    // Agrupar por competência e calcular acumulado
+    // ========================================================================
+    // SEPARAR DIRETOS (5,6,7,8) E INDIRETOS (1,2,3,4)
+    // ========================================================================
     const custosAgrupados = {}
+    const custosDiretosAgrupados = {}
+    const custosIndiretosAgrupados = {}
+
     custosRealizados
       .filter(c => c.status === 'Normal' && c.competencia <= dataLimiteStr)
       .forEach(c => {
         const comp = c.competencia
+        const numeroGrupo = parseInt(c.grupo_custo?.charAt(0))
+        const valor = parseFloat(c.valor)
+
+        // Total geral
         if (!custosAgrupados[comp]) {
           custosAgrupados[comp] = 0
         }
-        custosAgrupados[comp] += parseFloat(c.valor)
-      })
+        custosAgrupados[comp] += valor
 
-    // Agrupar por grupo_custo para drill-down
-    const custosPorGrupo = {}
-    custosRealizados
-      .filter(c => c.status === 'Normal' && c.competencia <= dataLimiteStr)
-      .forEach(c => {
-        const grupo = c.grupo_custo || 'Outros'
-        if (!custosPorGrupo[grupo]) {
-          custosPorGrupo[grupo] = 0
+        // Separar diretos (5,6,7,8) e indiretos (1,2,3,4)
+        if (numeroGrupo >= 5 && numeroGrupo <= 8) {
+          if (!custosDiretosAgrupados[comp]) {
+            custosDiretosAgrupados[comp] = 0
+          }
+          custosDiretosAgrupados[comp] += valor
+        } else if (numeroGrupo >= 1 && numeroGrupo <= 4) {
+          if (!custosIndiretosAgrupados[comp]) {
+            custosIndiretosAgrupados[comp] = 0
+          }
+          custosIndiretosAgrupados[comp] += valor
         }
-        custosPorGrupo[grupo] += parseFloat(c.valor)
       })
 
-    const gruposArray = Object.entries(custosPorGrupo)
-      .map(([grupo, valor]) => ({ grupo, valor }))
-      .sort((a, b) => b.valor - a.valor)
-
-    // Converter para array ordenado com acumulado
+    // Converter para arrays com acumulado
     const finRealizada = []
     let acumuladoFin = 0
-    
+    let acumuladoDireto = 0
+    let acumuladoIndireto = 0
+
     Object.keys(custosAgrupados)
       .sort()
       .forEach((comp, idx) => {
         acumuladoFin += custosAgrupados[comp]
+        acumuladoDireto += custosDiretosAgrupados[comp] || 0
+        acumuladoIndireto += custosIndiretosAgrupados[comp] || 0
+
         finRealizada.push({
           mes_numero: idx + 1,
           competencia: comp,
           valor_mensal: custosAgrupados[comp],
-          valor_acumulado: acumuladoFin
+          valor_acumulado: acumuladoFin,
+          valor_direto: acumuladoDireto,
+          valor_indireto: acumuladoIndireto
         })
       })
 
     // ========================================================================
-    // 4. AVANÇO FÍSICO REALIZADO - FILTRADO POR DATA
+    // 4. AVANÇO FÍSICO REALIZADO
     // ========================================================================
     const { data: atualizacoes, error: errAtual } = await supabase
       .from('atualizacoes_obra')
@@ -118,7 +130,7 @@ export default async function handler(req, res) {
     }))
 
     // ========================================================================
-    // 5. CALCULAR KPIs
+    // 5. CALCULAR KPIs COM SEPARAÇÃO DIRETO/INDIRETO
     // ========================================================================
     const orcamentoTotal = finPlanejada.length > 0 
       ? finPlanejada[finPlanejada.length - 1].valor_acumulado 
@@ -126,6 +138,14 @@ export default async function handler(req, res) {
 
     const custoRealTotal = finRealizada.length > 0
       ? finRealizada[finRealizada.length - 1].valor_acumulado
+      : 0
+
+    const custoDiretoReal = finRealizada.length > 0
+      ? finRealizada[finRealizada.length - 1].valor_direto
+      : 0
+
+    const custoIndiretoReal = finRealizada.length > 0
+      ? finRealizada[finRealizada.length - 1].valor_indireto
       : 0
 
     const avisoFisicoTotal = fisRealizada.length > 0
@@ -138,7 +158,6 @@ export default async function handler(req, res) {
       1
     )
 
-    // Buscar valores planejados no período selecionado (mesLimite)
     const finPlanMesAtual = finPlanejada.find(f => f.mes_numero === mesLimite) || finPlanejada[finPlanejada.length - 1]
     const fisPlanMesAtual = fisPlanejada.find(f => f.mes_numero === mesLimite) || fisPlanejada[fisPlanejada.length - 1]
 
@@ -161,6 +180,8 @@ export default async function handler(req, res) {
     const kpis = {
       orcamento_total: orcamentoTotal,
       custo_realizado: custoRealTotal,
+      custo_direto_realizado: custoDiretoReal,
+      custo_indireto_realizado: custoIndiretoReal,
       avanco_fisico_realizado: avisoFisicoTotal,
       avanco_fisico_planejado: percPlanejado,
       cpi: parseFloat(cpi.toFixed(2)),
@@ -204,16 +225,12 @@ export default async function handler(req, res) {
         fisico_planejado: fisPlanejada,
         fisico_realizado: fisRealizada
       },
-      custos_por_grupo: gruposArray,
       meses_alinhados: meses,
       metadata: {
         obra_id,
         total_meses_planejado: 18,
         total_meses_com_dados: mesAtual,
-        mes_limite: mesLimite,
-        ultima_atualizacao: atualizacoes.length > 0 
-          ? atualizacoes[atualizacoes.length - 1].data 
-          : null
+        mes_limite: mesLimite
       }
     })
 
