@@ -304,15 +304,15 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
         </div>
       </div>
 
-      {/* 8 CARDS COMPARATIVO DIRETO/INDIRETO */}
-      <div className="kpi-grid">
-        {/* LINHA 1: CUSTOS DIRETOS */}
+      {/* COMPARATIVO DIRETO/INDIRETO - 2 LINHAS */}
+      {/* LINHA 1: CUSTOS DIRETOS + AVANÇO FÍSICO PLANEJADO + DESVIO */}
+      <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '16px' }}>
         <div 
           className="kpi" 
           style={{ borderLeftColor: '#C8860A' }}
         >
           <div className="kpi-label">Custo Direto Planejado</div>
-          <div className="kpi-value">{fmtMoeda(custoDiretoPlano)}</div>
+          <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2' }}>{fmtMoeda(custoDiretoPlano)}</div>
           <div className="kpi-sub">Orçado para 18 meses</div>
         </div>
 
@@ -321,7 +321,7 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
           style={{ borderLeftColor: '#4D9B6A' }}
         >
           <div className="kpi-label">Custo Direto Realizado</div>
-          <div className="kpi-value">{fmtMoeda(custoDiretoReal)}</div>
+          <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2' }}>{fmtMoeda(custoDiretoReal)}</div>
           <div className="kpi-sub">{fmtPerc((custoDiretoReal / custoDiretoPlano) * 100)} do planejado</div>
         </div>
 
@@ -330,10 +330,8 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
           style={{ borderLeftColor: saldoCustoDireto >= 0 ? '#4D9B6A' : '#B03030' }}
         >
           <div className="kpi-label">Saldo Custo Direto</div>
-          <div className="kpi-value">{fmtMoeda(saldoCustoDireto)}</div>
-          <div className="kpi-sub">
-            {saldoCustoDireto >= 0 ? '✓ Economia' : '⚠️ Acima do previsto'}
-          </div>
+          <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2' }}>{fmtMoeda(saldoCustoDireto)}</div>
+          <div className="kpi-sub">{saldoCustoDireto >= 0 ? '✓ Economia' : '⚠️ Acima'}</div>
         </div>
 
         <div 
@@ -341,17 +339,30 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
           style={{ borderLeftColor: '#5B9BD5' }}
         >
           <div className="kpi-label">Avanço Físico Planejado</div>
-          <div className="kpi-value">{fmtPerc(avancoFisicoPlano)}</div>
+          <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2' }}>{fmtPerc(avancoFisicoPlano)}</div>
           <div className="kpi-sub">Conforme cronograma</div>
         </div>
 
-        {/* LINHA 2: CUSTOS INDIRETOS */}
+        <div 
+          className="kpi" 
+          style={{ borderLeftColor: avancoFisicoReal >= avancoFisicoPlano ? '#4D9B6A' : '#B03030' }}
+        >
+          <div className="kpi-label">Desvio Físico</div>
+          <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2', color: avancoFisicoReal >= avancoFisicoPlano ? '#4D9B6A' : '#B03030' }}>
+            {avancoFisicoReal >= avancoFisicoPlano ? '+' : ''}{fmtPerc(avancoFisicoReal - avancoFisicoPlano)}
+          </div>
+          <div className="kpi-sub">{avancoFisicoReal >= avancoFisicoPlano ? 'Adiantado' : 'Atrasado'}</div>
+        </div>
+      </div>
+
+      {/* LINHA 2: CUSTOS INDIRETOS + AVANÇO FÍSICO REALIZADO */}
+      <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginTop: '-10px' }}>
         <div 
           className="kpi" 
           style={{ borderLeftColor: '#5B9BD5' }}
         >
           <div className="kpi-label">Custo Indireto Planejado</div>
-          <div className="kpi-value">{fmtMoeda(custoIndiretoPlano)}</div>
+          <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2' }}>{fmtMoeda(custoIndiretoPlano)}</div>
           <div className="kpi-sub">Orçado para 18 meses</div>
         </div>
 
@@ -360,7 +371,7 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
           style={{ borderLeftColor: '#4D9B6A' }}
         >
           <div className="kpi-label">Custo Indireto Realizado</div>
-          <div className="kpi-value">{fmtMoeda(custoIndiretoReal)}</div>
+          <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2' }}>{fmtMoeda(custoIndiretoReal)}</div>
           <div className="kpi-sub">{custoIndiretoPlano > 0 ? fmtPerc((custoIndiretoReal / custoIndiretoPlano) * 100) : '0%'} do planejado</div>
         </div>
 
@@ -369,10 +380,8 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
           style={{ borderLeftColor: saldoCustoIndireto >= 0 ? '#4D9B6A' : '#B03030' }}
         >
           <div className="kpi-label">Saldo Custo Indireto</div>
-          <div className="kpi-value">{fmtMoeda(saldoCustoIndireto)}</div>
-          <div className="kpi-sub">
-            {saldoCustoIndireto >= 0 ? '✓ Economia' : '⚠️ Acima do previsto'}
-          </div>
+          <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2' }}>{fmtMoeda(saldoCustoIndireto)}</div>
+          <div className="kpi-sub">{saldoCustoIndireto >= 0 ? '✓ Economia' : '⚠️ Acima'}</div>
         </div>
 
         <div 
@@ -380,10 +389,8 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
           style={{ borderLeftColor: '#2E5C8A' }}
         >
           <div className="kpi-label">Avanço Físico Realizado</div>
-          <div className="kpi-value">{fmtPerc(avancoFisicoReal)}</div>
-          <div className="kpi-sub">
-            Desvio: {avancoFisicoReal >= avancoFisicoPlano ? '+' : ''}{fmtPerc(avancoFisicoReal - avancoFisicoPlano)}
-          </div>
+          <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2' }}>{fmtPerc(avancoFisicoReal)}</div>
+          <div className="kpi-sub">Realizado até agora</div>
         </div>
       </div>
 
