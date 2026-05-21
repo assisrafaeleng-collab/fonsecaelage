@@ -1,42 +1,128 @@
-// pages/api/custos-diretos-realizados-lista.js
-import { supabase } from '../../lib/supabase'
+// pages/custos-diretos-realizados-lista.js
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/router'
 
-export default async function handler(req, res) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' })
+const fmtMoeda = (val) => {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    minimumFractionDigits: 2
+  }).format(val)
+}
+
+const fmtData = (data) => {
+  if (!data) return '-'
+  return new Date(data).toLocaleDateString('pt-BR')
+}
+
+export default function CustosDiretosRealizadosLista() {
+  const router = useRouter()
+  const [dados, setDados] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchDados() {
+      try {
+        setLoading(true)
+        const res = await fetch(`/api/custos-diretos-realizados-lista`)
+        if (!res.ok) throw new Error('Erro ao carregar dados')
+        const data = await res.json()
+        setDados(data)
+      } catch (err) {
+        console.error(err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchDados()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="page">
+        <div className="loading">Carregando custos diretos realizados...</div>
+      </div>
+    )
   }
 
-  const obra_id = req.query.obra_id || 'flats_pampulha'
-
-  try {
-    const { data, error } = await supabase
-      .from('custos_lancamentos')
-      .select('*')
-      .eq('obra_id', obra_id)
-      .order('data_emissao', { ascending: false })
-
-    if (error) throw new Error(`Erro ao buscar custos: ${error.message}`)
-
-    // Filtrar DIRETOS (grupos 5, 6, 7, 8)
-    const diretos = data.filter(item => {
-      const numeroGrupo = parseInt(item.grupo_custo?.charAt(0))
-      return numeroGrupo >= 5 && numeroGrupo <= 8
-    })
-
-    const total = diretos.reduce((sum, item) => sum + parseFloat(item.valor || 0), 0)
-
-    return res.status(200).json({
-      lancamentos: diretos,
-      total,
-      quantidade: diretos.length,
-      obra_id
-    })
-
-  } catch (error) {
-    console.error('Erro na API custos-diretos-realizados-lista:', error)
-    return res.status(500).json({ 
-      error: 'Erro ao buscar custos diretos realizados',
-      message: error.message 
-    })
+  if (!dados) {
+    return (
+      <div className="page">
+        <div className="empty-state">
+          <h3>Erro ao carregar dados</h3>
+        </div>
+      </div>
+    )
   }
+
+  return (
+    <div className="page">
+      <div className="header">
+        <div className="header-top">
+          <div>
+            <div className="obra-eye">CUSTOS DIRETOS REALIZADOS</div>
+            <div className="obra-nome">Flats Pampulha</div>
+            <div className="obra-info">{dados.quantidade} lançamentos</div>
+          </div>
+        </div>
+
+        <div className="nav">
+          <button className="nav-btn" onClick={() => router.push('/')}>
+            ← Voltar ao Dashboard
+          </button>
+        </div>
+      </div>
+
+      <div className="kpi-grid">
+        <div className="kpi" style={{ borderLeftColor: '#4D9B6A' }}>
+          <div className="kpi-label">Total Custos Diretos Realizados</div>
+          <div className="kpi-value">{fmtMoeda(dados.total)}</div>
+          <div className="kpi-sub">{dados.quantidade} itens lançados</div>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-title">🔨 Detalhes dos Custos Diretos Realizados</div>
+
+        {dados.lancamentos.length === 0 ? (
+          <div style={{ padding: '20px', textAlign: 'center', color: '#999' }}>
+            Nenhum custo direto realizado ainda
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table>
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Fornecedor</th>
+                  <th>Descrição</th>
+                  <th>Grupo de Custo</th>
+                  <th style={{ textAlign: 'right' }}>Valor</th>
+                </tr>
+              </thead>
+              <tbody>
+                {dados.lancamentos.map((item, idx) => (
+                  <tr key={item.id || idx}>
+                    <td>{fmtData(item.data_emissao)}</td>
+                    <td>{item.fornecedor || '-'}</td>
+                    <td>{item.classificacao || '-'}</td>
+                    <td>{item.grupo_custo || '-'}</td>
+                    <td style={{ textAlign: 'right', fontWeight: '600' }}>
+                      {fmtMoeda(item.valor)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr style={{ borderTop: '2px solid var(--border)', fontWeight: '700' }}>
+                  <td colSpan="4">TOTAL</td>
+                  <td style={{ textAlign: 'right' }}>{fmtMoeda(dados.total)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  )
 }
