@@ -10,32 +10,44 @@ export default async function handler(req, res) {
 
   try {
     const { data, error } = await supabase
-      .from('custos_indiretos_planejados')
-      .select('categoria, valor_total')
+      .from('custos_lancamentos')
+      .select('grupo_custo, valor')
       .eq('obra_id', obra_id)
-      .order('valor_total', { ascending: false })
 
-    if (error) throw new Error(`Erro ao buscar custos indiretos realizados: ${error.message}`)
+    if (error) throw new Error(`Erro ao buscar custos: ${error.message}`)
 
-    const categorias = data
-      .filter(item => item.categoria && item.categoria.trim() !== '')
-      .map(item => ({
-        nome: item.categoria,
-        valor: parseFloat(item.valor_total || 0),
-        percentual: 0,
-        status: 'Planejado'
+    // Filtrar INDIRETOS (grupos 1-7)
+    const gruposMap = {}
+    data.forEach(item => {
+      const grupo = item.grupo_custo
+      if (grupo && grupo.trim() !== '') {
+        const numeroGrupo = parseInt(grupo.charAt(0))
+        if (numeroGrupo >= 1 && numeroGrupo <= 7) {
+          if (!gruposMap[grupo]) {
+            gruposMap[grupo] = 0
+          }
+          gruposMap[grupo] += parseFloat(item.valor || 0)
+        }
+      }
+    })
+
+    const grupos = Object.entries(gruposMap)
+      .map(([nome, valor]) => ({
+        nome,
+        valor,
+        percentual: 0
       }))
+      .sort((a, b) => b.valor - a.valor)
 
-    const total = categorias.reduce((sum, c) => sum + c.valor, 0)
+    const total = grupos.reduce((sum, g) => sum + g.valor, 0)
 
-    categorias.forEach(c => {
-      c.percentual = total > 0 ? (c.valor / total) * 100 : 0
+    grupos.forEach(g => {
+      g.percentual = total > 0 ? (g.valor / total) * 100 : 0
     })
 
     return res.status(200).json({
-      categorias,
+      grupos,
       total,
-      nota: 'Utilizando dados planejados. Atualize quando houver tabela de realizados.',
       obra_id
     })
 
