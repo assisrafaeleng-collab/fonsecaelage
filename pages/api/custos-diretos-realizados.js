@@ -16,14 +16,13 @@ export default async function handler(req, res) {
 
     if (error) throw new Error(`Erro ao buscar custos: ${error.message}`)
 
-    // Filtrar DIRETOS (grupos que começam com 8+)
+    // Filtrar DIRETOS (grupos 5, 6, 7, 8)
     const gruposMap = {}
     data.forEach(item => {
       const grupo = item.grupo_custo
       if (grupo && grupo.trim() !== '') {
-        // Verifica se começa com número 8 ou maior (diretos)
         const numeroGrupo = parseInt(grupo.charAt(0))
-        if (numeroGrupo >= 8) {
+        if (numeroGrupo >= 5 && numeroGrupo <= 8) {
           if (!gruposMap[grupo]) {
             gruposMap[grupo] = 0
           }
@@ -49,8 +48,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       grupos,
       total,
-      obra_id,
-      mensagem: total === 0 ? 'Nenhum custo direto lançado ainda' : ''
+      obra_id
     })
 
   } catch (error) {

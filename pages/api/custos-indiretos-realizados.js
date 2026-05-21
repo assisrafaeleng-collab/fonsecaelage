@@ -16,13 +16,13 @@ export default async function handler(req, res) {
 
     if (error) throw new Error(`Erro ao buscar custos: ${error.message}`)
 
-    // Filtrar INDIRETOS (grupos 1-7)
+    // Filtrar INDIRETOS (grupos 1, 2, 3, 4)
     const gruposMap = {}
     data.forEach(item => {
       const grupo = item.grupo_custo
       if (grupo && grupo.trim() !== '') {
         const numeroGrupo = parseInt(grupo.charAt(0))
-        if (numeroGrupo >= 1 && numeroGrupo <= 7) {
+        if (numeroGrupo >= 1 && numeroGrupo <= 4) {
           if (!gruposMap[grupo]) {
             gruposMap[grupo] = 0
           }
