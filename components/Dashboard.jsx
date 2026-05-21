@@ -380,76 +380,87 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
         </div>
       )}
 
-      {/* CABEÇALHO COMPARATIVO DIRETO/INDIRETO */}
-      <div className="card" style={{ marginTop: '20px' }}>
-        <div className="card-title">📊 Comparativo Físico-Financeiro</div>
-        
-        <table style={{
-          width: '100%',
-          borderCollapse: 'collapse',
-          fontSize: '12px'
-        }}>
-          <thead>
-            <tr style={{ backgroundColor: 'var(--bg2)', borderBottom: '2px solid var(--border)' }}>
-              <th colSpan="4" style={{ textAlign: 'center', padding: '12px', borderRight: '1px solid var(--border)', color: '#C8860A', fontWeight: '700' }}>
-                💰 CUSTOS DIRETOS
-              </th>
-              <th colSpan="4" style={{ textAlign: 'center', padding: '12px', color: '#5B9BD5', fontWeight: '700' }}>
-                💳 CUSTOS INDIRETOS
-              </th>
-            </tr>
-            <tr style={{ backgroundColor: 'var(--bg2)', borderBottom: '1px solid var(--border)' }}>
-              <th style={{ padding: '12px', textAlign: 'right', borderRight: '1px solid var(--border)' }}>Planejado</th>
-              <th style={{ padding: '12px', textAlign: 'right', borderRight: '1px solid var(--border)' }}>Realizado</th>
-              <th style={{ padding: '12px', textAlign: 'right', borderRight: '1px solid var(--border)' }}>Saldo</th>
-              <th style={{ padding: '12px', textAlign: 'right', borderRight: '1px solid var(--border)' }}>Avanço Físico</th>
-              <th style={{ padding: '12px', textAlign: 'right', borderRight: '1px solid var(--border)' }}>Planejado</th>
-              <th style={{ padding: '12px', textAlign: 'right', borderRight: '1px solid var(--border)' }}>Realizado</th>
-              <th style={{ padding: '12px', textAlign: 'right', borderRight: '1px solid var(--border)' }}>Saldo</th>
-              <th style={{ padding: '12px', textAlign: 'right' }}>Realizado</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr style={{ borderBottom: '2px solid var(--border)' }}>
-              <td style={{ padding: '16px 12px', textAlign: 'right', borderRight: '1px solid var(--border)', fontWeight: '600', color: '#C8860A' }}>
-                {fmtMoeda(custoDiretoPlano)}
-              </td>
-              <td style={{ padding: '16px 12px', textAlign: 'right', borderRight: '1px solid var(--border)', fontWeight: '600', color: '#4D9B6A' }}>
-                {fmtMoeda(custoDiretoReal)}
-              </td>
-              <td style={{ 
-                padding: '16px 12px', 
-                textAlign: 'right', 
-                borderRight: '1px solid var(--border)', 
-                fontWeight: '600',
-                color: saldoCustoDireto >= 0 ? '#4D9B6A' : '#B03030'
-              }}>
-                {fmtMoeda(saldoCustoDireto)}
-              </td>
-              <td style={{ padding: '16px 12px', textAlign: 'right', borderRight: '1px solid var(--border)', fontWeight: '600', color: '#5B9BD5' }}>
-                {fmtPerc(avancoFisicoPlano)}
-              </td>
-              <td style={{ padding: '16px 12px', textAlign: 'right', borderRight: '1px solid var(--border)', fontWeight: '600', color: '#5B9BD5' }}>
-                {fmtMoeda(custoIndiretoPlano)}
-              </td>
-              <td style={{ padding: '16px 12px', textAlign: 'right', borderRight: '1px solid var(--border)', fontWeight: '600', color: '#4D9B6A' }}>
-                {fmtMoeda(custoIndiretoReal)}
-              </td>
-              <td style={{ 
-                padding: '16px 12px', 
-                textAlign: 'right', 
-                borderRight: '1px solid var(--border)', 
-                fontWeight: '600',
-                color: saldoCustoIndireto >= 0 ? '#4D9B6A' : '#B03030'
-              }}>
-                {fmtMoeda(saldoCustoIndireto)}
-              </td>
-              <td style={{ padding: '16px 12px', textAlign: 'right', fontWeight: '600', color: '#2E5C8A' }}>
-                {fmtPerc(avancoFisicoReal)}
-              </td>
-            </tr>
-          </tbody>
-        </table>
+      {/* COMPARATIVO FÍSICO-FINANCEIRO — 8 CARDS */}
+      <div className="kpi-grid" style={{ marginTop: '20px' }}>
+        {/* LINHA 1: CUSTOS DIRETOS (4 cards) */}
+        <div 
+          className="kpi" 
+          style={{ borderLeftColor: '#C8860A' }}
+        >
+          <div className="kpi-label">Custo Direto Planejado</div>
+          <div className="kpi-value">{fmtMoeda(custoDiretoPlano)}</div>
+          <div className="kpi-sub">Orçado para 18 meses</div>
+        </div>
+
+        <div 
+          className="kpi" 
+          style={{ borderLeftColor: '#4D9B6A' }}
+        >
+          <div className="kpi-label">Custo Direto Realizado</div>
+          <div className="kpi-value">{fmtMoeda(custoDiretoReal)}</div>
+          <div className="kpi-sub">{fmtPerc((custoDiretoReal / custoDiretoPlano) * 100)} do planejado</div>
+        </div>
+
+        <div 
+          className="kpi" 
+          style={{ borderLeftColor: saldoCustoDireto >= 0 ? '#4D9B6A' : '#B03030' }}
+        >
+          <div className="kpi-label">Saldo Custo Direto</div>
+          <div className="kpi-value">{fmtMoeda(saldoCustoDireto)}</div>
+          <div className="kpi-sub">
+            {saldoCustoDireto >= 0 ? '✓ Economia' : '⚠️ Acima do previsto'}
+          </div>
+        </div>
+
+        <div 
+          className="kpi" 
+          style={{ borderLeftColor: '#5B9BD5' }}
+        >
+          <div className="kpi-label">Avanço Físico Planejado</div>
+          <div className="kpi-value">{fmtPerc(avancoFisicoPlano)}</div>
+          <div className="kpi-sub">Conforme cronograma</div>
+        </div>
+
+        {/* LINHA 2: CUSTOS INDIRETOS (4 cards) */}
+        <div 
+          className="kpi" 
+          style={{ borderLeftColor: '#5B9BD5' }}
+        >
+          <div className="kpi-label">Custo Indireto Planejado</div>
+          <div className="kpi-value">{fmtMoeda(custoIndiretoPlano)}</div>
+          <div className="kpi-sub">Orçado para 18 meses</div>
+        </div>
+
+        <div 
+          className="kpi" 
+          style={{ borderLeftColor: '#4D9B6A' }}
+        >
+          <div className="kpi-label">Custo Indireto Realizado</div>
+          <div className="kpi-value">{fmtMoeda(custoIndiretoReal)}</div>
+          <div className="kpi-sub">{custoIndiretoPlano > 0 ? fmtPerc((custoIndiretoReal / custoIndiretoPlano) * 100) : '0%'} do planejado</div>
+        </div>
+
+        <div 
+          className="kpi" 
+          style={{ borderLeftColor: saldoCustoIndireto >= 0 ? '#4D9B6A' : '#B03030' }}
+        >
+          <div className="kpi-label">Saldo Custo Indireto</div>
+          <div className="kpi-value">{fmtMoeda(saldoCustoIndireto)}</div>
+          <div className="kpi-sub">
+            {saldoCustoIndireto >= 0 ? '✓ Economia' : '⚠️ Acima do previsto'}
+          </div>
+        </div>
+
+        <div 
+          className="kpi" 
+          style={{ borderLeftColor: '#2E5C8A' }}
+        >
+          <div className="kpi-label">Avanço Físico Realizado</div>
+          <div className="kpi-value">{fmtPerc(avancoFisicoReal)}</div>
+          <div className="kpi-sub">
+            Desvio: {avancoFisicoReal >= avancoFisicoPlano ? '+' : ''}{fmtPerc(avancoFisicoReal - avancoFisicoPlano)}
+          </div>
+        </div>
       </div>
 
       {/* GRÁFICO CURVA S */}
