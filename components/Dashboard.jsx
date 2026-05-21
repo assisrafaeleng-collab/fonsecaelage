@@ -1,7 +1,6 @@
 // components/Dashboard.jsx
 // 
-// Dashboard com KPIs expansíveis - mostra detalhamento por grupo ao clicar
-// COM CABEÇALHO COMPARATIVO DIRETO/INDIRETO ANTES DO GRÁFICO
+// Dashboard com 1 KPI + 8 cards comparativo direto/indireto
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
@@ -49,20 +48,18 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
   const [dadosOrcamento, setDadosOrcamento] = useState(null)
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState(null)
-  const [expanded, setExpanded] = useState(false) // ← Estado de expansão
+  const [expanded, setExpanded] = useState(false)
 
   useEffect(() => {
     async function fetchDados() {
       try {
         setLoading(true)
         
-        // Buscar dados integrados (realizados)
         const res1 = await fetch(`/api/dashboard-integrado?mes=${mesLimite}`)
         if (!res1.ok) throw new Error('Erro ao carregar dados integrados')
         const data1 = await res1.json()
         setDados(data1)
 
-        // Buscar dados de orçamento (planejados)
         const res2 = await fetch(`/api/orcamento-detalhado?mes=${mesLimite}`)
         if (!res2.ok) throw new Error('Erro ao carregar orçamento')
         const data2 = await res2.json()
@@ -268,7 +265,6 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
   const cpiStatus = kpis.cpi >= 1 ? 'ok' : kpis.cpi >= 0.9 ? 'warn' : 'bad'
   const spiStatus = kpis.spi >= 1 ? 'ok' : kpis.spi >= 0.9 ? 'warn' : 'bad'
 
-  // Ícones dos grupos
   const grupoIcons = {
     'Terreno': '🏗️',
     'Projetos e Consultorias': '📐',
@@ -279,7 +275,7 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
   }
 
   // ========================================================================
-  // CALCULAR DADOS PLANEJADOS E REALIZADOS
+  // DADOS PLANEJADOS E REALIZADOS
   // ========================================================================
   const custoDiretoPlano = dadosOrcamento ? dadosOrcamento.custos_diretos : 0
   const custoIndiretoPlano = dadosOrcamento ? dadosOrcamento.custos_indiretos : 0
@@ -294,7 +290,7 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
 
   return (
     <div>
-      {/* KPIs PRINCIPAIS */}
+      {/* KPI ORÇAMENTO TOTAL */}
       <div className="kpi-grid">
         <div 
           className="kpi kpi-clickable" 
@@ -306,83 +302,11 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
           <div className="kpi-value">{fmtMoeda(kpis.orcamento_total)}</div>
           <div className="kpi-sub">Planejado para 18 meses · 📊 Ver detalhes</div>
         </div>
-
-        <div 
-          className="kpi kpi-expandable" 
-          style={{ borderLeftColor: '#4D9B6A' }}
-          onClick={() => setExpanded(!expanded)}
-          title={expanded ? "Clique para colapsar" : "Clique para expandir detalhamento"}
-        >
-          <div className="kpi-label">
-            Custo Realizado 
-            <span style={{ 
-              marginLeft: '8px', 
-              fontSize: '12px',
-              transition: 'transform 0.3s'
-            }}>
-              {expanded ? '▼' : '▶'}
-            </span>
-          </div>
-          <div className="kpi-value">{fmtMoeda(kpis.custo_realizado)}</div>
-          <div className="kpi-sub">
-            {fmtPerc((kpis.custo_realizado / kpis.orcamento_total) * 100)} do orçamento
-            {expanded ? ' · ▼ Ver menos' : ' · ▶ Ver por grupo'}
-          </div>
-        </div>
-
-        <div className="kpi" style={{ borderLeftColor: '#5B9BD5' }}>
-          <div className="kpi-label">Avanço Físico</div>
-          <div className="kpi-value">{fmtPerc(kpis.avanco_fisico_realizado)}</div>
-          <div className="kpi-sub">
-            Planejado: {fmtPerc(kpis.avanco_fisico_planejado)}
-          </div>
-        </div>
-
-        <div 
-          className="kpi kpi-clickable" 
-          style={{ borderLeftColor: kpis.saldo_orcamento > 0 ? '#4D9B6A' : '#B03030' }}
-          onClick={() => router.push('/orcamento')}
-          title="Clique para ver detalhamento"
-        >
-          <div className="kpi-label">Saldo Orçamento</div>
-          <div className="kpi-value">{fmtMoeda(kpis.saldo_orcamento)}</div>
-          <div className="kpi-sub">
-            {fmtPerc((kpis.saldo_orcamento / kpis.orcamento_total) * 100)} restante · 📊 Ver detalhes
-          </div>
-        </div>
       </div>
 
-      {/* CUSTOS POR GRUPO - EXPANSÍVEL */}
-      {expanded && custos_por_grupo && custos_por_grupo.length > 0 && (
-        <div className="kpi-grid kpi-grid-expanded" style={{ 
-          marginTop: '-10px',
-          animation: 'slideDown 0.3s ease-out'
-        }}>
-          {custos_por_grupo.map(({ grupo, valor }) => (
-            <div 
-              key={grupo}
-              className="kpi kpi-small kpi-clickable"
-              style={{ borderLeftColor: '#6B9BD5' }}
-              onClick={() => router.push(`/custos?grupo=${encodeURIComponent(grupo)}`)}
-              title={`Clique para ver custos de ${grupo}`}
-            >
-              <div className="kpi-label" style={{ fontSize: '11px' }}>
-                {grupoIcons[grupo] || '📦'} {grupo}
-              </div>
-              <div className="kpi-value" style={{ fontSize: '20px' }}>
-                {fmtMoeda(valor)}
-              </div>
-              <div className="kpi-sub" style={{ fontSize: '10px' }}>
-                {fmtPerc((valor / kpis.custo_realizado) * 100)} do total · 📊
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* COMPARATIVO FÍSICO-FINANCEIRO — 8 CARDS */}
-      <div className="kpi-grid" style={{ marginTop: '20px' }}>
-        {/* LINHA 1: CUSTOS DIRETOS (4 cards) */}
+      {/* 8 CARDS COMPARATIVO DIRETO/INDIRETO */}
+      <div className="kpi-grid">
+        {/* LINHA 1: CUSTOS DIRETOS */}
         <div 
           className="kpi" 
           style={{ borderLeftColor: '#C8860A' }}
@@ -421,7 +345,7 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
           <div className="kpi-sub">Conforme cronograma</div>
         </div>
 
-        {/* LINHA 2: CUSTOS INDIRETOS (4 cards) */}
+        {/* LINHA 2: CUSTOS INDIRETOS */}
         <div 
           className="kpi" 
           style={{ borderLeftColor: '#5B9BD5' }}
@@ -462,6 +386,34 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
           </div>
         </div>
       </div>
+
+      {/* CUSTOS POR GRUPO - EXPANSÍVEL */}
+      {expanded && custos_por_grupo && custos_por_grupo.length > 0 && (
+        <div className="kpi-grid kpi-grid-expanded" style={{ 
+          marginTop: '-10px',
+          animation: 'slideDown 0.3s ease-out'
+        }}>
+          {custos_por_grupo.map(({ grupo, valor }) => (
+            <div 
+              key={grupo}
+              className="kpi kpi-small kpi-clickable"
+              style={{ borderLeftColor: '#6B9BD5' }}
+              onClick={() => router.push(`/custos?grupo=${encodeURIComponent(grupo)}`)}
+              title={`Clique para ver custos de ${grupo}`}
+            >
+              <div className="kpi-label" style={{ fontSize: '11px' }}>
+                {grupoIcons[grupo] || '📦'} {grupo}
+              </div>
+              <div className="kpi-value" style={{ fontSize: '20px' }}>
+                {fmtMoeda(valor)}
+              </div>
+              <div className="kpi-sub" style={{ fontSize: '10px' }}>
+                {fmtPerc((valor / kpis.custo_realizado) * 100)} do total · 📊
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* GRÁFICO CURVA S */}
       <div className="card">
