@@ -125,18 +125,22 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
         borderDash: [6, 4],
         pointRadius: 3,
         pointHoverRadius: 5,
+        pointStyle: 'circle',
+        pointBackgroundColor: 'transparent',
         yAxisID: 'y-financeiro',
         tension: 0.3
       },
       {
         label: '💵 Financeiro Realizado',
         data: finReal,
-        borderColor: '#4D9B6A',
-        backgroundColor: 'rgba(77, 155, 106, 0.1)',
+        borderColor: '#E91E8C',
+        backgroundColor: 'rgba(233, 30, 140, 0.1)',
         borderWidth: 3,
         borderDash: [],
         pointRadius: 4,
         pointHoverRadius: 6,
+        pointStyle: 'circle',
+        pointBackgroundColor: '#E91E8C',
         yAxisID: 'y-financeiro',
         tension: 0.3
       },
@@ -149,6 +153,8 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
         borderDash: [6, 4],
         pointRadius: 3,
         pointHoverRadius: 5,
+        pointStyle: 'circle',
+        pointBackgroundColor: 'transparent',
         yAxisID: 'y-fisico',
         tension: 0.3
       },
@@ -161,6 +167,8 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
         borderDash: [],
         pointRadius: 4,
         pointHoverRadius: 6,
+        pointStyle: 'circle',
+        pointBackgroundColor: '#9B59B6',
         yAxisID: 'y-fisico',
         tension: 0.3
       }
