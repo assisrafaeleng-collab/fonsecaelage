@@ -301,7 +301,7 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
           onClick={() => router.push('/orcamento')}
           title="Clique para ver detalhamento"
         >
-          <div className="kpi-label">Orçamento Total</div>
+          <div className="kpi-label">Custo Total</div>
           <div className="kpi-value">{fmtMoeda(kpis.orcamento_total)}</div>
           <div className="kpi-sub">Planejado para 18 meses · 📊 Ver detalhes</div>
         </div>
