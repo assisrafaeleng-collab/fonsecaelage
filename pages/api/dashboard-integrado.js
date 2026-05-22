@@ -111,32 +111,54 @@ export default async function handler(req, res) {
       })
 
     // ========================================================================
-    // 4. AVANÇO FÍSICO REALIZADO
+    // 4. AVANÇO FÍSICO REALIZADO (média ponderada pelo valor orçado)
     // ========================================================================
+    // Buscar peso financeiro de cada atividade
+    const { data: pesosData, error: errPesos } = await supabase
+      .from('cronograma_fisico_planejado')
+      .select('atividade_nome, valor_orcado')
+      .eq('obra_id', obra_id)
+
+    if (errPesos) throw new Error(`Erro pesos: ${errPesos.message}`)
+
+    // Pegar valor_orcado único por atividade
+    const pesosPorAtividade = {}
+    pesosData.forEach(item => {
+      pesosPorAtividade[item.atividade_nome] = parseFloat(item.valor_orcado || 0)
+    })
+    const totalOrcado = Object.values(pesosPorAtividade).reduce((sum, v) => sum + v, 0)
+
+    // Buscar lançamentos reais
     const { data: avancoRealData, error: errAvancoReal } = await supabase
       .from('avanco_fisico_realizado')
-      .select('mes_numero, competencia, percentual_realizado')
+      .select('mes_numero, competencia, atividade_nome, percentual_realizado')
       .eq('obra_id', obra_id)
       .lte('mes_numero', mesLimite)
       .order('mes_numero')
 
     if (errAvancoReal) throw new Error(`Erro avanço real: ${errAvancoReal.message}`)
 
-    // Agrupar por mês e calcular média das atividades
+    // Agrupar por mês e calcular média ponderada
     const avancoRealPorMes = {}
     avancoRealData.forEach(item => {
       if (!avancoRealPorMes[item.mes_numero]) {
-        avancoRealPorMes[item.mes_numero] = { soma: 0, count: 0, competencia: item.competencia }
+        avancoRealPorMes[item.mes_numero] = { itens: [], competencia: item.competencia }
       }
-      avancoRealPorMes[item.mes_numero].soma += parseFloat(item.percentual_realizado || 0)
-      avancoRealPorMes[item.mes_numero].count += 1
+      avancoRealPorMes[item.mes_numero].itens.push(item)
     })
 
-    const fisRealizada = Object.entries(avancoRealPorMes).map(([mes, val]) => ({
-      mes_numero: parseInt(mes),
-      competencia: val.competencia,
-      percentual_acumulado: Math.min(val.soma / val.count, 1)
-    })).sort((a, b) => a.mes_numero - b.mes_numero)
+    const fisRealizada = Object.entries(avancoRealPorMes).map(([mes, val]) => {
+      let somaPonderada = 0
+      val.itens.forEach(item => {
+        const peso = totalOrcado > 0 ? pesosPorAtividade[item.atividade_nome] / totalOrcado : 0
+        somaPonderada += parseFloat(item.percentual_realizado || 0) * peso
+      })
+      return {
+        mes_numero: parseInt(mes),
+        competencia: val.competencia,
+        percentual_acumulado: Math.min(somaPonderada, 1)
+      }
+    }).sort((a, b) => a.mes_numero - b.mes_numero)
 
     // ========================================================================
     // 5. CALCULAR KPIs COM SEPARAÇÃO DIRETO/INDIRETO
