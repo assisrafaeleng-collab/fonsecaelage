@@ -17,17 +17,18 @@ const C = {
   green:   '#1a3d2b',
   amber:   '#3d2e1a',
   red:     '#3d1a1a',
+  text:    '#E8E8E8',
 }
 
 const GRUPO_COLORS = {
-  '1. Terreno':               '#DDE3F0',
-  '2. Projetos e Consultoria':'#EAF0DD',
-  '3. Serviços Jurídicos':    '#F0E6DD',
-  '4. Taxas e Licenças':      '#F0F0DD',
-  '5. Locações':              '#F0DDEA',
-  '6. Canteiro de Obras':     '#DDF0EE',
-  '7. Mão de Obra':           '#F0DDDD',
-  '8. Ferramentas':           '#FFE4CC',
+  '1. Terreno':               '#1a2033',
+  '2. Projetos e Consultoria':'#1a2d1a',
+  '3. Serviços Jurídicos':    '#2d1a1a',
+  '4. Taxas e Licenças':      '#2d2d1a',
+  '5. Locações':              '#2d1a2d',
+  '6. Canteiro de Obras':     '#1a2d2b',
+  '7. Mão de Obra':           '#2d1a1a',
+  '8. Ferramentas':           '#2d2010',
 }
 
 function fmt(v) {
@@ -47,7 +48,7 @@ function KPI({ label, value, sub, dark }) {
       <div style={{ fontSize: 11, color: dark ? '#AAA' : '#888', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
         {label}
       </div>
-      <div style={{ fontSize: 22, fontWeight: 700, color: dark ? C.white : C.dark, lineHeight: 1.1 }}>
+      <div style={{ fontSize: 22, fontWeight: 700, color: C.text, lineHeight: 1.1 }}>
         {value}
       </div>
       {sub && <div style={{ fontSize: 11, color: dark ? '#AAA' : '#999', marginTop: 4 }}>{sub}</div>}
