@@ -1,6 +1,4 @@
 // components/Dashboard.jsx
-// 
-// Dashboard com 1 KPI + 8 cards comparativo direto/indireto
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
@@ -17,24 +15,11 @@ import {
   Filler
 } from 'chart.js'
 
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-)
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler)
 
 const fmtMoeda = (val) => {
   if (!val) return 'R$ 0'
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-    minimumFractionDigits: 0
-  }).format(val)
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 }).format(val)
 }
 
 const fmtPerc = (val) => {
@@ -52,8 +37,7 @@ function ComparativoFisico({ mesLimite }) {
       .catch(() => setAtividades([]))
   }, [mesLimite])
 
-  if (!atividades) return null
-  if (atividades.length === 0) return null
+  if (!atividades || atividades.length === 0) return null
 
   return (
     <div className="card">
@@ -87,12 +71,20 @@ function ComparativoFisico({ mesLimite }) {
   )
 }
 
-export default function Dashboard({ updates, selectedId, onSelectId, mesLimite = 18 }) {
+export default function Dashboard({ updates, selectedId, onSelectId, mesLimite = 18, onNavRestrita }) {
   const router = useRouter()
   const [dados, setDados] = useState(null)
   const [dadosOrcamento, setDadosOrcamento] = useState(null)
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState(null)
+
+  function navRestrita(destino) {
+    if (onNavRestrita) {
+      onNavRestrita(destino)
+    } else {
+      router.push(destino)
+    }
+  }
 
   useEffect(() => {
     async function fetchDados() {
@@ -180,11 +172,8 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
   const custoIndiretoReal = kpis.custo_indireto_realizado || 0
   const saldoCustoDireto = custoDiretoPlano - custoDiretoReal
   const saldoCustoIndireto = custoIndiretoPlano - custoIndiretoReal
-
-  // Projeção de custo final = custo realizado / % físico realizado
-  const projecaoCustoFinal = kpis.projecao_custo_final || 0
-  // Desvio financeiro = custo realizado - custo planejado até o período
-  const desvioFinanceiroValor = Math.abs(kpis.desvio_financeiro || 0)
+  const projecaoCustoFinal = avancoFisicoReal > 0 ? kpis.custo_realizado / (avancoFisicoReal / 100) : 0
+  const desvioFinanceiroValor = Math.abs(kpis.custo_realizado - (dadosOrcamento ? dadosOrcamento.custos_diretos + dadosOrcamento.custos_indiretos : 0))
 
   return (
     <div>
@@ -242,7 +231,7 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
           <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2' }}>{fmtMoeda(saldoCustoIndireto)}</div>
           <div className="kpi-sub">{saldoCustoIndireto >= 0 ? '✓ Economia' : '⚠️ Acima'}</div>
         </div>
-        <div className="kpi" style={{ borderLeftColor: '#9B59B6', cursor: 'pointer' }} onClick={() => onNavRestrita ? onNavRestrita('/avanco-fisico-realizado') : router.push('/avanco-fisico-realizado')}>
+        <div className="kpi" style={{ borderLeftColor: '#9B59B6', cursor: 'pointer' }} onClick={() => navRestrita('/avanco-fisico-realizado')}>
           <div className="kpi-label">Avanço Físico Realizado</div>
           <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2' }}>{fmtPerc(avancoFisicoReal)}</div>
           <div className="kpi-sub">Realizado até agora</div>
@@ -283,8 +272,8 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
         <div className="card">
           <div className="card-title">💰 Projeção Financeira e Prazo</div>
           <div style={{ marginBottom: '20px' }}>
-            <div style={{ fontSize: '11px', color: 'var(--text2)', marginBottom: '8px' }}>Desvio Financeiro Acumulado</div>
-            <div style={{ fontSize: '24px', fontWeight: '700', marginBottom: '4px' }}>{fmtMoeda(kpis.custo_realizado / (avancoFisicoReal / 100) || 0)}</div>
+            <div style={{ fontSize: '11px', color: 'var(--text2)', marginBottom: '8px' }}>Projeção de Custo Final</div>
+            <div style={{ fontSize: '24px', fontWeight: '700', marginBottom: '4px' }}>{fmtMoeda(projecaoCustoFinal)}</div>
             <div className="kpi-sub">
               {projecaoCustoFinal > kpis.orcamento_total ? (
                 <span style={{ color: '#B03030' }}>⚠️ {fmtMoeda(projecaoCustoFinal - kpis.orcamento_total)} acima do orçado</span>
@@ -294,9 +283,9 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
             </div>
           </div>
           <div style={{ marginBottom: '20px' }}>
-            <div style={{ fontSize: '11px', color: 'var(--text2)', marginBottom: '8px' }}>Projeção de Custo Final</div>
+            <div style={{ fontSize: '11px', color: 'var(--text2)', marginBottom: '8px' }}>Desvio Financeiro Acumulado</div>
             <div style={{ fontSize: '20px', fontWeight: '700', color: kpis.desvio_financeiro <= 0 ? '#4D9B6A' : '#B03030' }}>
-              {fmtMoeda(Math.abs(kpis.custo_realizado - (dadosOrcamento ? dadosOrcamento.custos_diretos + dadosOrcamento.custos_indiretos : 0)))}
+              {fmtMoeda(desvioFinanceiroValor)}
             </div>
             <div className="kpi-sub">{kpis.desvio_financeiro <= 0 ? 'Economia' : 'Acima do planejado'} ({fmtPerc(Math.abs(kpis.desvio_financeiro_perc))})</div>
           </div>
