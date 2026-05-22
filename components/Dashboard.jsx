@@ -322,7 +322,7 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
 
         <div 
           className="kpi" 
-          style={{ borderLeftColor: '#F1C40F', cursor: 'pointer' }}
+          style={{ borderLeftColor: '#E91E8C', cursor: 'pointer' }}
           onClick={() => router.push('/custos-diretos-realizados-lista')}
         >
           <div className="kpi-label">Custo Direto Realizado</div>
@@ -375,7 +375,7 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
 
         <div 
           className="kpi" 
-          style={{ borderLeftColor: '#F1C40F', cursor: 'pointer' }}
+          style={{ borderLeftColor: '#E91E8C', cursor: 'pointer' }}
           onClick={() => router.push('/custos-indiretos-realizados-lista')}
         >
           <div className="kpi-label">Custo Indireto Realizado</div>
