@@ -350,7 +350,7 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
         <div 
           className="kpi" 
           style={{ borderLeftColor: '#5B9BD5', cursor: 'pointer' }}
-          onClick={() => router.push('/avanco-fisico-planejado')}
+          onClick={() => router.push(`/avanco-fisico-planejado?mes=${mesLimite}`)}
         >
           <div className="kpi-label">Avanço Físico Planejado</div>
           <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2' }}>{fmtPerc(avancoFisicoPlano)}</div>
