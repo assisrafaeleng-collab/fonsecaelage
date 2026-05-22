@@ -17,7 +17,7 @@ export default function Home() {
       <div className="header">
         <div className="header-top">
           <div>
-            <div className="obra-eye">OBRA PREDIAL - TORRE A</div>
+            <div className="obra-eye">Av. Coronel José Dias Bicalho, 635 · São José · Belo Horizonte</div>
             <div className="obra-nome">Flats Pampulha</div>
             <div className="obra-info">
               Orçamento: R$ 4.920.564 · Prazo: 18 meses · 
@@ -44,10 +44,4 @@ export default function Home() {
         <div className="nav">
           <button className="nav-btn active">📊 Dashboard</button>
           <button className="nav-btn" onClick={() => window.location.href='/custos'}>💰 Lançamentos de Custos</button>
-        </div>
-      </div>
-
-      <Dashboard mesLimite={mesAtual} />
-    </div>
-  )
-}
+        </
