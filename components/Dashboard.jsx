@@ -321,7 +321,7 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
         <div 
           className="kpi" 
           style={{ borderLeftColor: '#C8860A', cursor: 'pointer' }}
-          onClick={() => router.push('/custos-diretos-planejados')}
+          onClick={() => router.push(`/custos-diretos-planejados?mes=${mesLimite}`)}
         >
           <div className="kpi-label">Custo Direto Planejado</div>
           <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2' }}>{fmtMoeda(custoDiretoPlano)}</div>
@@ -374,7 +374,7 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
         <div 
           className="kpi" 
           style={{ borderLeftColor: '#C8860A', cursor: 'pointer' }}
-          onClick={() => router.push('/custos-indiretos-planejados')}
+          onClick={() => router.push(`/custos-indiretos-planejados?mes=${mesLimite}`)}
         >
           <div className="kpi-label">Custo Indireto Planejado</div>
           <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2' }}>{fmtMoeda(custoIndiretoPlano)}</div>
