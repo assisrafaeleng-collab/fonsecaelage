@@ -24,11 +24,11 @@ export default function CustosIndiretosPlanejados() {
   })
 
   useEffect(() => {
-    const mes = parseInt(router.query.mes)
-    if (mes && mes !== mesAtual) {
-      setMesAtual(mes)
-    }
-  }, [router.isReady, router.query.mes])
+    if (!router.isReady) return
+    const mesParam = parseInt(router.query.mes)
+    const mes = mesParam && mesParam >= 1 && mesParam <= 18 ? mesParam : 18
+    setMesAtual(mes)
+  }, [router.isReady])
 
   useEffect(() => {
     async function fetchDados() {
