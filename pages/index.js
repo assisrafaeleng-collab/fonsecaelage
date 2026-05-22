@@ -11,16 +11,12 @@ export default function Home() {
   // Gerar opções de meses formatadas como Mês/Ano
   const dataInicio = new Date('2025-04-01') // M1 = Abril/2025
   const mesesOpcoes = Array.from({ length: 18 }, (_, i) => {
-    const mes = i + 1
-    const data = new Date(dataInicio)
-    data.setMonth(dataInicio.getMonth() + i)
-    
-    const mesNome = data.toLocaleDateString('pt-BR', { month: 'short' })
-    const ano = data.getFullYear()
-    
+    const data = new Date(2025, 3 + i, 1) // Abril=3, fixo sem setMonth
     return {
-      valor: mes,
-      label: `${mesNome}/${ano}`
+      valor: i + 1,
+      label: data.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })
+    }
+  })
     }
   })
 
