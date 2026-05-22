@@ -21,6 +21,12 @@ export default function CustosDiretosPlanejados() {
   const [loading, setLoading] = useState(true)
   const [mesAtual, setMesAtual] = useState(18)
 
+  useEffect(() => {
+    if (router.query.mes) {
+      setMesAtual(parseInt(router.query.mes))
+    }
+  }, [router.query.mes])
+
   const mesesOpcoes = Array.from({ length: 18 }, (_, i) => i + 1)
 
   useEffect(() => {

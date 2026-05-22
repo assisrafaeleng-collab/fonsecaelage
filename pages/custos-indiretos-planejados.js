@@ -19,12 +19,19 @@ export default function CustosIndiretosPlanejados() {
   const router = useRouter()
   const [dados, setDados] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [mesAtual, setMesAtual] = useState(18)
+
+  useEffect(() => {
+    if (router.query.mes) {
+      setMesAtual(parseInt(router.query.mes))
+    }
+  }, [router.query.mes])
 
   useEffect(() => {
     async function fetchDados() {
       try {
         setLoading(true)
-        const res = await fetch(`/api/custos-indiretos-planejados`)
+        const res = await fetch(`/api/custos-indiretos-planejados?mes=${mesAtual}`)
         if (!res.ok) throw new Error('Erro ao carregar dados')
         const data = await res.json()
         setDados(data)
@@ -35,7 +42,7 @@ export default function CustosIndiretosPlanejados() {
       }
     }
     fetchDados()
-  }, [])
+  }, [mesAtual])
 
   if (loading) {
     return (
