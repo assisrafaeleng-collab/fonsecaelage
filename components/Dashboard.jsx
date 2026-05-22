@@ -305,7 +305,7 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
       <div className="kpi-grid">
         <div 
           className="kpi kpi-clickable" 
-          style={{ borderLeftColor: '#C8860A' }}
+          style={{ borderLeftColor: '#1A5276' }}
           onClick={() => router.push('/orcamento')}
           title="Clique para ver detalhamento"
         >
