@@ -19,13 +19,16 @@ export default function CustosIndiretosPlanejados() {
   const router = useRouter()
   const [dados, setDados] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [mesAtual, setMesAtual] = useState(18)
+  const [mesAtual, setMesAtual] = useState(() => {
+    return 18
+  })
 
   useEffect(() => {
-    if (router.query.mes) {
-      setMesAtual(parseInt(router.query.mes))
+    const mes = parseInt(router.query.mes)
+    if (mes && mes !== mesAtual) {
+      setMesAtual(mes)
     }
-  }, [router.query.mes])
+  }, [router.isReady, router.query.mes])
 
   useEffect(() => {
     async function fetchDados() {
