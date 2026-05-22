@@ -8,15 +8,15 @@ import Head from 'next/head'
 
 // ── Paleta alinhada com o resto do dashboard ──────────────────
 const C = {
-  bg:      '#F5F2EC',
+  bg:      '#141414',
   black:   '#1A1A1A',
-  dark:    '#2C2C2C',
-  accent:  '#8B6F47',
-  white:   '#FFFFFF',
-  border:  '#D1CBC0',
-  green:   '#D4E4C2',
-  amber:   '#F5E4C0',
-  red:     '#F5C0C0',
+  dark:    '#E8E8E8',
+  accent:  '#C8860A',
+  white:   '#1E1E1E',
+  border:  '#2A2A2A',
+  green:   '#1a3d2b',
+  amber:   '#3d2e1a',
+  red:     '#3d1a1a',
 }
 
 const GRUPO_COLORS = {
