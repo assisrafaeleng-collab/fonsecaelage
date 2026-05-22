@@ -163,8 +163,18 @@ export default async function handler(req, res) {
     // ========================================================================
     // 5. CALCULAR KPIs COM SEPARAÇÃO DIRETO/INDIRETO
     // ========================================================================
+    // Buscar total indiretos planejados
+    const { data: indiretosPlano, error: errIndPlano } = await supabase
+      .from('custos_indiretos_planejados')
+      .select('valor_total')
+      .eq('obra_id', obra_id)
+    
+    const totalIndiretos = indiretosPlano
+      ? indiretosPlano.reduce((sum, i) => sum + parseFloat(i.valor_total || 0), 0)
+      : 0
+
     const orcamentoTotal = finPlanejada.length > 0 
-      ? finPlanejada[finPlanejada.length - 1].valor_acumulado 
+      ? finPlanejada[finPlanejada.length - 1].valor_acumulado + totalIndiretos
       : 4920564.51
 
     const custoRealTotal = finRealizada.length > 0
