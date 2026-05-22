@@ -11,7 +11,7 @@ export default async function handler(req, res) {
   try {
     const { data, error } = await supabase
       .from('cronograma_fisico_planejado')
-      .select('macrogrupo_nome, fisico_planejado, mes_numero')
+      .select('atividade_nome, percentual_mensal, mes_numero')
       .eq('obra_id', obra_id)
       .lte('mes_numero', mesLimite)
 
@@ -19,18 +19,16 @@ export default async function handler(req, res) {
 
     const agrupado = {}
     data.forEach((item) => {
-      const nome = item.macrogrupo_nome
-      if (!agrupado[nome] || item.mes_numero > agrupado[nome].mes_numero) {
-        agrupado[nome] = item
-      }
+      const nome = item.atividade_nome
+      agrupado[nome] = (agrupado[nome] || 0) + parseFloat(item.percentual_mensal || 0)
     })
 
-    const grupos = Object.entries(agrupado).map(([nome, item]) => {
-      const avanco = parseFloat(item.fisico_planejado || 0)
+    const grupos = Object.entries(agrupado).map(([nome, avanco]) => {
+      const perc = avanco * 100
       return {
         nome,
-        avanço: avanco,
-        status: avanco >= 100 ? 'Concluído' : avanco > 0 ? 'Em andamento' : 'Não iniciado'
+        avanço: perc,
+        status: perc >= 100 ? 'Concluído' : perc > 0 ? 'Em andamento' : 'Não iniciado'
       }
     })
 
