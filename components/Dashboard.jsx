@@ -296,7 +296,7 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
           <div style={{ marginBottom: '20px' }}>
             <div style={{ fontSize: '11px', color: 'var(--text2)', marginBottom: '8px' }}>Desvio Financeiro Acumulado</div>
             <div style={{ fontSize: '20px', fontWeight: '700', color: kpis.desvio_financeiro <= 0 ? '#4D9B6A' : '#B03030' }}>
-              {fmtMoeda(desvioFinanceiroValor)}
+              {fmtMoeda(Math.abs(kpis.custo_realizado - (dadosOrcamento ? dadosOrcamento.custos_diretos + dadosOrcamento.custos_indiretos : 0)))}
             </div>
             <div className="kpi-sub">{kpis.desvio_financeiro <= 0 ? 'Economia' : 'Acima do planejado'} ({fmtPerc(Math.abs(kpis.desvio_financeiro_perc))})</div>
           </div>
