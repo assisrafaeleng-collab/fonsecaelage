@@ -43,6 +43,7 @@ export default function Home() {
         
         <div className="nav">
           <button className="nav-btn active">📊 Dashboard</button>
+          <button className="nav-btn" onClick={() => window.location.href='/custos'}>💰 Lançamentos de Custos</button>
         </div>
       </div>
 
