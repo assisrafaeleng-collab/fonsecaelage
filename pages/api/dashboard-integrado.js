@@ -173,9 +173,17 @@ export default async function handler(req, res) {
       ? indiretosPlano.reduce((sum, i) => sum + parseFloat(i.valor_total || 0), 0)
       : 0
 
-    const orcamentoTotal = finPlanejada.length > 0 
-      ? finPlanejada[finPlanejada.length - 1].valor_acumulado + totalIndiretos
-      : 4920564.51
+    // Buscar total diretos direto da tabela (mais preciso que a view)
+    const { data: diretosPlano } = await supabase
+      .from('cronograma_financeiro_planejado')
+      .select('valor_mensal')
+      .eq('obra_id', obra_id)
+    
+    const totalDiretos = diretosPlano
+      ? diretosPlano.reduce((sum, i) => sum + parseFloat(i.valor_mensal || 0), 0)
+      : 0
+
+    const orcamentoTotal = totalDiretos + totalIndiretos
 
     const custoRealTotal = finRealizada.length > 0
       ? finRealizada[finRealizada.length - 1].valor_acumulado
