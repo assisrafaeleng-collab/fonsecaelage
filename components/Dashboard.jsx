@@ -64,8 +64,15 @@ function ComparativoFisico({ mesLimite }) {
           <div key={at.nome} style={{ marginBottom: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
               <span style={{ color: 'var(--text1)', fontWeight: 600 }}>{at.nome}</span>
-              <span style={{ color: 'var(--text2)', fontSize: 11 }}>
-                Plan: {at.planejado.toFixed(1)}% · Real: {at.realizado.toFixed(1)}%
+              <span style={{ fontSize: 11, display: 'flex', gap: 12, alignItems: 'center' }}>
+                <span style={{ color: 'var(--text2)' }}>Plan: {at.planejado.toFixed(1)}%</span>
+                <span style={{ color: 'var(--text2)' }}>Real: {at.realizado.toFixed(1)}%</span>
+                <span style={{
+                  fontWeight: 700,
+                  color: (at.realizado - at.planejado) >= 0 ? '#4D9B6A' : '#B03030'
+                }}>
+                  {(at.realizado - at.planejado) >= 0 ? '✅' : '⚠️'} {(at.realizado - at.planejado) >= 0 ? '+' : ''}{(at.realizado - at.planejado).toFixed(1)}%
+                </span>
               </span>
             </div>
             <div style={{ position: 'relative', height: 10, background: 'var(--bg2)', borderRadius: 5, overflow: 'hidden' }}>
