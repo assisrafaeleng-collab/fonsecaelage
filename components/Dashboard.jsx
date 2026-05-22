@@ -242,7 +242,7 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
           <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2' }}>{fmtMoeda(saldoCustoIndireto)}</div>
           <div className="kpi-sub">{saldoCustoIndireto >= 0 ? '✓ Economia' : '⚠️ Acima'}</div>
         </div>
-        <div className="kpi" style={{ borderLeftColor: '#9B59B6', cursor: 'pointer' }} onClick={() => router.push('/avanco-fisico-realizado')}>
+        <div className="kpi" style={{ borderLeftColor: '#9B59B6', cursor: 'pointer' }} onClick={() => onNavRestrita ? onNavRestrita('/avanco-fisico-realizado') : router.push('/avanco-fisico-realizado')}>
           <div className="kpi-label">Avanço Físico Realizado</div>
           <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2' }}>{fmtPerc(avancoFisicoReal)}</div>
           <div className="kpi-sub">Realizado até agora</div>
