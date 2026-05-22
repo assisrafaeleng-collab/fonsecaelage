@@ -30,7 +30,15 @@ export default function CustosDiretosPlanejados() {
     setMesAtual(mes)
   }, [router.isReady])
 
-  const mesesOpcoes = Array.from({ length: 18 }, (_, i) => i + 1)
+  const dataInicio = new Date('2025-04-01')
+  const mesesOpcoes = Array.from({ length: 18 }, (_, i) => {
+    const data = new Date(dataInicio)
+    data.setMonth(dataInicio.getMonth() + i)
+    return {
+      valor: i + 1,
+      label: data.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })
+    }
+  })
 
   useEffect(() => {
     async function fetchDados() {
@@ -88,8 +96,8 @@ export default function CustosDiretosPlanejados() {
               onChange={(e) => setMesAtual(parseInt(e.target.value))}
             >
               {mesesOpcoes.map(mes => (
-                <option key={mes} value={mes}>
-                  {mes === 18 ? 'Todos os 18 meses' : `Até M${mes}`}
+                <option key={mes.valor} value={mes.valor}>
+                  {mes.valor === 18 ? 'Todos os 18 meses' : mes.label}
                 </option>
               ))}
             </select>
