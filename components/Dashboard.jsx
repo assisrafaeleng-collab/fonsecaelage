@@ -283,7 +283,7 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
         <div className="card">
           <div className="card-title">💰 Projeção Financeira e Prazo</div>
           <div style={{ marginBottom: '20px' }}>
-            <div style={{ fontSize: '11px', color: 'var(--text2)', marginBottom: '8px' }}>Projeção de Custo Final</div>
+            <div style={{ fontSize: '11px', color: 'var(--text2)', marginBottom: '8px' }}>Desvio Financeiro Acumulado</div>
             <div style={{ fontSize: '24px', fontWeight: '700', marginBottom: '4px' }}>{fmtMoeda(kpis.custo_realizado / (avancoFisicoReal / 100) || 0)}</div>
             <div className="kpi-sub">
               {projecaoCustoFinal > kpis.orcamento_total ? (
