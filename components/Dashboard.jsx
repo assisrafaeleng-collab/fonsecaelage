@@ -153,8 +153,8 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
       {
         label: '⚙️ Físico Realizado',
         data: fisReal,
-        borderColor: '#2E5C8A',
-        backgroundColor: 'rgba(46, 92, 138, 0.1)',
+        borderColor: '#9B59B6',
+        backgroundColor: 'rgba(155, 89, 182, 0.1)',
         borderWidth: 3,
         pointRadius: 4,
         pointHoverRadius: 6,

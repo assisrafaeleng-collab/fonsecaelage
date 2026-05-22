@@ -160,6 +160,13 @@ export default async function handler(req, res) {
       }
     }).sort((a, b) => a.mes_numero - b.mes_numero)
 
+    // Garantir que avanço seja sempre acumulado (nunca diminui)
+    let maxAcumulado = 0
+    fisRealizada.forEach(item => {
+      maxAcumulado = Math.max(maxAcumulado, item.percentual_acumulado)
+      item.percentual_acumulado = maxAcumulado
+    })
+
     // ========================================================================
     // 5. CALCULAR KPIs COM SEPARAÇÃO DIRETO/INDIRETO
     // ========================================================================
