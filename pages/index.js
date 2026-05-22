@@ -20,14 +20,14 @@ export default function Home() {
             <div className="obra-eye">Av. Coronel José Dias Bicalho, 635 · São José · Belo Horizonte</div>
             <div className="obra-nome">Flats Pampulha</div>
             <div className="obra-info">
-              Orçamento: R$ 4.920.564 · Prazo: 18 meses · 
+              Orçamento: R$ 4.920.564 · Prazo: 18 meses ·
               {mesAtual === 18 ? ' Período completo' : ` Até M${mesAtual}`}
             </div>
           </div>
-          
+
           <div className="sel-wrap">
             <div className="sel-lbl">Período</div>
-            <select 
+            <select
               className="periodo"
               value={mesAtual}
               onChange={(e) => setMesAtual(parseInt(e.target.value))}
@@ -40,8 +40,14 @@ export default function Home() {
             </select>
           </div>
         </div>
-        
+
         <div className="nav">
           <button className="nav-btn active">📊 Dashboard</button>
           <button className="nav-btn" onClick={() => window.location.href='/custos'}>💰 Lançamentos de Custos</button>
-        </
+        </div>
+      </div>
+
+      <Dashboard mesLimite={mesAtual} />
+    </div>
+  )
+}
