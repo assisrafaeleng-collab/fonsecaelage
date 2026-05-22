@@ -414,7 +414,7 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
         </div>
 
         <div className="card">
-          <div className="card-title">💰 Projeção Financeira</div>
+          <div className="card-title">💰 Projeção Financeira e Prazo</div>
           <div style={{ marginBottom: '20px' }}>
             <div style={{ fontSize: '11px', color: 'var(--text2)', marginBottom: '8px' }}>Projeção de Custo Final</div>
             <div style={{ fontSize: '24px', fontWeight: '700', marginBottom: '4px' }}>{fmtMoeda(kpis.projecao_custo_final)}</div>
@@ -422,18 +422,36 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
               {kpis.projecao_custo_final > kpis.orcamento_total ? (
                 <span style={{ color: '#B03030' }}>⚠️ {fmtMoeda(kpis.projecao_custo_final - kpis.orcamento_total)} acima do orçado</span>
               ) : (
-                <span style={{ color: '#4D9B6A' }}>✓ Dentro do orçamento</span>
+                <span style={{ color: '#4D9B6A' }}>✅ {fmtMoeda(kpis.orcamento_total - kpis.projecao_custo_final)} abaixo do orçado</span>
+              )}
+            </div>
+          </div>
+          <div style={{ marginBottom: '20px' }}>
+            <div style={{ fontSize: '11px', color: 'var(--text2)', marginBottom: '8px' }}>Desvio Financeiro Acumulado</div>
+            <div style={{ fontSize: '20px', fontWeight: '700', color: kpis.desvio_financeiro <= 0 ? '#4D9B6A' : '#B03030' }}>
+              {fmtMoeda(Math.abs(kpis.desvio_financeiro))}
+            </div>
+            <div className="kpi-sub">{kpis.desvio_financeiro <= 0 ? 'Economia' : 'Acima do planejado'} ({fmtPerc(Math.abs(kpis.desvio_financeiro_perc))})</div>
+          </div>
+          <div style={{ marginBottom: '20px' }}>
+            <div style={{ fontSize: '11px', color: 'var(--text2)', marginBottom: '8px' }}>Previsão de Conclusão</div>
+            <div style={{ fontSize: '20px', fontWeight: '700', marginBottom: '4px' }}>
+              {kpis.projecao_data_conclusao ? new Date(kpis.projecao_data_conclusao + 'T12:00:00').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) : '-'}
+            </div>
+            <div className="kpi-sub">
+              {kpis.desvio_prazo_dias > 0 ? (
+                <span style={{ color: '#B03030' }}>⚠️ {kpis.desvio_prazo_dias} dias de atraso</span>
+              ) : kpis.desvio_prazo_dias < 0 ? (
+                <span style={{ color: '#4D9B6A' }}>✅ {Math.abs(kpis.desvio_prazo_dias)} dias adiantado</span>
+              ) : (
+                <span style={{ color: '#4D9B6A' }}>✅ No prazo</span>
               )}
             </div>
           </div>
           <div>
-            <div style={{ fontSize: '11px', color: 'var(--text2)', marginBottom: '8px' }}>Desvio Financeiro</div>
-            <div style={{ fontSize: '20px', fontWeight: '700', color: kpis.desvio_financeiro <= 0 ? '#4D9B6A' : '#B03030' }}>
-              {fmtMoeda(Math.abs(kpis.desvio_financeiro))}
-            </div>
-            <div className="kpi-sub">
-              {kpis.desvio_financeiro <= 0 ? 'Economia' : 'Acima do planejado'} ({fmtPerc(Math.abs(kpis.desvio_financeiro_perc))})
-            </div>
+            <div style={{ fontSize: '11px', color: 'var(--text2)', marginBottom: '8px' }}>Velocidade Atual</div>
+            <div style={{ fontSize: '16px', fontWeight: '700' }}>{fmtPerc(kpis.velocidade_atual)}/mês</div>
+            <div className="kpi-sub">{kpis.meses_restantes} meses estimados para conclusão</div>
           </div>
         </div>
       </div>
