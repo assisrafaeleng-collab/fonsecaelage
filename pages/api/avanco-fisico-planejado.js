@@ -24,7 +24,7 @@ export default async function handler(req, res) {
     })
 
     const grupos = Object.entries(agrupado).map(([nome, avanco]) => {
-      const perc = avanco * 100
+      const perc = Math.min(avanco * 100, 100)
       return {
         nome,
         avanço: perc,
