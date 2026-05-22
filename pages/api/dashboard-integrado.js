@@ -266,7 +266,7 @@ export default async function handler(req, res) {
         financeiro_planejado: finPlan ? finPlan.valor_acumulado : null,
         financeiro_realizado: finReal ? finReal.valor_acumulado : null,
         fisico_planejado: fisPlan ? fisPlan.percentual_acumulado * 100 : null,
-        fisico_realizado: fisReal ? fisReal.percentual_acumulado * 100 : null
+        fisico_realizado: fisReal ? fisReal.percentual_acumulado * 100 : i <= fisRealizada.length ? fisRealizada[fisRealizada.length - 1].percentual_acumulado * 100 : null
       })
     }
 
