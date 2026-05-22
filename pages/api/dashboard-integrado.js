@@ -113,21 +113,30 @@ export default async function handler(req, res) {
     // ========================================================================
     // 4. AVANÇO FÍSICO REALIZADO
     // ========================================================================
-    const { data: atualizacoes, error: errAtual } = await supabase
-      .from('atualizacoes_obra')
-      .select('*')
+    const { data: avancoRealData, error: errAvancoReal } = await supabase
+      .from('avanco_fisico_realizado')
+      .select('mes_numero, competencia, percentual_realizado')
       .eq('obra_id', obra_id)
-      .lte('data', dataLimiteStr)
-      .order('data')
+      .lte('mes_numero', mesLimite)
+      .order('mes_numero')
 
-    if (errAtual) throw new Error(`Erro atualizações: ${errAtual.message}`)
+    if (errAvancoReal) throw new Error(`Erro avanço real: ${errAvancoReal.message}`)
 
-    const fisRealizada = atualizacoes.map((a, idx) => ({
-      mes_numero: idx + 1,
-      competencia: a.data,
-      percentual_mensal: parseFloat(a.avanco_real) / 100,
-      percentual_acumulado: parseFloat(a.avanco_real) / 100
-    }))
+    // Agrupar por mês e calcular média das atividades
+    const avancoRealPorMes = {}
+    avancoRealData.forEach(item => {
+      if (!avancoRealPorMes[item.mes_numero]) {
+        avancoRealPorMes[item.mes_numero] = { soma: 0, count: 0, competencia: item.competencia }
+      }
+      avancoRealPorMes[item.mes_numero].soma += parseFloat(item.percentual_realizado || 0)
+      avancoRealPorMes[item.mes_numero].count += 1
+    })
+
+    const fisRealizada = Object.entries(avancoRealPorMes).map(([mes, val]) => ({
+      mes_numero: parseInt(mes),
+      competencia: val.competencia,
+      percentual_acumulado: Math.min(val.soma / val.count, 1)
+    })).sort((a, b) => a.mes_numero - b.mes_numero)
 
     // ========================================================================
     // 5. CALCULAR KPIs COM SEPARAÇÃO DIRETO/INDIRETO
