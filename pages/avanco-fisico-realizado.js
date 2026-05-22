@@ -84,6 +84,21 @@ export default function AvancoFisicoRealizado() {
 
   const mes = MESES[mesSelecionado - 1]
 
+  async function handleExcluir(id) {
+    if (!confirm('Excluir este lançamento?')) return
+    try {
+      const res = await fetch('/api/avanco-fisico-realizado', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+      })
+      if (!res.ok) throw new Error()
+      fetchHistorico()
+    } catch {
+      alert('Erro ao excluir. Tente novamente.')
+    }
+  }
+
   return (
     <div className="page">
       <div className="header">
@@ -191,12 +206,13 @@ export default function AvancoFisicoRealizado() {
               <table>
                 <thead>
                   <tr>
-                    <th>Competência</th>
-                    <th>Mês</th>
-                    <th>Atividade</th>
-                    <th style={{ textAlign: 'right' }}>% Realizado</th>
-                    <th>Observação</th>
-                  </tr>
+                      <th>Competência</th>
+                      <th>Mês</th>
+                      <th>Atividade</th>
+                      <th style={{ textAlign: 'right' }}>% Realizado</th>
+                      <th>Observação</th>
+                      <th>Ação</th>
+                    </tr>
                 </thead>
                 <tbody>
                   {historico.map((item, idx) => (
@@ -206,6 +222,11 @@ export default function AvancoFisicoRealizado() {
                       <td>{item.atividade_nome}</td>
                       <td style={{ textAlign: 'right', fontWeight: 600 }}>{fmtPerc(item.percentual_realizado * 100)}</td>
                       <td>{item.observacao || '-'}</td>
+                      <td>
+                        <button onClick={() => handleExcluir(item.id)} style={{ backgroundColor: '#B03030', color: 'white', border: 'none', borderRadius: 4, padding: '4px 10px', cursor: 'pointer', fontSize: 12 }}>
+                          🗑 Excluir
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
