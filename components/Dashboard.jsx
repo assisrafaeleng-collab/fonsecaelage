@@ -121,9 +121,23 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
   })
 
   const finPlan = meses_alinhados.map(m => m.financeiro_planejado ? m.financeiro_planejado / 1000 : null)
-  const finReal = meses_alinhados.map(m => m.financeiro_realizado ? m.financeiro_realizado / 1000 : null)
   const fisPlan = meses_alinhados.map(m => m.fisico_planejado)
-  const fisReal = meses_alinhados.map(m => m.fisico_realizado)
+
+  // Determina o índice do último mês com dado real lançado (físico ou financeiro)
+  // A linha "Realizado" para nesse ponto, sem se arrastar até o fim da obra
+  const ultimoMesFisReal = meses_alinhados.reduce((last, m, i) => {
+    return (m.fisico_realizado != null && m.fisico_realizado > 0) ? i : last
+  }, -1)
+  const ultimoMesFinReal = meses_alinhados.reduce((last, m, i) => {
+    return (m.financeiro_realizado != null && m.financeiro_realizado > 0) ? i : last
+  }, -1)
+
+  const fisReal = meses_alinhados.map((m, i) =>
+    i <= ultimoMesFisReal ? m.fisico_realizado : null
+  )
+  const finReal = meses_alinhados.map((m, i) =>
+    i <= ultimoMesFinReal ? (m.financeiro_realizado ? m.financeiro_realizado / 1000 : null) : null
+  )
 
   const chartData = {
     labels,
