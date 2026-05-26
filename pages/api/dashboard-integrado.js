@@ -57,10 +57,26 @@ export default async function handler(req, res) {
     const custosDiretosAgrupados = {}
     const custosIndiretosAgrupados = {}
 
+    // Normaliza competencia para YYYY-MM-DD para comparação correta
+    // (suporta tanto '2025-05-01' quanto 'Maio/2025', 'maio/2025', etc.)
+    const MESES_PT = { janeiro:1,fevereiro:2,março:3,abril:4,maio:5,junho:6,julho:7,agosto:8,setembro:9,outubro:10,novembro:11,dezembro:12 }
+    function normalizaCompetencia(comp) {
+      if (!comp) return null
+      // Já está no formato YYYY-MM-DD ou YYYY-MM
+      if (comp.match(/^\d{4}-\d{2}/)) return comp.slice(0, 7) + '-01'
+      // Formato "Maio/2025" ou "maio/2025"
+      const m = comp.match(/^([a-záéíóúãõç]+)\/(\d{4})$/i)
+      if (m) {
+        const mes = MESES_PT[m[1].toLowerCase()]
+        if (mes) return `${m[2]}-${String(mes).padStart(2,'0')}-01`
+      }
+      return comp
+    }
+
     custosRealizados
-      .filter(c => c.status === 'Normal' && c.competencia <= dataLimiteStr)
+      .filter(c => c.status === 'Normal' && normalizaCompetencia(c.competencia) <= dataLimiteStr)
       .forEach(c => {
-        const comp = c.competencia
+        const comp = normalizaCompetencia(c.competencia)
         const numeroGrupo = parseInt(c.grupo_custo?.charAt(0))
         const valor = parseFloat(c.valor)
 
