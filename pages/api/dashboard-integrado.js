@@ -233,36 +233,50 @@ export default async function handler(req, res) {
     // 6. PREPARAR DADOS PARA O GRÁFICO
     // ========================================================================
 
-    // Último mês que tem dado real de avanço físico lançado no banco
-    const ultimoMesFisReal = fisRealizada.length > 0
-      ? fisRealizada[fisRealizada.length - 1].mes_numero
-      : 0
+    // Mapa competencia → percentual acumulado para o físico realizado
+    // O físico realizado usa competencia própria (ex: 2025-08-01) que pode não
+    // coincidir com o mes_numero do planejado financeiro — alinhamos pela data.
+    const fisRealPorCompetencia = {}
+    fisRealizada.forEach(f => {
+      fisRealPorCompetencia[f.competencia] = f.percentual_acumulado * 100
+    })
 
     // Último mês que tem custo financeiro realizado lançado
     const ultimoMesFinReal = finRealizada.length > 0
       ? finRealizada[finRealizada.length - 1].mes_numero
       : 0
 
+    // Última competencia com físico realizado lançado
+    const ultimaCompFisReal = fisRealizada.length > 0
+      ? fisRealizada[fisRealizada.length - 1].competencia
+      : null
+
     const meses = []
     for (let i = 1; i <= mesLimite; i++) {
       const finPlan = finPlanejada.find(f => f.mes_numero === i)
       const fisPlan = fisPlanejada.find(f => f.mes_numero === i)
       const finReal = finRealizada.find(f => f.mes_numero === i)
-      const fisReal = fisRealizada.find(f => f.mes_numero === i)
+
+      // Usa a competencia do mês do gráfico para buscar o físico realizado pela data
+      const compDoMes = finPlan ? finPlan.competencia : null
+      const fisRealValor = compDoMes != null ? (fisRealPorCompetencia[compDoMes] ?? null) : null
+
+      // Só mostra físico realizado até a última competencia lançada
+      const fisRealFinal = (ultimaCompFisReal && compDoMes && compDoMes <= ultimaCompFisReal)
+        ? fisRealValor
+        : null
 
       meses.push({
         mes_numero: i,
-        competencia: finPlan ? finPlan.competencia : null,
+        competencia: compDoMes,
         financeiro_planejado: finPlan ? finPlan.valor_acumulado : null,
         // Financeiro realizado: só até o último mês com lançamento real
         financeiro_realizado: i <= ultimoMesFinReal && finReal
           ? finReal.valor_acumulado
           : null,
         fisico_planejado: fisPlan ? fisPlan.percentual_acumulado * 100 : null,
-        // Físico realizado: só até o último mês com lançamento real — sem arrastar
-        fisico_realizado: i <= ultimoMesFisReal && fisReal
-          ? fisReal.percentual_acumulado * 100
-          : null,
+        // Físico realizado: alinhado pela competencia (data), para no mês lançado
+        fisico_realizado: fisRealFinal,
       })
     }
 
