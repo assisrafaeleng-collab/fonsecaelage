@@ -76,11 +76,13 @@ export default function Home() {
   const [mesAtual, setMesAtual] = useState(null) // null = ainda carregando
   const [modal, setModal] = useState(null)
 
+  const NOMES_MESES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez']
   const mesesOpcoes = Array.from({ length: 18 }, (_, i) => {
-    const data = new Date(2025, 3 + i, 1)
+    const ano = i < 9 ? 2025 : 2026
+    const mes = (3 + i) % 12  // 0=jan, 3=abr
     return {
       valor: i + 1,
-      label: data.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })
+      label: `${NOMES_MESES[mes]}. de ${ano}`
     }
   })
 
