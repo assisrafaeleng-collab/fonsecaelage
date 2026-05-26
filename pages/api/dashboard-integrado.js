@@ -232,7 +232,17 @@ export default async function handler(req, res) {
     // ========================================================================
     // 6. PREPARAR DADOS PARA O GRÁFICO
     // ========================================================================
-    let ultimoFisReal = null
+
+    // Último mês que tem dado real de avanço físico lançado no banco
+    const ultimoMesFisReal = fisRealizada.length > 0
+      ? fisRealizada[fisRealizada.length - 1].mes_numero
+      : 0
+
+    // Último mês que tem custo financeiro realizado lançado
+    const ultimoMesFinReal = finRealizada.length > 0
+      ? finRealizada[finRealizada.length - 1].mes_numero
+      : 0
+
     const meses = []
     for (let i = 1; i <= mesLimite; i++) {
       const finPlan = finPlanejada.find(f => f.mes_numero === i)
@@ -240,18 +250,19 @@ export default async function handler(req, res) {
       const finReal = finRealizada.find(f => f.mes_numero === i)
       const fisReal = fisRealizada.find(f => f.mes_numero === i)
 
-      if (fisReal) {
-        const val = fisReal.percentual_acumulado * 100
-        ultimoFisReal = ultimoFisReal !== null ? Math.max(ultimoFisReal, val) : val
-      }
-
       meses.push({
         mes_numero: i,
         competencia: finPlan ? finPlan.competencia : null,
         financeiro_planejado: finPlan ? finPlan.valor_acumulado : null,
-        financeiro_realizado: finReal ? finReal.valor_acumulado : null,
+        // Financeiro realizado: só até o último mês com lançamento real
+        financeiro_realizado: i <= ultimoMesFinReal && finReal
+          ? finReal.valor_acumulado
+          : null,
         fisico_planejado: fisPlan ? fisPlan.percentual_acumulado * 100 : null,
-        fisico_realizado: ultimoFisReal
+        // Físico realizado: só até o último mês com lançamento real — sem arrastar
+        fisico_realizado: i <= ultimoMesFisReal && fisReal
+          ? fisReal.percentual_acumulado * 100
+          : null,
       })
     }
 
