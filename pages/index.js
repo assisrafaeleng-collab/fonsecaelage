@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Dashboard from '../components/Dashboard'
 
 const SENHA_CORRETA = 'fonseca2025'
@@ -73,7 +73,7 @@ function ModalSenha({ destino, onClose }) {
 }
 
 export default function Home() {
-  const [mesAtual, setMesAtual] = useState(18)
+  const [mesAtual, setMesAtual] = useState(null) // null = ainda carregando
   const [modal, setModal] = useState(null)
 
   const mesesOpcoes = Array.from({ length: 18 }, (_, i) => {
@@ -84,12 +84,57 @@ export default function Home() {
     }
   })
 
+  // Ao carregar, busca o último mês com custo lançado e inicia com ele
+  useEffect(() => {
+    fetch('/api/custos?resumo=competencias')
+      .then(r => r.json())
+      .then(competencias => {
+        if (!competencias?.length) {
+          setMesAtual(18)
+          return
+        }
+
+        // Normaliza competencias para datas e pega a mais recente
+        const MESES_PT = { janeiro:1,fevereiro:2,março:3,abril:4,maio:5,junho:6,julho:7,agosto:8,setembro:9,outubro:10,novembro:11,dezembro:12 }
+        function toDate(comp) {
+          if (!comp) return null
+          if (comp.match(/^\d{4}-\d{2}/)) return new Date(comp.slice(0, 7) + '-01')
+          const m = comp.match(/^([a-záéíóúãõç]+)\/(\d{4})$/i)
+          if (m) {
+            const mes = MESES_PT[m[1].toLowerCase()]
+            if (mes) return new Date(`${m[2]}-${String(mes).padStart(2,'0')}-01`)
+          }
+          return null
+        }
+
+        const datas = competencias.map(c => ({ comp: c, date: toDate(c) })).filter(x => x.date)
+        if (!datas.length) { setMesAtual(18); return }
+
+        // Pega a competencia mais recente
+        const maisRecente = datas.sort((a, b) => b.date - a.date)[0].date
+
+        // Converte para mes_numero (obra começa Abril/2025 = M1)
+        const inicioObra = new Date('2025-04-01')
+        const diffMeses = (maisRecente.getFullYear() - inicioObra.getFullYear()) * 12
+                        + (maisRecente.getMonth() - inicioObra.getMonth()) + 1
+
+        const mesCalculado = Math.max(1, Math.min(18, diffMeses))
+        setMesAtual(mesCalculado)
+      })
+      .catch(() => setMesAtual(18))
+  }, [])
+
   function handleNavRestrita(destino) {
     if (sessionStorage.getItem('autenticado') === 'true') {
       window.location.href = destino
     } else {
       setModal(destino)
     }
+  }
+
+  // Enquanto calcula o mês inicial, mostra loading
+  if (mesAtual === null) {
+    return <div className="page"><div className="loading">Carregando dashboard...</div></div>
   }
 
   return (
