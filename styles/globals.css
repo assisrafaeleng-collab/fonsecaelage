@@ -247,3 +247,25 @@ textarea { min-height: 80px; resize: vertical; line-height: 1.6; }
   color: var(--text) !important;
   border-color: var(--text) !important;
 }
+
+.evm-card { position: relative; }
+.evm-tooltip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1a1a2e;
+  border: 1px solid #3a3a5c;
+  border-radius: 8px;
+  padding: 12px 14px;
+  width: 260px;
+  z-index: 999;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #e8e8e8;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+}
+.evm-card:hover .evm-tooltip { display: block; }
+.evm-tooltip b { color: #C8860A; }
+
