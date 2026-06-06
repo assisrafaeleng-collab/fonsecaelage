@@ -110,6 +110,9 @@ export default async function handler(req, res) {
       .order('mes_numero')
     if (errAvancoReal) throw new Error(`Erro avanço real: ${errAvancoReal.message}`)
 
+    console.log('PESOS:', JSON.stringify(pesosPorGrupo))
+    console.log('AVANCO:', JSON.stringify(avancoRealData?.slice(0,3)))
+
     const avancoRealPorMes = {}
     avancoRealData.forEach(item => {
       if (!avancoRealPorMes[item.mes_numero]) {
