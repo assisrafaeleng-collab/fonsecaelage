@@ -249,7 +249,100 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
         </div>
         <div style={{ visibility: 'hidden' }}></div>
       </div>
+{/* ================================================================
+    BLOCO EVM — Earned Value Management
+================================================================ */}
+<div className="card">
+  <div className="card-title">📐 Análise EVM — Valor Agregado</div>
 
+  {/* Linha 1: Três valores base */}
+  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '16px' }}>
+    <div className="kpi" style={{ borderLeftColor: '#5B9BD5' }}>
+      <div className="kpi-label">BCWS — Planejado</div>
+      <div className="kpi-value" style={{ fontSize: '18px' }}>{fmtMoeda(kpis.bcws)}</div>
+      <div className="kpi-sub">Valor que deveria ter sido agregado</div>
+    </div>
+    <div className="kpi" style={{ borderLeftColor: '#9B59B6' }}>
+      <div className="kpi-label">BCWP — Valor Agregado Real</div>
+      <div className="kpi-value" style={{ fontSize: '18px' }}>{fmtMoeda(kpis.bcwp)}</div>
+      <div className="kpi-sub">% físico realizado × orçamento total</div>
+    </div>
+    <div className="kpi" style={{ borderLeftColor: '#E91E8C' }}>
+      <div className="kpi-label">ACWP — Custo Real</div>
+      <div className="kpi-value" style={{ fontSize: '18px' }}>{fmtMoeda(kpis.acwp)}</div>
+      <div className="kpi-sub">Quanto foi efetivamente gasto</div>
+    </div>
+  </div>
+
+  {/* Linha 2: Índices e variâncias */}
+  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '16px' }}>
+    <div className="kpi" style={{ borderLeftColor: kpis.cpi >= 1 ? '#4D9B6A' : '#B03030' }}>
+      <div className="kpi-label">CPI — Eficiência de Custo</div>
+      <div className="kpi-value" style={{ fontSize: '22px', color: kpis.cpi >= 1 ? '#4D9B6A' : '#B03030' }}>
+        {kpis.cpi?.toFixed(2)}
+      </div>
+      <div className="kpi-sub">
+        {kpis.cpi >= 1
+          ? '✅ Abaixo do orçamento'
+          : '⚠️ Acima do orçamento'}
+      </div>
+    </div>
+    <div className="kpi" style={{ borderLeftColor: kpis.spi >= 1 ? '#4D9B6A' : '#B03030' }}>
+      <div className="kpi-label">SPI — Eficiência de Prazo</div>
+      <div className="kpi-value" style={{ fontSize: '22px', color: kpis.spi >= 1 ? '#4D9B6A' : '#B03030' }}>
+        {kpis.spi?.toFixed(2)}
+      </div>
+      <div className="kpi-sub">
+        {kpis.spi >= 1
+          ? '✅ Adiantado'
+          : '⚠️ Atrasado'}
+      </div>
+    </div>
+    <div className="kpi" style={{ borderLeftColor: kpis.cv >= 0 ? '#4D9B6A' : '#B03030' }}>
+      <div className="kpi-label">CV — Variância de Custo</div>
+      <div className="kpi-value" style={{ fontSize: '18px', color: kpis.cv >= 0 ? '#4D9B6A' : '#B03030' }}>
+        {kpis.cv >= 0 ? '+' : ''}{fmtMoeda(kpis.cv)}
+      </div>
+      <div className="kpi-sub">BCWP − ACWP {kpis.cv >= 0 ? '(economia real)' : '(gasto além do produzido)'}</div>
+    </div>
+    <div className="kpi" style={{ borderLeftColor: kpis.sv >= 0 ? '#4D9B6A' : '#B03030' }}>
+      <div className="kpi-label">SV — Variância de Prazo</div>
+      <div className="kpi-value" style={{ fontSize: '18px', color: kpis.sv >= 0 ? '#4D9B6A' : '#B03030' }}>
+        {kpis.sv >= 0 ? '+' : ''}{fmtMoeda(kpis.sv)}
+      </div>
+      <div className="kpi-sub">BCWP − BCWS {kpis.sv >= 0 ? '(adiantado em valor)' : '(atrasado em valor)'}</div>
+    </div>
+  </div>
+
+  {/* Linha 3: Projeção final */}
+  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
+    <div className="kpi" style={{ borderLeftColor: kpis.eac <= kpis.orcamento_total ? '#4D9B6A' : '#B03030' }}>
+      <div className="kpi-label">EAC — Projeção de Custo Final</div>
+      <div className="kpi-value" style={{ fontSize: '18px', color: kpis.eac <= kpis.orcamento_total ? '#4D9B6A' : '#B03030' }}>
+        {fmtMoeda(kpis.eac)}
+      </div>
+      <div className="kpi-sub">Orçamento ÷ CPI — custo projetado real</div>
+    </div>
+    <div className="kpi" style={{ borderLeftColor: kpis.saldo_real >= 0 ? '#4D9B6A' : '#B03030' }}>
+      <div className="kpi-label">Saldo Real Projetado</div>
+      <div className="kpi-value" style={{ fontSize: '18px', color: kpis.saldo_real >= 0 ? '#4D9B6A' : '#B03030' }}>
+        {kpis.saldo_real >= 0 ? '+' : ''}{fmtMoeda(kpis.saldo_real)}
+      </div>
+      <div className="kpi-sub">
+        {kpis.saldo_real >= 0
+          ? '✅ Economia projetada real'
+          : '⚠️ Estouro projetado — revisar escopo/custo'}
+      </div>
+    </div>
+    <div className="kpi" style={{ borderLeftColor: '#C8860A' }}>
+      <div className="kpi-label">Saldo Aparente</div>
+      <div className="kpi-value" style={{ fontSize: '18px', color: '#C8860A' }}>
+        {fmtMoeda(kpis.saldo_orcamento)}
+      </div>
+      <div className="kpi-sub">⚠️ Pode incluir serviços não executados</div>
+    </div>
+  </div>
+</div>
       <div className="card">
         <div className="card-title">📊 Curva S — Acompanhamento Físico-Financeiro</div>
         <div style={{ height: '400px', position: 'relative' }}>
