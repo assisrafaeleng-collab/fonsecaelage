@@ -16,7 +16,7 @@ export default async function handler(req, res) {
       supabase.from('cronograma_horas_planejado').select('grupo_nome, horas_totais').eq('obra_id', obra_id),
       supabase.from('avanco_fisico_realizado').select('mes_numero, competencia, atividade_nome, percentual_realizado').eq('obra_id', obra_id).lte('mes_numero', mesLimite).order('mes_numero'),
       supabase.from('custos_indiretos_planejados').select('valor_total').eq('obra_id', obra_id),
-      supabase.from('cronograma_financeiro_planejado').select('valor_mensal').eq('obra_id', obra_id),
+      supabase.from('orcamento_planejado').select('preco_total').eq('obra_id', obra_id),
     ])
 
     if (finPlanejadaRes.error) throw new Error(finPlanejadaRes.error.message)
@@ -120,7 +120,7 @@ export default async function handler(req, res) {
     })
 
     const totalIndiretos = (indiretosPlanoRes.data || []).reduce((sum, i) => sum + parseFloat(i.valor_total || 0), 0)
-    const totalDiretos = (diretosPlanoRes.data || []).reduce((sum, i) => sum + parseFloat(i.valor_mensal || 0), 0)
+    const totalDiretos = (diretosPlanoRes.data || []).reduce((sum, i) => sum + parseFloat(i.preco_total || 0), 0)
     const orcamentoTotal = totalDiretos + totalIndiretos
 
     const acwp = finRealizada.length > 0 ? finRealizada[finRealizada.length - 1].valor_acumulado : 0
