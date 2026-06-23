@@ -73,31 +73,32 @@ function ModalSenha({ destino, onClose }) {
 }
 
 export default function Home() {
-  const [mesAtual, setMesAtual] = useState(null) // null = ainda carregando
+  const [mesAtual, setMesAtual] = useState(null)
   const [modal, setModal] = useState(null)
 
+  // Obra: Jul/2026 a Fev/2028 (20 meses)
   const NOMES_MESES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez']
-  const mesesOpcoes = Array.from({ length: 18 }, (_, i) => {
-    const ano = i < 9 ? 2025 : 2026
-    const mes = (3 + i) % 12  // 0=jan, 3=abr
+  const mesesOpcoes = Array.from({ length: 20 }, (_, i) => {
+    // M01 = Jul/2026 (month index 6)
+    const totalMonths = 6 + i  // 6=jul, 7=ago, ...
+    const ano = 2026 + Math.floor(totalMonths / 12)
+    const mes = totalMonths % 12
     return {
       valor: i + 1,
       label: `${NOMES_MESES[mes]}. de ${ano}`
     }
   })
 
-  // Ao carregar, busca o último mês com custo lançado e inicia com ele
   useEffect(() => {
     fetch('/api/custos?resumo=competencias')
       .then(r => r.json())
       .then(competencias => {
         if (!competencias?.length) {
-          setMesAtual(18)
+          setMesAtual(20)
           return
         }
 
-        // Normaliza competencias para datas e pega a mais recente
-        const MESES_PT = { janeiro:1,fevereiro:2,março:3,abril:4,maio:5,junho:6,julho:7,agosto:8,setembro:9,outubro:10,novembro:11,dezembro:12 }
+        const MESES_PT = { janeiro:1,fevereiro:2,marco:3,abril:4,maio:5,junho:6,julho:7,agosto:8,setembro:9,outubro:10,novembro:11,dezembro:12 }
         function toDate(comp) {
           if (!comp) return null
           if (comp.match(/^\d{4}-\d{2}/)) return new Date(comp.slice(0, 7) + '-01')
@@ -110,20 +111,19 @@ export default function Home() {
         }
 
         const datas = competencias.map(c => ({ comp: c, date: toDate(c) })).filter(x => x.date)
-        if (!datas.length) { setMesAtual(18); return }
+        if (!datas.length) { setMesAtual(20); return }
 
-        // Pega a competencia mais recente
         const maisRecente = datas.sort((a, b) => b.date - a.date)[0].date
 
-        // Converte para mes_numero (obra começa Abril/2025 = M1)
-        const inicioObra = new Date('2025-04-01')
+        // Obra começa Jul/2026 = M1
+        const inicioObra = new Date('2026-07-01')
         const diffMeses = (maisRecente.getFullYear() - inicioObra.getFullYear()) * 12
                         + (maisRecente.getMonth() - inicioObra.getMonth()) + 1
 
-        const mesCalculado = Math.max(1, Math.min(18, diffMeses))
+        const mesCalculado = Math.max(1, Math.min(20, diffMeses))
         setMesAtual(mesCalculado)
       })
-      .catch(() => setMesAtual(18))
+      .catch(() => setMesAtual(20))
   }, [])
 
   function handleNavRestrita(destino) {
@@ -134,7 +134,6 @@ export default function Home() {
     }
   }
 
-  // Enquanto calcula o mês inicial, mostra loading
   if (mesAtual === null) {
     return <div className="page"><div className="loading">Carregando dashboard...</div></div>
   }
@@ -149,8 +148,8 @@ export default function Home() {
             <div className="obra-eye">Av. Coronel José Dias Bicalho, 635 · São José · Belo Horizonte</div>
             <div className="obra-nome">Flats Pampulha</div>
             <div className="obra-info">
-              Orçamento: R$ 4.920.564 · Prazo: 18 meses ·
-              {mesAtual === 18 ? ' Período completo' : ` Até M${mesAtual}`}
+              Orçamento: R$ 6.105.018,94 · Prazo: 20 meses · Jul/2026 a Fev/2028 ·
+              {mesAtual === 20 ? ' Período completo' : ` Até M${mesAtual}`}
             </div>
           </div>
 
@@ -163,7 +162,7 @@ export default function Home() {
             >
               {mesesOpcoes.map(opcao => (
                 <option key={opcao.valor} value={opcao.valor}>
-                  {opcao.valor === 18 ? 'Todos os 18 meses' : opcao.label}
+                  {opcao.valor === 20 ? 'Todos os 20 meses' : opcao.label}
                 </option>
               ))}
             </select>
