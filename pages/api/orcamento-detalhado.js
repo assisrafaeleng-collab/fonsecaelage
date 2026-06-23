@@ -30,17 +30,17 @@ export default async function handler(req, res) {
     // 2. BUSCAR CUSTOS DIRETOS (CRONOGRAMA FINANCEIRO) - FILTRADO POR MÊS
     // ========================================================================
     const { data: diretos, error: errDir } = await supabase
-      .from('cronograma_financeiro_planejado')
-      .select('macrogrupo_nome, valor_mensal, mes_numero')
+      .from('orcamento_planejado')
+      .select('grupo_custo, preco_total')
       .eq('obra_id', obra_id)
-      .lte('mes_numero', mesLimite) // Apenas até o mês selecionado
+       // Apenas até o mês selecionado
 
     if (errDir) throw new Error(`Erro custos diretos: ${errDir.message}`)
 
     // Agrupar por macrogrupo (filtrar nulos)
     const gruposDiretos = {}
     diretos.forEach(item => {
-      const grupo = item.macrogrupo_nome
+      const grupo = item.grupo_custo
 
       // Ignorar se for null, undefined ou vazio
       if (!grupo || grupo.trim() === '') {
@@ -50,7 +50,7 @@ export default async function handler(req, res) {
       if (!gruposDiretos[grupo]) {
         gruposDiretos[grupo] = 0
       }
-      gruposDiretos[grupo] += parseFloat(item.valor_mensal)
+      gruposDiretos[grupo] += parseFloat(item.preco_total)
     })
 
     // ========================================================================
@@ -141,3 +141,4 @@ function getIcone(nome) {
   
   return icones[nome] || '📦'
 }
+
