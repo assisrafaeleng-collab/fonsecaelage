@@ -1,4 +1,4 @@
-ï»¿// pages/api/avanco-fisico-planejado.js
+// pages/api/avanco-fisico-planejado.js
 import { supabase } from '../../lib/supabase'
 
 const ORDEM_GRUPOS = [
@@ -10,24 +10,24 @@ const ORDEM_GRUPOS = [
 ]
 
 const NOMES_AMIGAVEIS = {
-  'Servicos Preliminares e Gerais': 'ServiÃ§os Preliminares e Gerais',
-  'Movimento de Terra e Fundacoes': 'Movimento de Terra e FundaÃ§Ãµes',
+  'Servicos Preliminares e Gerais': 'Serviços Preliminares e Gerais',
+  'Movimento de Terra e Fundacoes': 'Movimento de Terra e Fundações',
   'Estrutura': 'Estrutura', 'Alvenaria e Fechamentos': 'Alvenaria e Fechamentos',
-  'Reboco e Emboco': 'Reboco e EmboÃ§o',
-  'Instalacoes Hidrossanitarias': 'InstalaÃ§Ãµes HidrossanitÃ¡rias',
-  'Instalacoes Eletricas e Telecom': 'InstalaÃ§Ãµes ElÃ©tricas e Telecom',
-  'Instalacoes Especiais': 'InstalaÃ§Ãµes Especiais',
-  'Cobertura e Impermeabilizacao': 'Cobertura e ImpermeabilizaÃ§Ã£o',
-  'Aplicacao de Gesso': 'AplicaÃ§Ã£o de Gesso', 'Pisos e Rodapes': 'Pisos e RodapÃ©s',
+  'Reboco e Emboco': 'Reboco e Emboço',
+  'Instalacoes Hidrossanitarias': 'Instalações Hidrossanitárias',
+  'Instalacoes Eletricas e Telecom': 'Instalações Elétricas e Telecom',
+  'Instalacoes Especiais': 'Instalações Especiais',
+  'Cobertura e Impermeabilizacao': 'Cobertura e Impermeabilização',
+  'Aplicacao de Gesso': 'Aplicação de Gesso', 'Pisos e Rodapes': 'Pisos e Rodapés',
   'Esquadrias': 'Esquadrias', 'Pintura': 'Pintura',
-  'Loucas Metais e Bancadas': 'LouÃ§as, Metais e Bancadas',
-  'Urbanizacao e Paisagismo': 'UrbanizaÃ§Ã£o e Paisagismo',
-  'Locacoes e Equipamentos': 'LocaÃ§Ãµes e Equipamentos', 'Servicos Finais': 'ServiÃ§os Finais',
+  'Loucas Metais e Bancadas': 'Louças, Metais e Bancadas',
+  'Urbanizacao e Paisagismo': 'Urbanização e Paisagismo',
+  'Locacoes e Equipamentos': 'Locações e Equipamentos', 'Servicos Finais': 'Serviços Finais',
 }
 
-// Extrai cod_eap e descriÃ§Ã£o do nome formatado "X.X.X â€” DescriÃ§Ã£o"
+// Extrai cod_eap e descrição do nome formatado "X.X.X — Descrição"
 function parseName(atividade_nome) {
-  const match = atividade_nome.match(/^([\d.X]+)\s*â€”\s*(.+)$/)
+  const match = atividade_nome.match(/^([\d.X]+)\s*—\s*(.+)$/)
   if (match) return { cod_eap: match[1], desc: match[2].trim() }
   return { cod_eap: null, desc: atividade_nome }
 }
@@ -38,11 +38,11 @@ function getSubgrupo(cod_eap, grupo_custo) {
   if (parts.length < 2) return null
   const subIdx = parseInt(parts[1])
   if (grupo_custo === 'Estrutura') {
-    const map = { 1: 'TÃ©rreo', 2: '2Âº Pavimento', 3: '3Âº Pavimento', 4: '4Âº Pavimento', 5: '5Âº Pavimento', 6: '6Âº Pavimento / Platibanda' }
+    const map = { 1: 'Térreo', 2: '2º Pavimento', 3: '3º Pavimento', 4: '4º Pavimento', 5: '5º Pavimento', 6: '6º Pavimento / Platibanda' }
     return map[subIdx] || null
   }
   if (grupo_custo === 'Alvenaria e Fechamentos') {
-    const map = { 1: 'TÃ©rreo', 2: '2Âº Pavimento', 3: '3Âº Pavimento', 4: '4Âº Pavimento', 5: '5Âº Pavimento', 6: '6Âº Pavimento', 7: 'Platibanda' }
+    const map = { 1: 'Térreo', 2: '2º Pavimento', 3: '3º Pavimento', 4: '4º Pavimento', 5: '5º Pavimento', 6: '6º Pavimento', 7: 'Platibanda' }
     return map[subIdx] || null
   }
   return null
@@ -72,7 +72,7 @@ export default async function handler(req, res) {
     const eapGrupoMap = {}
     ;(orcRes.data || []).forEach(o => { eapGrupoMap[o.cod_eap] = o.grupo_custo })
 
-    // Mapa realizado por atividade_codigo (mÃ¡ximo acumulado)
+    // Mapa realizado por atividade_codigo (máximo acumulado)
     const realizadoMap = {}
     ;(realRes.data || []).forEach(r => {
       const { cod_eap } = parseName(r.atividade_nome)
@@ -81,7 +81,7 @@ export default async function handler(req, res) {
       }
     })
 
-    // Agrupa por cod_eap Ãºnico
+    // Agrupa por cod_eap único
     const atividadeMap = {}
     ;(cronoRes.data || []).forEach(c => {
       const { cod_eap, desc } = parseName(c.atividade_nome)
@@ -134,7 +134,7 @@ export default async function handler(req, res) {
       }
     })
 
-    // Calcular % mÃ©dio ponderado
+    // Calcular % médio ponderado
     const calcPerc = (atividades) => {
       const tot = atividades.reduce((s, a) => s + a.valor_orcado, 0)
       return tot > 0 ? parseFloat((atividades.reduce((s, a) => s + a.perc_planejado * a.valor_orcado, 0) / tot * 100).toFixed(1)) : 0
@@ -147,7 +147,7 @@ export default async function handler(req, res) {
     })
 
     // Ordenar subgrupos por pavimento
-    const ORDEM_PAV = ['TÃ©rreo', '1Âº Pavimento', '2Âº Pavimento', '3Âº Pavimento', '4Âº Pavimento', '5Âº Pavimento', '5Âº Pavimento / Platibanda', 'Platibanda']
+    const ORDEM_PAV = ['Térreo', '2º Pavimento', '3º Pavimento', '4º Pavimento', '5º Pavimento', '6º Pavimento', '6º Pavimento / Platibanda', 'Platibanda']
     
     const grupos = ORDEM_GRUPOS.filter(g => gruposMap[g]).map(g => ({
       ...gruposMap[g],
