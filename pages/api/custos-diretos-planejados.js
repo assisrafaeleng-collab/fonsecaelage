@@ -52,12 +52,12 @@ function getSubgrupo(cod_eap, grupo_custo) {
   const subIdx = parseInt(parts[1])
 
   if (grupo_custo === 'Estrutura') {
-    const map = { 1: 'Térreo', 2: '1º Pavimento', 3: '2º Pavimento', 4: '3º Pavimento', 5: '4º Pavimento', 6: '5º Pavimento / Platibanda' }
+    const map = { 1: 'Térreo', 2: '2º Pavimento', 3: '3º Pavimento', 4: '4º Pavimento', 5: '5º Pavimento', 6: '6º Pavimento / Platibanda' }
     return map[subIdx] || `Pavimento ${subIdx}`
   }
 
   if (grupo_custo === 'Alvenaria e Fechamentos') {
-    const map = { 1: 'Térreo', 2: '1º Pavimento', 3: '2º Pavimento', 4: '3º Pavimento', 5: '4º Pavimento', 6: '5º Pavimento', 7: 'Platibanda' }
+    const map = { 1: 'Térreo', 2: '2º Pavimento', 3: '3º Pavimento', 4: '4º Pavimento', 5: '5º Pavimento', 6: '6º Pavimento', 7: 'Platibanda' }
     return map[subIdx] || `Pavimento ${subIdx}`
   }
 
