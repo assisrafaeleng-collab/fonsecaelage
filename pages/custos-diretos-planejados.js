@@ -5,7 +5,6 @@ import { useRouter } from 'next/router'
 const fmtMoeda = (val) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 }).format(val)
 const fmtPerc = (val) => `${val.toFixed(2)}%`
 
-// Ícones por grupo
 const ICONES = {
   'Serviços Preliminares e Gerais': '🏗️',
   'Movimento de Terra e Fundações': '⛏️',
@@ -26,12 +25,20 @@ const ICONES = {
   'Serviços Finais': '✅',
 }
 
-function SubgrupoRow({ subgrupo, totalGeral }) {
+function ordenarItens(itens, ordem) {
+  return [...itens].sort((a, b) => {
+    if (ordem === 'valor_desc') return b.valor - a.valor
+    if (ordem === 'valor_asc') return a.valor - b.valor
+    return a.cod_eap?.localeCompare(b.cod_eap, undefined, { numeric: true }) || 0
+  })
+}
+
+function SubgrupoRow({ subgrupo, ordemItens }) {
   const [expandido, setExpandido] = useState(false)
+  const itensOrdenados = ordenarItens(subgrupo.itens, ordemItens)
 
   return (
     <div style={{ marginBottom: 4 }}>
-      {/* Linha do subgrupo (pavimento) */}
       <div
         onClick={() => setExpandido(!expandido)}
         style={{
@@ -43,34 +50,22 @@ function SubgrupoRow({ subgrupo, totalGeral }) {
         }}
       >
         <span style={{ fontSize: 11, color: 'var(--text2)', width: 14 }}>{expandido ? '▼' : '▶'}</span>
-        <span style={{ fontSize: 12, color: 'var(--text)', flex: 1, fontWeight: 500 }}>
-          📐 {subgrupo.nome}
-        </span>
-        <span style={{ fontSize: 12, color: '#5B9BD5', fontWeight: 600, minWidth: 140, textAlign: 'right' }}>
-          {fmtMoeda(subgrupo.total)}
-        </span>
-        <span style={{ fontSize: 11, color: 'var(--text2)', minWidth: 60, textAlign: 'right' }}>
-          {fmtPerc(subgrupo.percentual)}
-        </span>
+        <span style={{ fontSize: 12, color: 'var(--text)', flex: 1, fontWeight: 500 }}>📐 {subgrupo.nome}</span>
+        <span style={{ fontSize: 12, color: '#5B9BD5', fontWeight: 600, minWidth: 140, textAlign: 'right' }}>{fmtMoeda(subgrupo.total)}</span>
+        <span style={{ fontSize: 11, color: 'var(--text2)', minWidth: 60, textAlign: 'right' }}>{fmtPerc(subgrupo.percentual)}</span>
       </div>
 
-      {/* Itens do subgrupo */}
       {expandido && (
         <div style={{ marginLeft: 24, marginTop: 2 }}>
-          {subgrupo.itens.map(item => (
+          {itensOrdenados.map(item => (
             <div key={item.cod_eap} style={{
               display: 'flex', alignItems: 'center', gap: 10,
               padding: '6px 12px', borderRadius: 4,
-              borderLeft: '2px solid rgba(91,155,213,0.3)',
-              marginBottom: 2
+              borderLeft: '2px solid rgba(91,155,213,0.3)', marginBottom: 2
             }}>
-              <span style={{ fontSize: 10, color: 'var(--text3)', minWidth: 50, fontFamily: 'monospace' }}>
-                {item.cod_eap}
-              </span>
+              <span style={{ fontSize: 10, color: 'var(--text3)', minWidth: 50, fontFamily: 'monospace' }}>{item.cod_eap}</span>
               <span style={{ fontSize: 11, color: 'var(--text2)', flex: 1 }}>{item.descricao}</span>
-              <span style={{ fontSize: 11, color: 'var(--text)', fontWeight: 600, minWidth: 140, textAlign: 'right' }}>
-                {fmtMoeda(item.valor)}
-              </span>
+              <span style={{ fontSize: 11, color: 'var(--text)', fontWeight: 600, minWidth: 140, textAlign: 'right' }}>{fmtMoeda(item.valor)}</span>
             </div>
           ))}
         </div>
@@ -79,21 +74,15 @@ function SubgrupoRow({ subgrupo, totalGeral }) {
   )
 }
 
-function GrupoCard({ grupo, totalGeral, index }) {
+function GrupoCard({ grupo, totalGeral, index, ordemItens }) {
   const [expandido, setExpandido] = useState(false)
   const icone = ICONES[grupo.nome] || '📦'
   const temSubgrupos = grupo.subgrupos && grupo.subgrupos.length > 0
   const totalItens = grupo.itens.length + grupo.subgrupos.reduce((sum, sg) => sum + sg.itens.length, 0)
+  const itensOrdenados = ordenarItens(grupo.itens, ordemItens)
 
   return (
-    <div style={{
-      border: '.5px solid var(--border)',
-      borderRadius: 10,
-      marginBottom: 8,
-      overflow: 'hidden',
-      background: 'var(--bg)'
-    }}>
-      {/* Cabeçalho do grupo */}
+    <div style={{ border: '.5px solid var(--border)', borderRadius: 10, marginBottom: 8, overflow: 'hidden', background: 'var(--bg)' }}>
       <div
         onClick={() => setExpandido(!expandido)}
         style={{
@@ -103,14 +92,11 @@ function GrupoCard({ grupo, totalGeral, index }) {
           transition: 'background 0.15s'
         }}
       >
-        {/* Número sequencial */}
         <div style={{
           width: 28, height: 28, borderRadius: '50%',
           background: 'var(--bg2)', display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: 11, fontWeight: 700, color: 'var(--text2)', flexShrink: 0
-        }}>
-          {index + 1}
-        </div>
+        }}>{index + 1}</div>
 
         <span style={{ fontSize: 16 }}>{icone}</span>
 
@@ -122,7 +108,6 @@ function GrupoCard({ grupo, totalGeral, index }) {
           </div>
         </div>
 
-        {/* Barra de progresso */}
         <div style={{ width: 80, height: 4, background: 'var(--bg2)', borderRadius: 2, overflow: 'hidden', flexShrink: 0 }}>
           <div style={{ height: '100%', width: `${Math.min(grupo.percentual, 100)}%`, background: '#C8860A', borderRadius: 2 }} />
         </div>
@@ -132,49 +117,37 @@ function GrupoCard({ grupo, totalGeral, index }) {
           <div style={{ fontSize: 10, color: 'var(--text2)' }}>{fmtPerc(grupo.percentual)} do total</div>
         </div>
 
-        <span style={{ fontSize: 12, color: 'var(--text2)', flexShrink: 0 }}>
-          {expandido ? '▲' : '▼'}
-        </span>
+        <span style={{ fontSize: 12, color: 'var(--text2)', flexShrink: 0 }}>{expandido ? '▲' : '▼'}</span>
       </div>
 
-      {/* Conteúdo expandido */}
       {expandido && (
         <div style={{ padding: '0 18px 16px', borderTop: '.5px solid var(--border)' }}>
           <div style={{ marginTop: 12 }}>
-
-            {/* Subgrupos (pavimentos) */}
             {temSubgrupos && grupo.subgrupos.map(sg => (
-              <SubgrupoRow key={sg.nome} subgrupo={sg} totalGeral={totalGeral} />
+              <SubgrupoRow key={sg.nome} subgrupo={sg} ordemItens={ordemItens} />
             ))}
 
-            {/* Itens sem subgrupo */}
-            {grupo.itens.length > 0 && (
+            {itensOrdenados.length > 0 && (
               <div style={{ marginTop: temSubgrupos ? 8 : 0 }}>
                 {temSubgrupos && (
                   <div style={{ fontSize: 10, color: 'var(--text2)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                     Itens gerais
                   </div>
                 )}
-                {grupo.itens.map(item => (
+                {itensOrdenados.map(item => (
                   <div key={item.cod_eap} style={{
                     display: 'flex', alignItems: 'center', gap: 10,
                     padding: '6px 12px', borderRadius: 4,
-                    borderLeft: '2px solid rgba(200,134,10,0.3)',
-                    marginBottom: 2
+                    borderLeft: '2px solid rgba(200,134,10,0.3)', marginBottom: 2
                   }}>
-                    <span style={{ fontSize: 10, color: 'var(--text3)', minWidth: 50, fontFamily: 'monospace' }}>
-                      {item.cod_eap}
-                    </span>
+                    <span style={{ fontSize: 10, color: 'var(--text3)', minWidth: 50, fontFamily: 'monospace' }}>{item.cod_eap}</span>
                     <span style={{ fontSize: 11, color: 'var(--text2)', flex: 1 }}>{item.descricao}</span>
-                    <span style={{ fontSize: 11, color: 'var(--text)', fontWeight: 600, minWidth: 140, textAlign: 'right' }}>
-                      {fmtMoeda(item.valor)}
-                    </span>
+                    <span style={{ fontSize: 11, color: 'var(--text)', fontWeight: 600, minWidth: 140, textAlign: 'right' }}>{fmtMoeda(item.valor)}</span>
                   </div>
                 ))}
               </div>
             )}
 
-            {/* Subtotal do grupo */}
             <div style={{
               display: 'flex', justifyContent: 'flex-end', gap: 20,
               marginTop: 12, paddingTop: 10, borderTop: '.5px solid var(--border)',
@@ -195,7 +168,8 @@ export default function CustosDiretosPlanejados() {
   const [dados, setDados] = useState(null)
   const [loading, setLoading] = useState(true)
   const [busca, setBusca] = useState('')
-  const [expandirTodos, setExpandirTodos] = useState(false)
+  const [ordemGrupos, setOrdemGrupos] = useState('sequencia') // sequencia | valor_desc | valor_asc
+  const [ordemItens, setOrdemItens] = useState('codigo')     // codigo | valor_desc | valor_asc
 
   useEffect(() => {
     async function fetchDados() {
@@ -217,9 +191,17 @@ export default function CustosDiretosPlanejados() {
   if (loading) return <div className="page"><div className="loading">Carregando custos diretos planejados...</div></div>
   if (!dados) return <div className="page"><div className="empty-state"><h3>Erro ao carregar dados</h3></div></div>
 
-  const gruposFiltrados = dados.grupos.filter(g =>
+  // Filtrar por busca
+  let gruposFiltrados = dados.grupos.filter(g =>
     !busca || g.nome.toLowerCase().includes(busca.toLowerCase())
   )
+
+  // Ordenar grupos
+  if (ordemGrupos === 'valor_desc') gruposFiltrados = [...gruposFiltrados].sort((a, b) => b.total - a.total)
+  if (ordemGrupos === 'valor_asc') gruposFiltrados = [...gruposFiltrados].sort((a, b) => a.total - b.total)
+  // sequencia = ordem original da API
+
+  const totalFiltrado = gruposFiltrados.reduce((s, g) => s + g.total, 0)
 
   return (
     <div className="page">
@@ -236,24 +218,47 @@ export default function CustosDiretosPlanejados() {
         </div>
       </div>
 
-      {/* KPI */}
       <div className="kpi-grid">
         <div className="kpi" style={{ borderLeftColor: '#C8860A' }}>
           <div className="kpi-label">Total Custos Diretos</div>
           <div className="kpi-value">{fmtMoeda(dados.total)}</div>
-          <div className="kpi-sub">{dados.grupos.length} macrogrupos · {dados.grupos.reduce((s, g) => s + g.itens.length + g.subgrupos.reduce((ss, sg) => ss + sg.itens.length, 0), 0)} itens</div>
+          <div className="kpi-sub">
+            {dados.grupos.length} macrogrupos · {dados.grupos.reduce((s, g) => s + g.itens.length + g.subgrupos.reduce((ss, sg) => ss + sg.itens.length, 0), 0)} itens
+          </div>
         </div>
       </div>
 
-      {/* Filtros */}
-      <div style={{ display: 'flex', gap: 10, marginBottom: 12, alignItems: 'center' }}>
-        <input
-          type="text"
-          placeholder="🔍 Buscar macrogrupo..."
-          value={busca}
-          onChange={e => setBusca(e.target.value)}
-          style={{ flex: 1, padding: '7px 12px', fontSize: 12, borderRadius: 6, border: '.5px solid var(--border2)', background: 'var(--bg)', color: 'var(--text)' }}
-        />
+      {/* Controles */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+        <div style={{ flex: 1, minWidth: 180 }}>
+          <div style={{ fontSize: 10, color: 'var(--text2)', marginBottom: 4 }}>Buscar macrogrupo</div>
+          <input
+            type="text"
+            placeholder="🔍 Filtrar..."
+            value={busca}
+            onChange={e => setBusca(e.target.value)}
+            style={{ width: '100%', padding: '7px 12px', fontSize: 12, borderRadius: 6, border: '.5px solid var(--border2)', background: 'var(--bg)', color: 'var(--text)' }}
+          />
+        </div>
+
+        <div>
+          <div style={{ fontSize: 10, color: 'var(--text2)', marginBottom: 4 }}>Ordem dos grupos</div>
+          <select className="periodo" value={ordemGrupos} onChange={e => setOrdemGrupos(e.target.value)}>
+            <option value="sequencia">Sequência construtiva</option>
+            <option value="valor_desc">Maior valor primeiro</option>
+            <option value="valor_asc">Menor valor primeiro</option>
+          </select>
+        </div>
+
+        <div>
+          <div style={{ fontSize: 10, color: 'var(--text2)', marginBottom: 4 }}>Ordem dos itens</div>
+          <select className="periodo" value={ordemItens} onChange={e => setOrdemItens(e.target.value)}>
+            <option value="codigo">Por código EAP</option>
+            <option value="valor_desc">Maior valor primeiro</option>
+            <option value="valor_asc">Menor valor primeiro</option>
+          </select>
+        </div>
+
         {busca && (
           <button className="btn-secondary" style={{ fontSize: 11 }} onClick={() => setBusca('')}>Limpar</button>
         )}
@@ -262,18 +267,22 @@ export default function CustosDiretosPlanejados() {
       {/* Lista de grupos */}
       <div>
         {gruposFiltrados.map((grupo, index) => (
-          <GrupoCard key={grupo.chave} grupo={grupo} totalGeral={dados.total} index={index} />
+          <GrupoCard key={grupo.chave} grupo={grupo} totalGeral={dados.total} index={index} ordemItens={ordemItens} />
         ))}
       </div>
 
-      {/* Rodapé com total */}
+      {/* Rodapé */}
       <div style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         padding: '14px 18px', borderRadius: 10, background: 'var(--bg2)',
         border: '.5px solid var(--border)', marginTop: 8
       }}>
-        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>TOTAL GERAL</span>
-        <span style={{ fontSize: 18, fontWeight: 700, color: '#C8860A' }}>{fmtMoeda(dados.total)}</span>
+        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
+          {busca ? `${gruposFiltrados.length} grupos filtrados` : 'TOTAL GERAL'}
+        </span>
+        <span style={{ fontSize: 18, fontWeight: 700, color: '#C8860A' }}>
+          {fmtMoeda(busca ? totalFiltrado : dados.total)}
+        </span>
       </div>
     </div>
   )
