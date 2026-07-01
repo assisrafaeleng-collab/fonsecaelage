@@ -1,39 +1,21 @@
+// pages/api/custos-indiretos-realizados-lista.js
 import { supabase } from '../../lib/supabase'
-
 export default async function handler(req, res) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' })
-  }
-
+  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' })
   const obra_id = 'flats_pampulha'
-
   try {
-    const { data: lancamentos, error: errLancamentos } = await supabase
-      .from('custos_lancamentos')
-      .select('*')
-      .eq('obra_id', obra_id)
-      .in('grupo_custo', ['1. Terreno', '2. Projetos e Consultoria', '3. Serviços Jurídicos', '4. Taxas e Licenças'])
-      .eq('status', 'Normal')
-      .order('data_emissao', { ascending: false })
-
-    if (errLancamentos) {
-      throw new Error(`Erro ao buscar lançamentos: ${errLancamentos.message}`)
-    }
-
-    const total = lancamentos.reduce((sum, item) => sum + parseFloat(item.valor || 0), 0)
-
-    return res.status(200).json({
-      lancamentos,
-      total,
-      quantidade: lancamentos.length,
-      obra_id
-    })
-
+    const [lancRes, planRes] = await Promise.all([
+      supabase.from('custos_lancamentos').select('*').eq('obra_id', obra_id).like('codigo_eap', '18.%').eq('status', 'Normal').order('data_emissao', { ascending: false }),
+      supabase.from('custos_indiretos_planejados').select('categoria, valor_total, mes_desembolso').eq('obra_id', obra_id)
+    ])
+    if (lancRes.error) throw new Error(lancRes.error.message)
+    if (planRes.error) throw new Error(planRes.error.message)
+    const lancamentos = lancRes.data || []
+    const planejados = planRes.data || []
+    const totalRealizado = lancamentos.reduce((s, l) => s + parseFloat(l.valor || 0), 0)
+    const totalPlanejado = planejados.reduce((s, p) => s + parseFloat(p.valor_total || 0), 0)
+    return res.status(200).json({ lancamentos, planejados, totalRealizado, totalPlanejado, quantidade: lancamentos.length })
   } catch (error) {
-    console.error('Erro na API:', error)
-    return res.status(500).json({
-      error: 'Erro ao buscar dados',
-      message: error.message
-    })
+    return res.status(500).json({ error: error.message })
   }
 }
