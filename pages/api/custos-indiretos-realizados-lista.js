@@ -14,6 +14,7 @@ const EAP_CATEGORIA = {
   '18.1.19': 'Serviços Advocaticios',
   '18.1.21': 'IPTU Terreno',
   '18.1.22': 'Art e Taxas',
+  '18.1.20': 'Valor do Terreno',
   '18.1.23': 'Administração local da obra (engenheiro)',
 }
 
