@@ -87,9 +87,11 @@ export default function CustosDiretosPlanejados() {
   const totHh = useMemo(() => dados.reduce((s, r) => s + r.h, 0) || 1, [dados])
 
   const val = (r) => {
-    if (metric === 'custo') return r.c
-    if (metric === 'hh') return r.h
-    return r.h / totHh
+    const numMeses = mes === 20 ? 1 : Math.max(r.b - r.a + 1, 1)
+    const fator = mes === 20 ? 1 : 1 / numMeses
+    if (metric === 'custo') return r.c * fator
+    if (metric === 'hh') return r.h * fator
+    return (r.h * fator) / totHh
   }
 
   const fmt = (v) => {
