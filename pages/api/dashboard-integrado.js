@@ -14,7 +14,7 @@ export default async function handler(req, res) {
       supabase.from('v_curva_s_fisica_planejada').select('*').eq('obra_id', obra_id).lte('mes_numero', mesLimite).order('mes_numero'),
       supabase.from('custos_lancamentos').select('competencia, valor, status, grupo_custo, codigo_eap').eq('obra_id', obra_id).order('competencia'),
       supabase.from('cronograma_horas_planejado').select('grupo_nome, horas_totais').eq('obra_id', obra_id),
-      supabase.from('avanco_fisico_realizado').select('mes_numero, competencia, atividade_nome, percentual_realizado').eq('obra_id', obra_id).lte('mes_numero', mesLimite).order('mes_numero'),
+      supabase.from('avanco_fisico_realizado').select('mes_numero, competencia, atividade_nome, percentual_realizado, hh_planejado, hh_realizado').eq('obra_id', obra_id).lte('mes_numero', mesLimite).order('mes_numero'),
       supabase.from('custos_indiretos_planejados').select('valor_total').eq('obra_id', obra_id),
       supabase.from('orcamento_planejado').select('preco_total').eq('obra_id', obra_id),
     ])
