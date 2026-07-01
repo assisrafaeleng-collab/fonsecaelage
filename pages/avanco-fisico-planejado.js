@@ -113,7 +113,7 @@ export default function AvancoFisicoPlanejado() {
     if (statusF === 'concluido' && st !== 'concluido') return false
     if (statusF === 'futuro' && st !== 'futuro') return false
     // Mostrar apenas grupos com atividade iniciada ou adiantada
-    return r.a <= mes + 2 // mostra até 2 meses à frente
+    return r.a <= mes // apenas itens já iniciados
   }), [dados, pavF, ql, mes, statusF])
 
   // Agrupar por macrogrupo
