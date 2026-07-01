@@ -114,7 +114,7 @@ export default function AvancoFisicoRealizado() {
   const visible = useMemo(() => dados.filter(r => {
     if (pavF !== '__ALL__' && r.p !== pavF) return false
     if (ql && !r.n.toLowerCase().includes(ql) && !r.d.toLowerCase().includes(ql)) return false
-    return r.a <= mes // apenas itens já iniciados ou programados até o mês
+    return r.a <= mes && r.g !== 17 && r.g !== 18 // excluir locacoes e funcionarios ou programados até o mês
   }), [dados, pavF, ql, mes])
 
   // Agrupar
