@@ -236,7 +236,7 @@ export default function CustosDiretosPlanejados() {
                   <div style={S.cvnum}>{fmt(gVal)}</div>
                   <div style={S.cvpct}>{fmtP(gPct)} do total</div>
                 </div>
-                <div style={{ color: '#6d675e', fontSize: 12, flexShrink: 0 }}>{isOpen ? '▲' : '▼'}|/div>
+                <div style={{ color: '#6d675e', fontSize: 12, flexShrink: 0 }}>{isOpen ? '▲' : '▼'}</div>
               </div>
 
               {/* Body */}
