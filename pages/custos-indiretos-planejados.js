@@ -36,7 +36,8 @@ export default function CustosIndiretosPlanejados() {
   if (!dados) return <div className="page"><div className="empty-state"><h3>Erro ao carregar dados</h3></div></div>
 
   // Aplicar filtro de busca
-  let categoriasFiltradas = (dados.categorias || []).filter(c =>
+  const cats = (dados.categorias || []).map(x=>({...x, nome: x.nome||x.categoria||'', valor: x.valor||x.valor_total||0}))
+  let categoriasFiltradas = cats.filter(c =>
     c.nome.toLowerCase().includes(busca.toLowerCase())
   )
 
