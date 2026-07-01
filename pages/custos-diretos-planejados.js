@@ -126,8 +126,8 @@ export default function CustosDiretosPlanejados() {
     return arr
   }, [visible, axis])
 
-  const totalVisible = useMemo(() => visible.reduce((s, r) => s + val(r), 0), [visible, metric, totHh])
-  const maxGroup = useMemo(() => Math.max(...groups.map(g => g.rows.reduce((s, r) => s + val(r), 0)), 1), [groups, metric, totHh])
+  const totalVisible = useMemo(() => visible.reduce((s, r) => s + val(r), 0), [visible, metric, totHh, mes])
+  const maxGroup = useMemo(() => Math.max(...groups.map(g => g.rows.reduce((s, r) => s + val(r), 0)), 1), [groups, metric, totHh, mes])
 
   const toggle = (key) => setOpen(o => ({ ...o, [key]: !o[key] }))
 
