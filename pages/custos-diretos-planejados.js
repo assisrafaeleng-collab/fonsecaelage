@@ -75,6 +75,7 @@ export default function CustosDiretosPlanejados() {
   const [pavF, setPavF] = useState('__ALL__')
   const [q, setQ] = useState('')
   const [open, setOpen] = useState({})
+  const [mes, setMes] = useState(20)
 
   useEffect(() => {
     fetch('/dados.json')
@@ -100,6 +101,7 @@ export default function CustosDiretosPlanejados() {
   const ql = q.toLowerCase()
 
   const visible = useMemo(() => dados.filter(r => {
+    if (mes !== 20 && (r.a > mes || r.b < mes)) return false
     if (pavF !== '__ALL__' && r.p !== pavF) return false
     if (ql && !r.n.toLowerCase().includes(ql) && !r.d.toLowerCase().includes(ql)) return false
     return true
@@ -166,6 +168,17 @@ export default function CustosDiretosPlanejados() {
               value={q}
               onChange={e => setQ(e.target.value)}
             />
+          </div>
+          <div>
+            <label style={S.lbl}>Período</label>
+            <select style={S.select} value={mes} onChange={e => setMes(parseInt(e.target.value))}>
+              <option value={20}>Todos (20 meses)</option>
+              {Array.from({length:20},(_,i)=>{
+                const nm=['jul','ago','set','out','nov','dez','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez','jan','fev']
+                const an=[2026,2026,2026,2026,2026,2026,2027,2027,2027,2027,2027,2027,2027,2027,2027,2027,2027,2027,2028,2028]
+                return <option key={i+1} value={i+1}>M{i+1} — {nm[i]}/{an[i]}</option>
+              })}
+            </select>
           </div>
           <div>
             <label style={S.lbl}>Pavimento</label>
