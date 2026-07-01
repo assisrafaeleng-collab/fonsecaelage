@@ -3,6 +3,8 @@ import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/router'
 
 const PAVS = ['1º','2º','3º','4º','5º','6º/Plat','Edifício']
+const NOMES = ['jul','ago','set','out','nov','dez','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez','jan','fev']
+const ANOS = [2026,2026,2026,2026,2026,2026,2027,2027,2027,2027,2027,2027,2027,2027,2027,2027,2027,2027,2028,2028]
 
 const fmtR = v => 'R$ ' + Math.round(v).toLocaleString('pt-BR')
 const fmtH = v => Math.round(v).toLocaleString('pt-BR') + ' Hh'
@@ -70,8 +72,8 @@ export default function CustosDiretosPlanejados() {
   const router = useRouter()
   const [dados, setDados] = useState([])
   const [loading, setLoading] = useState(true)
-  const [axis, setAxis] = useState('grupo')       // 'grupo' | 'pav'
-  const [metric, setMetric] = useState('custo')   // 'custo' | 'hh' | 'pct'
+  const [axis, setAxis] = useState('grupo')
+  const [metric, setMetric] = useState('custo')
   const [pavF, setPavF] = useState('__ALL__')
   const [q, setQ] = useState('')
   const [open, setOpen] = useState({})
@@ -87,11 +89,15 @@ export default function CustosDiretosPlanejados() {
   const totHh = useMemo(() => dados.reduce((s, r) => s + r.h, 0) || 1, [dados])
 
   const val = (r) => {
-    const numMeses = mes === 20 ? 1 : Math.max(r.b - r.a + 1, 1)
-    const fator = mes === 20 ? 1 : 1 / numMeses
-    if (metric === 'custo') return r.c * fator
-    if (metric === 'hh') return r.h * fator
-    return (r.h * fator) / totHh
+    if (mes === 20) {
+      if (metric === 'custo') return r.c
+      if (metric === 'hh') return r.h
+      return r.h / totHh
+    }
+    const numMeses = Math.max(r.b - r.a + 1, 1)
+    if (metric === 'custo') return r.c / numMeses
+    if (metric === 'hh') return r.h / numMeses
+    return (r.h / numMeses) / totHh
   }
 
   const fmt = (v) => {
@@ -107,9 +113,8 @@ export default function CustosDiretosPlanejados() {
     if (pavF !== '__ALL__' && r.p !== pavF) return false
     if (ql && !r.n.toLowerCase().includes(ql) && !r.d.toLowerCase().includes(ql)) return false
     return true
-  }), [dados, pavF, q, mesl])
+  }), [dados, pavF, ql, mes])
 
-  // Group level 1
   const groups = useMemo(() => {
     const map = {}
     visible.forEach(r => {
@@ -130,7 +135,6 @@ export default function CustosDiretosPlanejados() {
   const maxGroup = useMemo(() => Math.max(...groups.map(g => g.rows.reduce((s, r) => s + val(r), 0)), 1), [groups, metric, totHh, mes])
 
   const toggle = (key) => setOpen(o => ({ ...o, [key]: !o[key] }))
-
   useEffect(() => { setOpen({}) }, [q])
 
   if (loading) return <div style={S.page}><div style={{ padding: 40, color: '#a09a90' }}>Carregando...</div></div>
@@ -140,27 +144,26 @@ export default function CustosDiretosPlanejados() {
       <div style={S.wrap}>
         <div style={S.eyebrow}>Custos diretos + avanço físico planejado</div>
         <div style={S.h1}>Flats Pampulha</div>
-        <div style={S.sub}>20 meses · Jul/2026 a Fev/2028</div>
+        <div style={S.sub}>{mes === 20 ? '20 meses · Jul/2026 a Fev/2028' : `M${mes} — ${NOMES[mes-1]}/${ANOS[mes-1]}`}</div>
 
-        {/* Nav */}
         <div style={S.nav}>
           <button style={S.navBtn} onClick={() => router.push('/')}>← Dashboard</button>
         </div>
 
-        {/* Card de total */}
         <div style={S.total}>
           <div style={S.totLbl}>
             {metric === 'custo' ? 'Total custo direto' : metric === 'hh' ? 'Total homem-hora' : '% físico total'}
             {pavF !== '__ALL__' ? ` · ${pavF}` : ''}
+            {mes !== 20 ? ` · M${mes}` : ''}
           </div>
           <div style={S.totBig}>{fmt(totalVisible)}</div>
           <div style={S.totFoot}>
             {groups.length} {axis === 'grupo' ? 'macrogrupos' : 'pavimentos'} · {visible.length} itens
             {q ? ` · filtro: "${q}"` : ''}
+            {mes !== 20 ? ` · ${NOMES[mes-1]}/${ANOS[mes-1]}` : ''}
           </div>
         </div>
 
-        {/* Controles */}
         <div style={S.controls}>
           <div style={{ flex: 1, minWidth: 160 }}>
             <label style={S.lbl}>Buscar</label>
@@ -175,11 +178,9 @@ export default function CustosDiretosPlanejados() {
             <label style={S.lbl}>Período</label>
             <select style={S.select} value={mes} onChange={e => setMes(parseInt(e.target.value))}>
               <option value={20}>Todos (20 meses)</option>
-              {Array.from({length:20},(_,i)=>{
-                const nm=['jul','ago','set','out','nov','dez','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez','jan','fev']
-                const an=[2026,2026,2026,2026,2026,2026,2027,2027,2027,2027,2027,2027,2027,2027,2027,2027,2027,2027,2028,2028]
-                return <option key={i+1} value={i+1}>M{i+1} — {nm[i]}/{an[i]}</option>
-              })}
+              {Array.from({length:20},(_,i) => (
+                <option key={i+1} value={i+1}>M{i+1} — {NOMES[i]}/{ANOS[i]}</option>
+              ))}
             </select>
           </div>
           <div>
@@ -199,7 +200,6 @@ export default function CustosDiretosPlanejados() {
           </div>
         </div>
 
-        {/* Cards */}
         {groups.length === 0 && <div style={S.empty}>Nenhum item encontrado.</div>}
 
         {groups.map((g, gi) => {
@@ -208,7 +208,6 @@ export default function CustosDiretosPlanejados() {
           const barW = maxGroup > 0 ? (gVal / maxGroup) * 100 : 0
           const isOpen = !!open[g.key]
 
-          // Subgroups (level 2)
           const subMap = {}
           g.rows.forEach(r => {
             const sk = axis === 'grupo' ? r.p : String(r.g)
@@ -226,13 +225,11 @@ export default function CustosDiretosPlanejados() {
             subs.sort((a, b) => a.gNum - b.gNum)
           }
 
-          // Badge
           const pavCount = new Set(g.rows.map(r => r.p)).size
           const badge = axis === 'grupo' ? g.gNum : gi + 1
 
           return (
             <div key={g.key} style={S.card}>
-              {/* Header */}
               <div style={S.chead} onClick={() => toggle(g.key)}>
                 <div style={S.badge}>{badge}</div>
                 <div style={{ flex: 1 }}>
@@ -254,7 +251,6 @@ export default function CustosDiretosPlanejados() {
                 <div style={{ color: '#6d675e', fontSize: 12, flexShrink: 0 }}>{isOpen ? '▲' : '▼'}</div>
               </div>
 
-              {/* Body */}
               {isOpen && (
                 <div style={S.body}>
                   {subs.map(sub => {
@@ -290,9 +286,8 @@ export default function CustosDiretosPlanejados() {
           )
         })}
 
-        {/* Footer total */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', borderRadius: 10, background: '#17171b', border: '1px solid #2a2a31', marginTop: 4 }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: '#ece9e4' }}>TOTAL GERAL</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#ece9e4' }}>TOTAL GERAL{mes !== 20 ? ` M${mes}` : ''}</span>
           <span style={{ fontSize: 18, fontWeight: 700, color: '#e6a338' }}>{fmt(totalVisible)}</span>
         </div>
       </div>
