@@ -1,288 +1,285 @@
 // pages/custos-diretos-planejados.js
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/router'
 
-const fmtMoeda = (val) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 }).format(val)
-const fmtPerc = (val) => `${val.toFixed(2)}%`
+const PAVS = ['1º','2º','3º','4º','5º','6º/Plat','Edifício']
 
-const ICONES = {
-  'Serviços Preliminares e Gerais': '🏗️',
-  'Movimento de Terra e Fundações': '⛏️',
-  'Estrutura': '🏛️',
-  'Alvenaria e Fechamentos': '🧱',
-  'Reboco e Emboço': '🪣',
-  'Instalações Hidrossanitárias': '💧',
-  'Instalações Elétricas e Telecom': '⚡',
-  'Instalações Especiais': '🔌',
-  'Cobertura e Impermeabilização': '🏠',
-  'Aplicação de Gesso': '🪤',
-  'Pisos e Rodapés': '🟫',
-  'Esquadrias': '🪟',
-  'Pintura': '🖌️',
-  'Louças, Metais e Bancadas': '🚿',
-  'Urbanização e Paisagismo': '🌳',
-  'Locações e Equipamentos': '🚧',
-  'Serviços Finais': '✅',
+const fmtR = v => 'R$ ' + Math.round(v).toLocaleString('pt-BR')
+const fmtH = v => Math.round(v).toLocaleString('pt-BR') + ' Hh'
+const fmtP = v => (v * 100).toFixed(2).replace('.', ',') + '%'
+
+const S = {
+  page: { minHeight: '100vh', background: '#0f0f11', color: '#ece9e4', fontFamily: '"Segoe UI",system-ui,sans-serif', fontVariantNumeric: 'tabular-nums' },
+  wrap: { maxWidth: 1080, margin: '0 auto', padding: '0 20px 40px' },
+  eyebrow: { color: '#6d675e', fontSize: 11, letterSpacing: 1.4, textTransform: 'uppercase', paddingTop: 28, marginBottom: 2 },
+  h1: { fontSize: 22, fontWeight: 600, margin: '2px 0 2px' },
+  sub: { color: '#a09a90', fontSize: 13, marginBottom: 18 },
+  nav: { display: 'flex', gap: 8, marginBottom: 20 },
+  navBtn: { background: 'transparent', border: '1px solid #2a2a31', color: '#a09a90', borderRadius: 8, padding: '7px 14px', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' },
+  total: { borderLeft: '3px solid #e6a338', background: '#17171b', border: '1px solid #2a2a31', borderLeftWidth: 3, borderLeftColor: '#e6a338', borderRadius: 12, padding: '16px 20px', marginBottom: 16 },
+  totLbl: { color: '#6d675e', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase' },
+  totBig: { fontSize: 28, fontWeight: 600, marginTop: 2, color: '#e6a338' },
+  totFoot: { color: '#a09a90', fontSize: 12, marginTop: 3 },
+  controls: { display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap', alignItems: 'flex-end' },
+  lbl: { display: 'block', color: '#6d675e', fontSize: 10, letterSpacing: .5, textTransform: 'uppercase', marginBottom: 4 },
+  input: { background: '#1e1e24', border: '1px solid #2a2a31', color: '#ece9e4', borderRadius: 8, padding: '8px 11px', fontSize: 13, fontFamily: 'inherit', minWidth: 180 },
+  select: { background: '#1e1e24', border: '1px solid #2a2a31', color: '#ece9e4', borderRadius: 8, padding: '8px 11px', fontSize: 13, fontFamily: 'inherit' },
+  seg: { display: 'flex', background: '#1e1e24', border: '1px solid #2a2a31', borderRadius: 8, overflow: 'hidden' },
+  card: { background: '#17171b', border: '1px solid #2a2a31', borderRadius: 12, marginBottom: 8, overflow: 'hidden' },
+  chead: { display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', cursor: 'pointer', userSelect: 'none' },
+  badge: { width: 30, height: 30, borderRadius: 7, background: '#1e1e24', border: '1px solid #2a2a31', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: '#a09a90', fontWeight: 600, flexShrink: 0 },
+  cname: { fontSize: 14, fontWeight: 500, flex: 1 },
+  cmeta: { color: '#6d675e', fontSize: 11, marginTop: 1 },
+  barWrap: { width: 80, flexShrink: 0 },
+  bar: { height: 5, background: '#1e1e24', borderRadius: 3, overflow: 'hidden' },
+  cval: { textAlign: 'right', flexShrink: 0, minWidth: 120 },
+  cvnum: { fontSize: 14, fontWeight: 600 },
+  cvpct: { fontSize: 11, color: '#6d675e', marginTop: 1 },
+  body: { borderTop: '1px solid #2a2a31' },
+  subsec: { padding: '10px 16px 4px', color: '#3fae86', fontSize: 11, letterSpacing: .5, textTransform: 'uppercase', fontWeight: 600 },
+  item: { display: 'flex', gap: 10, padding: '5px 16px', fontSize: 12, alignItems: 'baseline' },
+  itemEap: { color: '#6d675e', minWidth: 48, fontFamily: 'monospace', fontSize: 11 },
+  itemDesc: { flex: 1, color: '#a09a90' },
+  itemMes: { color: '#6d675e', fontSize: 10, flexShrink: 0 },
+  itemVal: { minWidth: 100, textAlign: 'right', color: '#ece9e4', flexShrink: 0 },
+  subtot: { display: 'flex', justifyContent: 'flex-end', gap: 8, padding: '8px 16px', borderTop: '1px solid #2a2a31', marginTop: 4, fontSize: 12, color: '#6d675e' },
+  empty: { color: '#6d675e', textAlign: 'center', padding: 32, fontSize: 14 },
 }
 
-function ordenarItens(itens, ordem) {
-  return [...itens].sort((a, b) => {
-    if (ordem === 'valor_desc') return b.valor - a.valor
-    if (ordem === 'valor_asc') return a.valor - b.valor
-    return a.cod_eap?.localeCompare(b.cod_eap, undefined, { numeric: true }) || 0
-  })
-}
-
-function SubgrupoRow({ subgrupo, ordemItens }) {
-  const [expandido, setExpandido] = useState(false)
-  const itensOrdenados = ordenarItens(subgrupo.itens, ordemItens)
-
+function Seg({ value, onChange, options }) {
   return (
-    <div style={{ marginBottom: 4 }}>
-      <div
-        onClick={() => setExpandido(!expandido)}
-        style={{
-          display: 'flex', alignItems: 'center', gap: 10,
-          padding: '8px 12px', borderRadius: 6, cursor: 'pointer',
-          background: expandido ? 'rgba(91,155,213,0.08)' : 'rgba(255,255,255,0.02)',
-          border: '1px solid rgba(255,255,255,0.06)',
-          transition: 'background 0.15s'
-        }}
-      >
-        <span style={{ fontSize: 11, color: 'var(--text2)', width: 14 }}>{expandido ? '▼' : '▶'}</span>
-        <span style={{ fontSize: 12, color: 'var(--text)', flex: 1, fontWeight: 500 }}>📐 {subgrupo.nome}</span>
-        <span style={{ fontSize: 12, color: '#5B9BD5', fontWeight: 600, minWidth: 140, textAlign: 'right' }}>{fmtMoeda(subgrupo.total)}</span>
-        <span style={{ fontSize: 11, color: 'var(--text2)', minWidth: 60, textAlign: 'right' }}>{fmtPerc(subgrupo.percentual)}</span>
-      </div>
-
-      {expandido && (
-        <div style={{ marginLeft: 24, marginTop: 2 }}>
-          {itensOrdenados.map(item => (
-            <div key={item.cod_eap} style={{
-              display: 'flex', alignItems: 'center', gap: 10,
-              padding: '6px 12px', borderRadius: 4,
-              borderLeft: '2px solid rgba(91,155,213,0.3)', marginBottom: 2
-            }}>
-              <span style={{ fontSize: 10, color: 'var(--text3)', minWidth: 50, fontFamily: 'monospace' }}>{item.cod_eap}</span>
-              <span style={{ fontSize: 11, color: 'var(--text2)', flex: 1 }}>{item.descricao}</span>
-              <span style={{ fontSize: 11, color: 'var(--text)', fontWeight: 600, minWidth: 140, textAlign: 'right' }}>{fmtMoeda(item.valor)}</span>
-            </div>
-          ))}
-        </div>
-      )}
+    <div style={S.seg}>
+      {options.map(o => (
+        <button key={o.v} onClick={() => onChange(o.v)} style={{
+          background: value === o.v ? '#e6a338' : 'transparent',
+          color: value === o.v ? '#231803' : '#a09a90',
+          border: 0, padding: '8px 12px', fontSize: 12, cursor: 'pointer',
+          fontFamily: 'inherit', whiteSpace: 'nowrap', fontWeight: value === o.v ? 600 : 400,
+          transition: 'background .15s'
+        }}>{o.l}</button>
+      ))}
     </div>
   )
 }
 
-function GrupoCard({ grupo, totalGeral, index, ordemItens }) {
-  const [expandido, setExpandido] = useState(false)
-  const icone = ICONES[grupo.nome] || '📦'
-  const temSubgrupos = grupo.subgrupos && grupo.subgrupos.length > 0
-  const totalItens = grupo.itens.length + grupo.subgrupos.reduce((sum, sg) => sum + sg.itens.length, 0)
-  const itensOrdenados = ordenarItens(grupo.itens, ordemItens)
-
-  return (
-    <div style={{ border: '.5px solid var(--border)', borderRadius: 10, marginBottom: 8, overflow: 'hidden', background: 'var(--bg)' }}>
-      <div
-        onClick={() => setExpandido(!expandido)}
-        style={{
-          display: 'flex', alignItems: 'center', gap: 14,
-          padding: '14px 18px', cursor: 'pointer',
-          background: expandido ? 'rgba(255,255,255,0.03)' : 'transparent',
-          transition: 'background 0.15s'
-        }}
-      >
-        <div style={{
-          width: 28, height: 28, borderRadius: '50%',
-          background: 'var(--bg2)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 11, fontWeight: 700, color: 'var(--text2)', flexShrink: 0
-        }}>{index + 1}</div>
-
-        <span style={{ fontSize: 16 }}>{icone}</span>
-
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{grupo.nome}</div>
-          <div style={{ fontSize: 10, color: 'var(--text2)', marginTop: 2 }}>
-            {totalItens} {totalItens === 1 ? 'item' : 'itens'}
-            {temSubgrupos && ` · ${grupo.subgrupos.length} pavimentos`}
-          </div>
-        </div>
-
-        <div style={{ width: 80, height: 4, background: 'var(--bg2)', borderRadius: 2, overflow: 'hidden', flexShrink: 0 }}>
-          <div style={{ height: '100%', width: `${Math.min(grupo.percentual, 100)}%`, background: '#C8860A', borderRadius: 2 }} />
-        </div>
-
-        <div style={{ textAlign: 'right', flexShrink: 0, minWidth: 160 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{fmtMoeda(grupo.total)}</div>
-          <div style={{ fontSize: 10, color: 'var(--text2)' }}>{fmtPerc(grupo.percentual)} do total</div>
-        </div>
-
-        <span style={{ fontSize: 12, color: 'var(--text2)', flexShrink: 0 }}>{expandido ? '▲' : '▼'}</span>
-      </div>
-
-      {expandido && (
-        <div style={{ padding: '0 18px 16px', borderTop: '.5px solid var(--border)' }}>
-          <div style={{ marginTop: 12 }}>
-            {temSubgrupos && grupo.subgrupos.map(sg => (
-              <SubgrupoRow key={sg.nome} subgrupo={sg} ordemItens={ordemItens} />
-            ))}
-
-            {itensOrdenados.length > 0 && (
-              <div style={{ marginTop: temSubgrupos ? 8 : 0 }}>
-                {temSubgrupos && (
-                  <div style={{ fontSize: 10, color: 'var(--text2)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                    Itens gerais
-                  </div>
-                )}
-                {itensOrdenados.map(item => (
-                  <div key={item.cod_eap} style={{
-                    display: 'flex', alignItems: 'center', gap: 10,
-                    padding: '6px 12px', borderRadius: 4,
-                    borderLeft: '2px solid rgba(200,134,10,0.3)', marginBottom: 2
-                  }}>
-                    <span style={{ fontSize: 10, color: 'var(--text3)', minWidth: 50, fontFamily: 'monospace' }}>{item.cod_eap}</span>
-                    <span style={{ fontSize: 11, color: 'var(--text2)', flex: 1 }}>{item.descricao}</span>
-                    <span style={{ fontSize: 11, color: 'var(--text)', fontWeight: 600, minWidth: 140, textAlign: 'right' }}>{fmtMoeda(item.valor)}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div style={{
-              display: 'flex', justifyContent: 'flex-end', gap: 20,
-              marginTop: 12, paddingTop: 10, borderTop: '.5px solid var(--border)',
-              fontSize: 12, fontWeight: 700, color: 'var(--text)'
-            }}>
-              <span>Subtotal {grupo.nome}:</span>
-              <span style={{ color: '#C8860A' }}>{fmtMoeda(grupo.total)}</span>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  )
+function naturalSort(a, b) {
+  return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
 }
 
 export default function CustosDiretosPlanejados() {
   const router = useRouter()
-  const [dados, setDados] = useState(null)
+  const [dados, setDados] = useState([])
   const [loading, setLoading] = useState(true)
-  const [busca, setBusca] = useState('')
-  const [ordemGrupos, setOrdemGrupos] = useState('sequencia') // sequencia | valor_desc | valor_asc
-  const [ordemItens, setOrdemItens] = useState('codigo')     // codigo | valor_desc | valor_asc
+  const [axis, setAxis] = useState('grupo')       // 'grupo' | 'pav'
+  const [metric, setMetric] = useState('custo')   // 'custo' | 'hh' | 'pct'
+  const [pavF, setPavF] = useState('__ALL__')
+  const [q, setQ] = useState('')
+  const [open, setOpen] = useState({})
 
   useEffect(() => {
-    async function fetchDados() {
-      try {
-        setLoading(true)
-        const res = await fetch('/api/custos-diretos-planejados')
-        if (!res.ok) throw new Error('Erro ao carregar dados')
-        const data = await res.json()
-        setDados(data)
-      } catch (err) {
-        console.error(err)
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchDados()
+    fetch('/dados.json')
+      .then(r => r.json())
+      .then(d => { setDados(d); setLoading(false) })
+      .catch(() => setLoading(false))
   }, [])
 
-  if (loading) return <div className="page"><div className="loading">Carregando custos diretos planejados...</div></div>
-  if (!dados) return <div className="page"><div className="empty-state"><h3>Erro ao carregar dados</h3></div></div>
+  const totHh = useMemo(() => dados.reduce((s, r) => s + r.h, 0) || 1, [dados])
 
-  // Filtrar por busca
-  let gruposFiltrados = dados.grupos.filter(g =>
-    !busca || g.nome.toLowerCase().includes(busca.toLowerCase())
-  )
+  const val = (r) => {
+    if (metric === 'custo') return r.c
+    if (metric === 'hh') return r.h
+    return r.h / totHh
+  }
 
-  // Ordenar grupos
-  if (ordemGrupos === 'valor_desc') gruposFiltrados = [...gruposFiltrados].sort((a, b) => b.total - a.total)
-  if (ordemGrupos === 'valor_asc') gruposFiltrados = [...gruposFiltrados].sort((a, b) => a.total - b.total)
-  // sequencia = ordem original da API
+  const fmt = (v) => {
+    if (metric === 'custo') return fmtR(v)
+    if (metric === 'hh') return fmtH(v)
+    return fmtP(v)
+  }
 
-  const totalFiltrado = gruposFiltrados.reduce((s, g) => s + g.total, 0)
+  const ql = q.toLowerCase()
+
+  const visible = useMemo(() => dados.filter(r => {
+    if (pavF !== '__ALL__' && r.p !== pavF) return false
+    if (ql && !r.n.toLowerCase().includes(ql) && !r.d.toLowerCase().includes(ql)) return false
+    return true
+  }), [dados, pavF, ql])
+
+  // Group level 1
+  const groups = useMemo(() => {
+    const map = {}
+    visible.forEach(r => {
+      const key = axis === 'grupo' ? String(r.g) : r.p
+      if (!map[key]) map[key] = { key, label: axis === 'grupo' ? r.n : r.p, gNum: r.g, rows: [] }
+      map[key].rows.push(r)
+    })
+    const arr = Object.values(map)
+    if (axis === 'grupo') arr.sort((a, b) => a.gNum - b.gNum)
+    else arr.sort((a, b) => {
+      const ia = PAVS.indexOf(a.key), ib = PAVS.indexOf(b.key)
+      return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib)
+    })
+    return arr
+  }, [visible, axis])
+
+  const totalVisible = useMemo(() => visible.reduce((s, r) => s + val(r), 0), [visible, metric, totHh])
+  const maxGroup = useMemo(() => Math.max(...groups.map(g => g.rows.reduce((s, r) => s + val(r), 0)), 1), [groups, metric, totHh])
+
+  const toggle = (key) => setOpen(o => ({ ...o, [key]: !o[key] }))
+
+  useEffect(() => { setOpen({}) }, [q])
+
+  if (loading) return <div style={S.page}><div style={{ padding: 40, color: '#a09a90' }}>Carregando...</div></div>
 
   return (
-    <div className="page">
-      <div className="header">
-        <div className="header-top">
+    <div style={S.page}>
+      <div style={S.wrap}>
+        <div style={S.eyebrow}>Custos diretos + avanço físico planejado</div>
+        <div style={S.h1}>Flats Pampulha</div>
+        <div style={[.sub}>20 meses · Jul/2026 a Fev/2028</div>
+
+        {/* Nav */}
+        <div style={S.nav}>
+          <button style={S.navBtn} onClick={() => router.push('/')}>← Dashboard</button>
+        </div>
+
+        {/* Card de total */}
+        <div style={S.total}>
+          <div style={S.totLbl}>
+            {metric === 'custo' ? 'Total custo direto' : metric === 'hh' ? 'Total homem-hora' : '% físico total'}
+            {pavF !== '__ALL__' ? ` · ${pavF}` : ''}
+          </div>
+          <div style={S.totBig}>{fmt(totalVisible)}</div>
+          <div style={S.totFoot}>
+            {groups.length} {axis === 'grupo' ? 'macrogrupos' : 'pavimentos'} · {visible.length} itens
+            {q ? ` · filtro: "${q}"` : ''}
+          </div>
+        </div>
+
+        {/* Controles */}
+        <div style={S.controls}>
+          <div style={{ flex: 1, minWidth: 160 }}>
+            <label style={S.lbl}>Buscar</label>
+            <input
+              style={{ ...S.input, width: '100%', boxSizing: 'border-box' }}
+              placeholder="macrogrupo ou item..."
+              value={q}
+              onChange={e => setQ(e.target.value)}
+            />
+          </div>
           <div>
-            <div className="obra-eye">CUSTOS DIRETOS PLANEJADOS</div>
-            <div className="obra-nome">Flats Pampulha</div>
-            <div className="obra-info">20 meses de execução · Jul/2026 a Fev/2028</div>
+            <label style={S.lbl}>Pavimento</label>
+            <select style={S.select} value={pavF} onChange={e => setPavF(e.target.value)}>
+              <option value="__ALL__">Todos</option>
+              {PAVS.map(p => <option key={p} value={p}>{p}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={S.lbl}>Agrupar por</label>
+            <Seg value={axis} onChange={setAxis} options={[{ v: 'grupo', l: 'Macrogrupo' }, { v: 'pav', l: 'Pavimento' }]} />
+          </div>
+          <div>
+            <label style={S.lbl}>Métrica</label>
+            <Seg value={metric} onChange={setMetric} options={[{ v: 'custo', l: 'R$' }, { v: 'hh', l: 'Hh' }, { v: 'pct', l: '%' }]} />
           </div>
         </div>
-        <div className="nav">
-          <button className="nav-btn" onClick={() => router.push('/')}>← Voltar ao Dashboard</button>
+
+        {/* Cards */}
+        {groups.length === 0 && <div style={S.empty}>Nenhum item encontrado.</div>}
+
+        {groups.map((g, gi) => {
+          const gVal = g.rows.reduce((s, r) => s + val(r), 0)
+          const gPct = totalVisible > 0 ? gVal / totalVisible : 0
+          const barW = maxGroup > 0 ? (gVal / maxGroup) * 100 : 0
+          const isOpen = !!open[g.key]
+
+          // Subgroups (level 2)
+          const subMap = {}
+          g.rows.forEach(r => {
+            const sk = axis === 'grupo' ? r.p : String(r.g)
+            const sl = axis === 'grupo' ? r.p : r.n
+            if (!subMap[sk]) subMap[sk] = { key: sk, label: sl, gNum: r.g, rows: [] }
+            subMap[sk].rows.push(r)
+          })
+          const subs = Object.values(subMap)
+          if (axis === 'grupo') {
+            subs.sort((a, b) => {
+              const ia = PAVS.indexOf(a.key), ib = PAVS.indexOf(b.key)
+              return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib)
+            })
+          } else {
+            subs.sort((a, b) => a.gNum - b.gNum)
+          }
+
+          // Badge
+          const pavCount = new Set(g.rows.map(r => r.p)).size
+          const badge = axis === 'grupo' ? g.gNum : gi + 1
+
+          return (
+            <div key={g.key} style={S.card}>
+              {/* Header */}
+              <div style={S.chead} onClick={() => toggle(g.key)}>
+                <div style={S.badge}>{badge}</div>
+                <div style={{ flex: 1 }}>
+                  <div style={S.cname}>{g.label}</div>
+                  <div style={S.cmeta}>
+                    {g.rows.length} {g.rows.length === 1 ? 'item' : 'itens'}
+                    {axis === 'grupo' ? ` · ${pavCount} ${pavCount === 1 ? 'pavimento' : 'pavimentos'}` : ''}
+                  </div>
+                </div>
+                <div style={S.barWrap}>
+                  <div style={S.bar}>
+                    <div style={{ height: '100%', width: `${barW}%`, background: '#e6a338', borderRadius: 3, transition: 'width .3s' }} />
+                  </div>
+                </div>
+                <div style={S.cval}>
+                  <div style={S.cvnum}>{fmt(gVal)}</div>
+                  <div style={S.cvpct}>{fmtP(gPct)} do total</div>
+                </div>
+                <div style={{ color: '#6d675e', fontSize: 12, flexShrink: 0 }}>{isOpen ? '▲' : '▼'}|/div>
+              </div>
+
+              {/* Body */}
+              {isOpen && (
+                <div style={S.body}>
+                  {subs.map(sub => {
+                    const subVal = sub.rows.reduce((s, r) => s + val(r), 0)
+                    const sortedItems = [...sub.rows].sort((a, b) => naturalSort(a.i, b.i))
+                    return (
+                      <div key={sub.key}>
+                        <div style={S.subsec}>
+                          {axis === 'grupo' ? `📐 ${sub.label}` : `${sub.gNum}. ${sub.label}`}
+                        </div>
+                        {sortedItems.map((r, ri) => (
+                          <div key={`${r.i}-${ri}`} style={{ ...S.item, background: ri % 2 === 0 ? 'rgba(255,255,255,0.01)' : 'transparent' }}>
+                            <span style={S.itemEap}>{r.i}</span>
+                            <span style={S.itemDesc}>{r.d}</span>
+                            <span style={S.itemMes}>M{String(r.a).padStart(2,'0')}–M{String(r.b).padStart(2,'0')}</span>
+                            <span style={S.itemVal}>{fmt(val(r))}</span>
+                          </div>
+                        ))}
+                        <div style={S.subtot}>
+                          <span>subtotal {sub.label}:</span>
+                          <span style={{ color: '#3fae86', fontWeight: 600 }}>{fmt(subVal)}</span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                  <div style={{ ...S.subtot, borderTop: '2px solid #2a2a31', marginTop: 0, padding: '10px 16px' }}>
+                    <span style={{ color: '#a09a90' }}>total {g.label}:</span>
+                    <span style={{ color: '#e6a338', fontWeight: 700, fontSize: 13 }}>{fmt(gVal)}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        })}
+
+        {/* Footer total */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', borderRadius: 10, background: '#17171b', border: '1px solid #2a2a31', marginTop: 4 }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#ece9e4' }}>TOTAL GERAL</span>
+          <span style={{ fontSize: 18, fontWeight: 700, color: '#e6a338' }}>{fmt(totalVisible)}</span>
         </div>
-      </div>
-
-      <div className="kpi-grid">
-        <div className="kpi" style={{ borderLeftColor: '#C8860A' }}>
-          <div className="kpi-label">Total Custos Diretos</div>
-          <div className="kpi-value">{fmtMoeda(dados.total)}</div>
-          <div className="kpi-sub">
-            {dados.grupos.length} macrogrupos · {dados.grupos.reduce((s, g) => s + g.itens.length + g.subgrupos.reduce((ss, sg) => ss + sg.itens.length, 0), 0)} itens
-          </div>
-        </div>
-      </div>
-
-      {/* Controles */}
-      <div style={{ display: 'flex', gap: 10, marginBottom: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-        <div style={{ flex: 1, minWidth: 180 }}>
-          <div style={{ fontSize: 10, color: 'var(--text2)', marginBottom: 4 }}>Buscar macrogrupo</div>
-          <input
-            type="text"
-            placeholder="🔍 Filtrar..."
-            value={busca}
-            onChange={e => setBusca(e.target.value)}
-            style={{ width: '100%', padding: '7px 12px', fontSize: 12, borderRadius: 6, border: '.5px solid var(--border2)', background: 'var(--bg)', color: 'var(--text)' }}
-          />
-        </div>
-
-        <div>
-          <div style={{ fontSize: 10, color: 'var(--text2)', marginBottom: 4 }}>Ordem dos grupos</div>
-          <select className="periodo" value={ordemGrupos} onChange={e => setOrdemGrupos(e.target.value)}>
-            <option value="sequencia">Sequência construtiva</option>
-            <option value="valor_desc">Maior valor primeiro</option>
-            <option value="valor_asc">Menor valor primeiro</option>
-          </select>
-        </div>
-
-        <div>
-          <div style={{ fontSize: 10, color: 'var(--text2)', marginBottom: 4 }}>Ordem dos itens</div>
-          <select className="periodo" value={ordemItens} onChange={e => setOrdemItens(e.target.value)}>
-            <option value="codigo">Por código EAP</option>
-            <option value="valor_desc">Maior valor primeiro</option>
-            <option value="valor_asc">Menor valor primeiro</option>
-          </select>
-        </div>
-
-        {busca && (
-          <button className="btn-secondary" style={{ fontSize: 11 }} onClick={() => setBusca('')}>Limpar</button>
-        )}
-      </div>
-
-      {/* Lista de grupos */}
-      <div>
-        {gruposFiltrados.map((grupo, index) => (
-          <GrupoCard key={grupo.chave} grupo={grupo} totalGeral={dados.total} index={index} ordemItens={ordemItens} />
-        ))}
-      </div>
-
-      {/* Rodapé */}
-      <div style={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        padding: '14px 18px', borderRadius: 10, background: 'var(--bg2)',
-        border: '.5px solid var(--border)', marginTop: 8
-      }}>
-        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
-          {busca ? `${gruposFiltrados.length} grupos filtrados` : 'TOTAL GERAL'}
-        </span>
-        <span style={{ fontSize: 18, fontWeight: 700, color: '#C8860A' }}>
-          {fmtMoeda(busca ? totalFiltrado : dados.total)}
-        </span>
       </div>
     </div>
   )
