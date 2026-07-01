@@ -12,13 +12,14 @@ export default function CustosIndiretosPlanejados() {
 
   // Filtros e ordenação
   const [busca, setBusca] = useState('')
-  const [ordenacao, setOrdenacao] = useState('valor_desc') // valor_desc, valor_asc, nome_asc, nome_desc
+  const [ordenacao, setOrdenacao] = useState('valor_desc')
+  const [mes, setMes] = useState(20) // valor_desc, valor_asc, nome_asc, nome_desc
 
   useEffect(() => {
     async function fetchDados() {
       try {
         setLoading(true)
-        const res = await fetch(`/api/custos-indiretos-planejados`)
+        const res = await fetch(`/api/custos-indiretos-planejados?mes=${mes}`)
         if (!res.ok) throw new Error('Erro ao carregar dados')
         const data = await res.json()
         setDados(data)
