@@ -1,144 +1,67 @@
-// pages/api/orcamento-detalhado.js
-//
-// API que retorna orçamento planejado agrupado por grupo de custo
-// COM FILTRO DE PERÍODO E SEPARAÇÃO DIRETO/INDIRETO
-
 import { supabase } from '../../lib/supabase'
 
 export default async function handler(req, res) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' })
-  }
+  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' })
 
   const obra_id = req.query.obra_id || 'flats_pampulha'
-  const mesLimite = parseInt(req.query.mes) || 18 // Padrão: todos os 18 meses
+  const mesLimite = parseInt(req.query.mes) || 20
 
   try {
-    // ========================================================================
-    // 1. BUSCAR CUSTOS INDIRETOS (sempre inclui todos)
-    // ========================================================================
-    const { data: indiretos, error: errInd } = await supabase
-      .from('custos_indiretos_planejados')
-      .select('*')
-      .eq('obra_id', obra_id)
+    const [diretosRes, indiretosRes, gruposDiretosRes, gruposIndiretosRes] = await Promise.all([
+      supabase.from('cronograma_financeiro_planejado').select('valor_mensal').eq('obra_id', obra_id).lte('mes_numero', mesLimite),
+      supabase.from('custos_indiretos_planejados').select('categoria, valor_total, mes_desembolso').eq('obra_id', obra_id),
+      supabase.from('orcamento_planejado').select('grupo_custo, preco_total, tipo').eq('obra_id', obra_id),
+      supabase.from('custos_indiretos_planejados').select('categoria, valor_total').eq('obra_id', obra_id),
+    ])
 
-    if (errInd) throw new Error(`Erro custos indiretos: ${errInd.message}`)
+    if (diretosRes.error) throw new Error(diretosRes.error.message)
+    if (indiretosRes.error) throw new Error(indiretosRes.error.message)
 
-    const totalIndiretos = indiretos.reduce((sum, c) => sum + parseFloat(c.valor_total), 0)
+    // Custos diretos acumulados até o mês
+    const custos_diretos = (diretosRes.data || []).reduce((s, i) => s + parseFloat(i.valor_mensal || 0), 0)
 
-    // ========================================================================
-    // 2. BUSCAR CUSTOS DIRETOS (CRONOGRAMA FINANCEIRO) - FILTRADO POR MÊS
-    // ========================================================================
-    const { data: diretos, error: errDir } = await supabase
-      .from('orcamento_planejado')
-      .select('grupo_custo, preco_total')
-      .eq('obra_id', obra_id)
-       // Apenas até o mês selecionado
-
-    if (errDir) throw new Error(`Erro custos diretos: ${errDir.message}`)
-
-    // Agrupar por macrogrupo (filtrar nulos)
-    const gruposDiretos = {}
-    diretos.forEach(item => {
-      const grupo = item.grupo_custo
-
-      // Ignorar se for null, undefined ou vazio
-      if (!grupo || grupo.trim() === '') {
-        return
-      }
-
-      if (!gruposDiretos[grupo]) {
-        gruposDiretos[grupo] = 0
-      }
-      gruposDiretos[grupo] += parseFloat(item.preco_total)
+    // Custos indiretos proporcionais ao período
+    let custos_indiretos = 0
+    const categorias = [];
+    (indiretosRes.data || []).forEach(item => {
+      const mes = item.mes_desembolso || 0
+      let valor = 0
+      if (mes === 0) valor = parseFloat(item.valor_total || 0) * (mesLimite / 20)
+      else if (mes <= mesLimite) valor = parseFloat(item.valor_total || 0)
+      custos_indiretos += valor
+      categorias.push({ nome: item.categoria, valor, valor_total: parseFloat(item.valor_total || 0), mes_desembolso: mes })
     })
 
-    // ========================================================================
-    // 3. MONTAR ARRAYS SEPARADOS DE GRUPOS (DIRETOS E INDIRETOS)
-    // ========================================================================
-    const gruposDiretosArray = []
-    const gruposIndiretosArray = []
-
-    // Adicionar custos diretos (ordenar por valor)
-    Object.entries(gruposDiretos)
-      .map(([nome, valor]) => ({
-        nome,
-        valor,
-        tipo: 'Direto',
-        icone: getIcone(nome)
-      }))
+    // Grupos diretos para detalhamento
+    const gruposMap = {}
+    const ICONES = { 'Esquadrias': '🪟', 'Pintura': '🖌️' }
+    ;(gruposDiretosRes.data || []).forEach(item => {
+      if (!gruposMap[item.grupo_custo]) gruposMap[item.grupo_custo] = 0
+      gruposMap[item.grupo_custo] += parseFloat(item.preco_total || 0)
+    })
+    const gruposDiretos = Object.entries(gruposMap)
+      .map(([nome, valor]) => ({ nome, valor, tipo: 'Direto', icone: ICONES[nome] || '📦' }))
       .sort((a, b) => b.valor - a.valor)
-      .forEach(item => gruposDiretosArray.push(item))
 
-    // Adicionar custos indiretos (filtrar nulos e ordenar por valor)
-    indiretos
-      .filter(item => item.categoria && item.categoria.trim() !== '')
-      .map(item => ({
-        nome: item.categoria,
-        valor: parseFloat(item.valor_total),
-        tipo: 'Indireto',
-        icone: getIcone(item.categoria)
-      }))
+    const gruposIndiretos = (gruposIndiretosRes.data || [])
+      .map(item => ({ nome: item.categoria, valor: parseFloat(item.valor_total || 0), tipo: 'Indireto', icone: '📦' }))
       .sort((a, b) => b.valor - a.valor)
-      .forEach(item => gruposIndiretosArray.push(item))
 
-    const totalDiretos = Object.values(gruposDiretos).reduce((sum, v) => sum + v, 0)
-    const total = totalDiretos + totalIndiretos
+    const total = custos_diretos + custos_indiretos
+    const periodoLabel = mesLimite === 20 ? 'Orçamento completo (20 meses)' : `Orçamento acumulado até M${mesLimite}`
 
-    // Label do período
-    const periodoLabel = mesLimite === 18 
-      ? 'Orçamento completo (18 meses)'
-      : `Orçamento acumulado até M${mesLimite}`
-
-    // ========================================================================
-    // 4. RETORNAR
-    // ========================================================================
     return res.status(200).json({
-      gruposDiretos: gruposDiretosArray,
-      gruposIndiretos: gruposIndiretosArray,
+      custos_diretos,
+      custos_indiretos,
       total,
-      custos_diretos: totalDiretos,
-      custos_indiretos: totalIndiretos,
+      categorias,
+      gruposDiretos,
+      gruposIndiretos,
       mes_limite: mesLimite,
       periodo_label: periodoLabel,
       obra_id
     })
-
   } catch (error) {
-    console.error('Erro ao buscar orçamento:', error)
-    return res.status(500).json({ 
-      error: 'Erro ao buscar orçamento',
-      message: error.message 
-    })
+    return res.status(500).json({ error: error.message })
   }
 }
-
-// Função auxiliar para ícones
-function getIcone(nome) {
-  const icones = {
-    'Terreno': '🏗️',
-    'Projetos e Consultorias': '📐',
-    'Aprovações e Licenças': '📋',
-    'Jurídico': '⚖️',
-    'Taxas e Emolumentos': '💳',
-    'Contingências': '🛡️',
-    'Infraestrutura': '🔧',
-    'Superestrutura': '🏗️',
-    'Alvenaria e Vedações': '🧱',
-    'Revestimentos': '🎨',
-    'Esquadrias': '🪟',
-    'Cobertura': '🏠',
-    'Instalações Hidrossanitárias': '💧',
-    'Instalações Elétricas': '⚡',
-    'Instalações Especiais': '🔌',
-    'Elevadores': '🛗',
-    'Acabamentos': '✨',
-    'Pintura': '🖌️',
-    'Áreas Comuns': '🏛️',
-    'Paisagismo': '🌳',
-    'Limpeza e Entrega': '🧹'
-  }
-  
-  return icones[nome] || '📦'
-}
-
