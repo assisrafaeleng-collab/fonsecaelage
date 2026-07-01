@@ -139,7 +139,7 @@ export default function CustosIndiretosPlanejados() {
               <tr key={categoria.nome}>
                 <td>{categoria.nome}</td>
                 <td style={{ textAlign: 'right', fontWeight: '600' }}>{fmtMoeda(categoria.valor)}</td>
-                <td style={{ textAlign: 'right' }}>{fmtPerc(categoria.percentual)}</td>
+                <td style={{ textAlign: 'right' }}>{fmtPerc((categoria.percentual || 0))}</td>
                 <td>
                   <div style={{ height: 6, background: 'var(--bg2)', borderRadius: 3, overflow: 'hidden' }}>
                     <div style={{ height: '100%', width: `${Math.min(categoria.percentual, 100)}%`, background: '#5B9BD5', borderRadius: 3 }} />
@@ -152,7 +152,7 @@ export default function CustosIndiretosPlanejados() {
             <tr style={{ borderTop: '2px solid var(--border)', fontWeight: '700' }}>
               <td>{busca ? `${categoriasFiltradas.length} categorias` : 'TOTAL'}</td>
               <td style={{ textAlign: 'right' }}>{fmtMoeda(busca ? totalFiltrado : dados.total)}</td>
-              <td style={{ textAlign: 'right' }}>{busca ? fmtPerc((totalFiltrado / dados.total) * 100) : '100,00%'}</td>
+              <td style={{ textAlign: 'right' }}>{busca ? fmtPerc(dados.total ? (totalFiltrado / dados.total) * 100 : 0) : '100,00%'}</td>
               <td></td>
             </tr>
           </tfoot>
