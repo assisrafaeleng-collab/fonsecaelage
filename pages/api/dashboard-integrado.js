@@ -12,7 +12,7 @@ export default async function handler(req, res) {
     const [finPlanejadaRes, fisPlanejadaRes, custosRes, horasRes, avancoRealRes, indiretosPlanoRes, diretosPlanoRes] = await Promise.all([
       supabase.from('v_curva_s_financeira_planejada').select('*').eq('obra_id', obra_id).lte('mes_numero', mesLimite).order('mes_numero'),
       supabase.from('v_curva_s_fisica_planejada').select('*').eq('obra_id', obra_id).lte('mes_numero', mesLimite).order('mes_numero'),
-      supabase.from('custos_lancamentos').select('competencia, valor, status, grupo_custo').eq('obra_id', obra_id).order('competencia'),
+      supabase.from('custos_lancamentos').select('competencia, valor, status, grupo_custo, codigo_eap').eq('obra_id', obra_id).order('competencia'),
       supabase.from('cronograma_horas_planejado').select('grupo_nome, horas_totais').eq('obra_id', obra_id),
       supabase.from('avanco_fisico_realizado').select('mes_numero, competencia, atividade_nome, percentual_realizado').eq('obra_id', obra_id).lte('mes_numero', mesLimite).order('mes_numero'),
       supabase.from('custos_indiretos_planejados').select('valor_total').eq('obra_id', obra_id),
@@ -57,14 +57,15 @@ export default async function handler(req, res) {
       .filter(c => c.status === 'Normal' && normalizaCompetencia(c.competencia) <= dataLimiteStr)
       .forEach(c => {
         const comp = normalizaCompetencia(c.competencia)
-        const numeroGrupo = parseInt(c.grupo_custo?.charAt(0))
+        const eap = c.codigo_eap || ''
+        const isIndireto = eap.startsWith('18.')
         const valor = parseFloat(c.valor)
         if (!custosAgrupados[comp]) custosAgrupados[comp] = 0
         custosAgrupados[comp] += valor
-        if (numeroGrupo >= 5 && numeroGrupo <= 8) {
+        if (!isIndireto) {
           if (!custosDiretosAgrupados[comp]) custosDiretosAgrupados[comp] = 0
           custosDiretosAgrupados[comp] += valor
-        } else if (numeroGrupo >= 1 && numeroGrupo <= 4) {
+        } else {
           if (!custosIndiretosAgrupados[comp]) custosIndiretosAgrupados[comp] = 0
           custosIndiretosAgrupados[comp] += valor
         }
