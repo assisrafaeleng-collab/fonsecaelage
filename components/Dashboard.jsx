@@ -184,7 +184,7 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
         <div className="kpi kpi-clickable" style={{ borderLeftColor: '#1A5276' }} onClick={() => router.push('/orcamento')}>
           <div className="kpi-label">Custo Total</div>
           <div className="kpi-value">{fmtMoeda(kpis.orcamento_total)}</div>
-          <div className="kpi-sub">`Planejado para ${mesLimite === 20 ? "20 meses" : "M" + mesLimite} · 📊 Ver detalhes`</div>
+          <div className="kpi-sub">{mesLimite === 20 ? "Planejado para 20 meses" : `Acumulado até M${mesLimite}`} · 📊 Ver detalhes</div>
         </div>
       </div>
 
@@ -192,7 +192,7 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
         <div className="kpi" style={{ borderLeftColor: '#C8860A', cursor: 'pointer' }} onClick={() => router.push(`/custos-diretos-planejados?mes=${mesLimite}`)}>
           <div className="kpi-label">Custo Direto Planejado</div>
           <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2' }}>{fmtMoeda(custoDiretoPlano)}</div>
-          <div className="kpi-sub">Orçado para 20 meses</div>
+          <div className="kpi-sub">{mesLimite === 20 ? "Orçado para 20 meses" : `Acumulado até M${mesLimite}`}</div>
         </div>
         <div className="kpi" style={{ borderLeftColor: '#E91E8C', cursor: 'pointer' }} onClick={() => router.push('/custos-diretos-realizados-lista')}>
           <div className="kpi-label">Custo Direto Realizado</div>
@@ -222,7 +222,7 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
         <div className="kpi" style={{ borderLeftColor: '#C8860A', cursor: 'pointer' }} onClick={() => router.push(`/custos-indiretos-planejados?mes=${mesLimite}`)}>
           <div className="kpi-label">Custo Indireto Planejado</div>
           <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2' }}>{fmtMoeda(custoIndiretoPlano)}</div>
-          <div className="kpi-sub">Orçado para 20 meses</div>
+          <div className="kpi-sub">{mesLimite === 20 ? "Orçado para 20 meses" : `Acumulado até M${mesLimite}`}</div>
         </div>
         <div className="kpi" style={{ borderLeftColor: '#E91E8C', cursor: 'pointer' }} onClick={() => router.push('/custos-indiretos-realizados-lista')}>
           <div className="kpi-label">Custo Indireto Realizado</div>
