@@ -10,24 +10,24 @@ const ORDEM_GRUPOS = [
 ]
 
 const NOMES_AMIGAVEIS = {
-  'Servicos Preliminares e Gerais': 'Serviços Preliminares e Gerais',
-  'Movimento de Terra e Fundacoes': 'Movimento de Terra e Fundações',
+  'Servicos Preliminares e Gerais': 'Serviï¿½os Preliminares e Gerais',
+  'Movimento de Terra e Fundacoes': 'Movimento de Terra e Fundaï¿½ï¿½es',
   'Estrutura': 'Estrutura', 'Alvenaria e Fechamentos': 'Alvenaria e Fechamentos',
-  'Reboco e Emboco': 'Reboco e Emboço',
-  'Instalacoes Hidrossanitarias': 'Instalações Hidrossanitárias',
-  'Instalacoes Eletricas e Telecom': 'Instalações Elétricas e Telecom',
-  'Instalacoes Especiais': 'Instalações Especiais',
-  'Cobertura e Impermeabilizacao': 'Cobertura e Impermeabilização',
-  'Aplicacao de Gesso': 'Aplicação de Gesso', 'Pisos e Rodapes': 'Pisos e Rodapés',
+  'Reboco e Emboco': 'Reboco e Emboï¿½o',
+  'Instalacoes Hidrossanitarias': 'Instalaï¿½ï¿½es Hidrossanitï¿½rias',
+  'Instalacoes Eletricas e Telecom': 'Instalaï¿½ï¿½es Elï¿½tricas e Telecom',
+  'Instalacoes Especiais': 'Instalaï¿½ï¿½es Especiais',
+  'Cobertura e Impermeabilizacao': 'Cobertura e Impermeabilizaï¿½ï¿½o',
+  'Aplicacao de Gesso': 'Aplicaï¿½ï¿½o de Gesso', 'Pisos e Rodapes': 'Pisos e Rodapï¿½s',
   'Esquadrias': 'Esquadrias', 'Pintura': 'Pintura',
-  'Loucas Metais e Bancadas': 'Louças, Metais e Bancadas',
-  'Urbanizacao e Paisagismo': 'Urbanização e Paisagismo',
-  'Locacoes e Equipamentos': 'Locações e Equipamentos', 'Servicos Finais': 'Serviços Finais',
+  'Loucas Metais e Bancadas': 'Louï¿½as, Metais e Bancadas',
+  'Urbanizacao e Paisagismo': 'Urbanizaï¿½ï¿½o e Paisagismo',
+  'Locacoes e Equipamentos': 'Locaï¿½ï¿½es e Equipamentos', 'Servicos Finais': 'Serviï¿½os Finais',
 }
 
-// Extrai cod_eap e descrição do nome formatado "X.X.X — Descrição"
+// Extrai cod_eap e descriï¿½ï¿½o do nome formatado "X.X.X ï¿½ Descriï¿½ï¿½o"
 function parseName(atividade_nome) {
-  const match = atividade_nome.match(/^([\d.X]+)\s*—\s*(.+)$/)
+  const match = atividade_nome.match(/^([\d.X]+)\s*ï¿½\s*(.+)$/)
   if (match) return { cod_eap: match[1], desc: match[2].trim() }
   return { cod_eap: null, desc: atividade_nome }
 }
@@ -38,11 +38,11 @@ function getSubgrupo(cod_eap, grupo_custo) {
   if (parts.length < 2) return null
   const subIdx = parseInt(parts[1])
   if (grupo_custo === 'Estrutura') {
-    const map = { 1: 'Térreo', 2: '2º Pavimento', 3: '3º Pavimento', 4: '4º Pavimento', 5: '5º Pavimento', 6: '6º Pavimento / Platibanda' }
+    const map = { 1: 'Tï¿½rreo', 2: '2ï¿½ Pavimento', 3: '3ï¿½ Pavimento', 4: '4ï¿½ Pavimento', 5: '5ï¿½ Pavimento', 6: '6ï¿½ Pavimento / Platibanda' }
     return map[subIdx] || null
   }
   if (grupo_custo === 'Alvenaria e Fechamentos') {
-    const map = { 1: 'Térreo', 2: '2º Pavimento', 3: '3º Pavimento', 4: '4º Pavimento', 5: '5º Pavimento', 6: '6º Pavimento', 7: 'Platibanda' }
+    const map = { 1: 'Tï¿½rreo', 2: '2ï¿½ Pavimento', 3: '3ï¿½ Pavimento', 4: '4ï¿½ Pavimento', 5: '5ï¿½ Pavimento', 6: '6ï¿½ Pavimento', 7: 'Platibanda' }
     return map[subIdx] || null
   }
   return null
@@ -72,7 +72,7 @@ export default async function handler(req, res) {
     const eapGrupoMap = {}
     ;(orcRes.data || []).forEach(o => { eapGrupoMap[o.cod_eap] = o.grupo_custo })
 
-    // Mapa realizado por atividade_codigo (máximo acumulado)
+    // Mapa realizado por atividade_codigo (mï¿½ximo acumulado)
     const realizadoMap = {}
     ;(realRes.data || []).forEach(r => {
       const { cod_eap } = parseName(r.atividade_nome)
@@ -81,7 +81,7 @@ export default async function handler(req, res) {
       }
     })
 
-    // Agrupa por cod_eap único
+    // Agrupa por cod_eap ï¿½nico
     const atividadeMap = {}
     ;(cronoRes.data || []).forEach(c => {
       const { cod_eap, desc } = parseName(c.atividade_nome)
@@ -134,7 +134,7 @@ export default async function handler(req, res) {
       }
     })
 
-    // Calcular % médio ponderado
+    // Calcular % mï¿½dio ponderado
     const calcPerc = (atividades) => {
       const tot = atividades.reduce((s, a) => s + a.valor_orcado, 0)
       return tot > 0 ? parseFloat((atividades.reduce((s, a) => s + a.perc_planejado * a.valor_orcado, 0) / tot * 100).toFixed(1)) : 0
@@ -147,7 +147,7 @@ export default async function handler(req, res) {
     })
 
     // Ordenar subgrupos por pavimento
-    const ORDEM_PAV = ['Térreo', '2º Pavimento', '3º Pavimento', '4º Pavimento', '5º Pavimento', '6º Pavimento', '6º Pavimento / Platibanda', 'Platibanda']
+    const ORDEM_PAV = ['Tï¿½rreo', '2ï¿½ Pavimento', '3ï¿½ Pavimento', '4ï¿½ Pavimento', '5ï¿½ Pavimento', '6ï¿½ Pavimento', '6ï¿½ Pavimento / Platibanda', 'Platibanda']
     
     const grupos = ORDEM_GRUPOS.filter(g => gruposMap[g]).map(g => ({
       ...gruposMap[g],
