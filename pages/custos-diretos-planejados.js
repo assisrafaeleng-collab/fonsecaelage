@@ -136,7 +136,7 @@ export default function CustosDiretosPlanejados() {
       <div style={S.wrap}>
         <div style={S.eyebrow}>Custos diretos + avanço físico planejado</div>
         <div style={S.h1}>Flats Pampulha</div>
-        <div style={[.sub}>20 meses · Jul/2026 a Fev/2028</div>
+        <div style={S.sub}>20 meses · Jul/2026 a Fev/2028</div>
 
         {/* Nav */}
         <div style={S.nav}>
