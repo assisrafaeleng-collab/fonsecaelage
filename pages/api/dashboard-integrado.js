@@ -101,7 +101,7 @@ export default async function handler(req, res) {
       avancoRealPorMes[item.mes_numero].itens.push(item)
     })
 
-    const totalHhPlanejado = avancoRealData.reduce((s,i) => s + parseFloat(i.hh_planejado||0), 0) || 1
+    const totalHhPlanejado = horasData.reduce((s,h) => s + parseFloat(h.horas_totais||0), 0) || 29155.7
     const fisRealizada = Object.entries(avancoRealPorMes).map(([mes, val]) => {
       const hhReal = val.itens.reduce((s,i) => s + parseFloat(i.hh_realizado||0), 0)
       return {
