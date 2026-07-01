@@ -74,7 +74,7 @@ export default function CustosIndiretosPlanejados() {
         <div className="kpi" style={{ borderLeftColor: '#5B9BD5' }}>
           <div className="kpi-label">Total Custos Indiretos</div>
           <div className="kpi-value">{fmtMoeda(dados.total)}</div>
-          <div className="kpi-sub">{dados.categorias.length} categorias</div>
+          <div className="kpi-sub">{(dados.categorias||[]).length} categorias</div>
         </div>
         {busca && (
           <div className="kpi" style={{ borderLeftColor: '#C8860A' }}>
