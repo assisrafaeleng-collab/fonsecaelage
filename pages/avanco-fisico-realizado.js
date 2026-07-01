@@ -1,240 +1,386 @@
-import { useState, useEffect } from 'react'
+// pages/avanco-fisico-realizado.js
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/router'
 
-const ATIVIDADES = [
-  'Serviços Preliminares e Gerais',
-  'Movimento de Terra e Fundações',
-  'Estrutura (Concreto + Fôrma + Aço)',
-  'Alvenaria e Fechamentos',
-  'Instalações Hidrossanitárias',
-  'Instalações Elétricas e Telecom',
-  'PPCI / SPDA / AVAC / GÁS',
-  'Cobertura e Impermeabilização',
-  'Esquadrias e Serralheria',
-  'Revestimentos Internos e Externos',
-  'Pintura',
-  'Pisos e Rodapés',
-  'Louças, Metais e Bancadas',
-  'Elevadores e Equipamentos',
-  'Urbanização, Paisagismo e Externos',
-  'Limpeza Final e Entrega'
-]
+const PAVS = ['1º','2º','3º','4º','5º','6º/Plat','Edifício']
+const NOMES_MESES = ['jul','ago','set','out','nov','dez','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez','jan','fev']
+const ANOS = [2026,2026,2026,2026,2026,2026,2027,2027,2027,2027,2027,2027,2027,2027,2027,2027,2027,2027,2028,2028]
 
-const MESES = Array.from({ length: 18 }, (_, i) => ({
-  numero: i + 1,
-  competencia: new Date(2025, 3 + i, 1).toISOString().slice(0, 10),
-  label: new Date(2025, 3 + i, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
-}))
+const fmtR = v => 'R$ ' + Math.round(v).toLocaleString('pt-BR')
+const fmtH = v => v.toFixed(1) + ' Hh'
+const fmtP = v => (v*100).toFixed(1) + '%'
 
-const fmtPerc = (val) => `${parseFloat(val || 0).toFixed(1)}%`
-const fmtData = (data) => data ? new Date(data).toLocaleDateString('pt-BR') : '-'
+const S = {
+  page: { minHeight:'100vh', background:'#0f0f11', color:'#ece9e4', fontFamily:'"Segoe UI",system-ui,sans-serif', fontVariantNumeric:'tabular-nums' },
+  wrap: { maxWidth:1100, margin:'0 auto', padding:'0 20px 40px' },
+  eyebrow: { color:'#6d675e', fontSize:11, letterSpacing:1.4, textTransform:'uppercase', paddingTop:28, marginBottom:2 },
+  h1: { fontSize:22, fontWeight:600, margin:'2px 0 2px' },
+  sub: { color:'#a09a90', fontSize:13, marginBottom:18 },
+  nav: { display:'flex', gap:8, marginBottom:16 },
+  navBtn: { background:'transparent', border:'1px solid #2a2a31', color:'#a09a90', borderRadius:8, padding:'7px 14px', fontSize:13, cursor:'pointer', fontFamily:'inherit' },
+  kpiGrid: { display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12, marginBottom:16 },
+  kpi: { background:'#17171b', border:'1px solid #2a2a31', borderRadius:12, padding:'14px 16px' },
+  kpiLbl: { color:'#6d675e', fontSize:10, letterSpacing:1, textTransform:'uppercase', marginBottom:4 },
+  kpiVal: { fontSize:20, fontWeight:700 },
+  kpiSub: { color:'#a09a90', fontSize:11, marginTop:3 },
+  controls: { display:'flex', gap:10, marginBottom:14, flexWrap:'wrap', alignItems:'flex-end' },
+  lbl: { display:'block', color:'#6d675e', fontSize:10, letterSpacing:.5, textTransform:'uppercase', marginBottom:4 },
+  select: { background:'#1e1e24', border:'1px solid #2a2a31', color:'#ece9e4', borderRadius:8, padding:'8px 11px', fontSize:13, fontFamily:'inherit' },
+  input: { background:'#1e1e24', border:'1px solid #2a2a31', color:'#ece9e4', borderRadius:8, padding:'8px 11px', fontSize:13, fontFamily:'inherit', minWidth:160 },
+  seg: { display:'flex', background:'#1e1e24', border:'1px solid #2a2a31', borderRadius:8, overflow:'hidden' },
+  card: { background:'#17171b', border:'1px solid #2a2a31', borderRadius:12, marginBottom:8, overflow:'hidden' },
+  chead: { display:'flex', alignItems:'center', gap:10, padding:'13px 16px', cursor:'pointer', userSelect:'none' },
+  badge: { width:28, height:28, borderRadius:6, background:'#1e1e24', border:'1px solid #2a2a31', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, color:'#a09a90', fontWeight:600, flexShrink:0 },
+  body: { borderTop:'1px solid #2a2a31' },
+  saveBtn: { background:'#e6a338', color:'#231803', border:0, borderRadius:8, padding:'10px 24px', fontSize:14, fontWeight:700, cursor:'pointer', fontFamily:'inherit' },
+}
+
+function Seg({ value, onChange, options }) {
+  return (
+    <div style={S.seg}>
+      {options.map(o => (
+        <button key={o.v} onClick={() => onChange(o.v)} style={{
+          background: value===o.v ? '#e6a338' : 'transparent',
+          color: value===o.v ? '#231803' : '#a09a90',
+          border:0, padding:'8px 12px', fontSize:12, cursor:'pointer',
+          fontFamily:'inherit', whiteSpace:'nowrap', fontWeight: value===o.v ? 600 : 400,
+        }}>{o.l}</button>
+      ))}
+    </div>
+  )
+}
+
+function PctInput({ value, onChange, disabled }) {
+  return (
+    <div style={{display:'flex', alignItems:'center', gap:4}}>
+      <input
+        type="number" min="0" max="100" step="0.5"
+        value={value || ''}
+        onChange={e => onChange(Math.min(100, Math.max(0, parseFloat(e.target.value)||0)))}
+        disabled={disabled}
+        style={{
+          width:60, background: disabled?'#1a1a20':'#1e1e24', border:'1px solid #2a2a31',
+          color: disabled?'#444':'#ece9e4', borderRadius:6, padding:'4px 6px',
+          fontSize:12, fontFamily:'inherit', textAlign:'right'
+        }}
+      />
+      <span style={{color:'#6d675e', fontSize:11}}>%</span>
+    </div>
+  )
+}
 
 export default function AvancoFisicoRealizado() {
   const router = useRouter()
-  const [aba, setAba] = useState('lancar')
-  const [mesSelecionado, setMesSelecionado] = useState(1)
-  const [atividades, setAtividades] = useState(
-    ATIVIDADES.map(nome => ({ nome, percentual: '', observacao: '' }))
-  )
-  const [historico, setHistorico] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [salvando, setSalvando] = useState(false)
-  const [mensagem, setMensagem] = useState(null)
+  const [dados, setDados] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [mes, setMes] = useState(1)
+  const [axis, setAxis] = useState('grupo')
+  const [pavF, setPavF] = useState('__ALL__')
+  const [q, setQ] = useState('')
+  const [open, setOpen] = useState({})
+  const [pcts, setPcts] = useState({}) // key: `${eap}|${pav}` -> pct
+  const [existentes, setExistentes] = useState({}) // lançamentos já salvos
 
   useEffect(() => {
-    fetchHistorico()
+    fetch('/dados.json').then(r => r.json()).then(d => { setDados(d); setLoading(false) }).catch(() => setLoading(false))
   }, [])
 
-  async function fetchHistorico() {
-    setLoading(true)
-    try {
-      const res = await fetch('/api/avanco-fisico-realizado')
-      const data = await res.json()
-      setHistorico(data.lancamentos || [])
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setLoading(false)
-    }
+  // Buscar lançamentos existentes quando mês muda
+  useEffect(() => {
+    if (!mes) return
+    fetch(`/api/avanco-fisico-realizado?mes=${mes}&obra_id=flats_pampulha`)
+      .then(r => r.json())
+      .then(d => {
+        const map = {}
+        const pctsMap = {}
+        ;(d.data || d || []).forEach(item => {
+          const key = `${item.codigo_eap}|${item.pavimento}`
+          map[key] = item
+          pctsMap[key] = parseFloat(item.percentual_realizado || 0)
+        })
+        setExistentes(map)
+        setPcts(pctsMap)
+      })
+      .catch(() => {})
+  }, [mes])
+
+  const totHh = useMemo(() => dados.reduce((s,r) => s+r.h, 0) || 1, [dados])
+
+  const ql = q.toLowerCase()
+
+  // Filtrar itens ativos no período
+  const visible = useMemo(() => dados.filter(r => {
+    if (pavF !== '__ALL__' && r.p !== pavF) return false
+    if (ql && !r.n.toLowerCase().includes(ql) && !r.d.toLowerCase().includes(ql)) return false
+    return r.a <= mes // apenas itens já iniciados ou programados até o mês
+  }), [dados, pavF, ql, mes])
+
+  // Agrupar
+  const groups = useMemo(() => {
+    const map = {}
+    visible.forEach(r => {
+      const key = axis==='grupo' ? String(r.g) : r.p
+      if (!map[key]) map[key] = { key, label: axis==='grupo' ? r.n : r.p, gNum:r.g, rows:[] }
+      map[key].rows.push(r)
+    })
+    const arr = Object.values(map)
+    if (axis==='grupo') arr.sort((a,b) => a.gNum-b.gNum)
+    else arr.sort((a,b) => {
+      const ia=PAVS.indexOf(a.key), ib=PAVS.indexOf(b.key)
+      return (ia===-1?99:ia)-(ib===-1?99:ib)
+    })
+    return arr
+  }, [visible, axis])
+
+  // KPIs calculados
+  const hhRealTotal = useMemo(() => {
+    return visible.reduce((s,r) => {
+      const pct = (pcts[`${r.i}|${r.p}`] || 0) / 100
+      return s + r.h * pct
+    }, 0)
+  }, [visible, pcts])
+
+  const hhPlanTotal = useMemo(() => visible.reduce((s,r) => s+r.h, 0), [visible])
+  const pctMedio = hhPlanTotal > 0 ? (hhRealTotal/hhPlanTotal*100) : 0
+
+  const custoRealTotal = useMemo(() => {
+    return visible.reduce((s,r) => {
+      const pct = (pcts[`${r.i}|${r.p}`] || 0) / 100
+      return s + r.c * pct
+    }, 0)
+  }, [visible, pcts])
+
+  const itensLancados = useMemo(() => {
+    return visible.filter(r => (pcts[`${r.i}|${r.p}`] || 0) > 0).length
+  }, [visible, pcts])
+
+  const setPct = (eap, pav, val) => {
+    setPcts(p => ({...p, [`${eap}|${pav}`]: val}))
+    setSaved(false)
   }
 
-  async function handleSalvar() {
-    const mes = MESES[mesSelecionado - 1]
-    setSalvando(true)
-    setMensagem(null)
+  const handleSave = async () => {
+    setSaving(true)
     try {
+      const competencia = `2026-${String(6+mes).padStart(2,'0')}-01`
+      const lancamentos = visible
+        .filter(r => (pcts[`${r.i}|${r.p}`] || 0) >= 0)
+        .map(r => ({
+          obra_id: 'flats_pampulha',
+          competencia,
+          mes_numero: mes,
+          codigo_eap: r.i,
+          atividade_nome: r.d,
+          pavimento: r.p,
+          grupo_num: r.g,
+          percentual_realizado: pcts[`${r.i}|${r.p}`] || 0,
+          hh_planejado: r.h,
+          hh_realizado: r.h * ((pcts[`${r.i}|${r.p}`] || 0) / 100),
+          custo_planejado: r.c,
+          observacao: '',
+        }))
+
       const res = await fetch('/api/avanco-fisico-realizado', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          competencia: mes.competencia,
-          mes_numero: mes.numero,
-          atividades: atividades.filter(a => a.percentual !== '')
-        })
+        body: JSON.stringify({ mes, lancamentos })
       })
+
       if (!res.ok) throw new Error('Erro ao salvar')
-      setMensagem({ tipo: 'sucesso', texto: 'Avanço salvo com sucesso!' })
-      fetchHistorico()
-    } catch (err) {
-      setMensagem({ tipo: 'erro', texto: 'Erro ao salvar. Tente novamente.' })
+      setSaved(true)
+    } catch(e) {
+      alert('Erro ao salvar: ' + e.message)
     } finally {
-      setSalvando(false)
+      setSaving(false)
     }
   }
 
-  const mes = MESES[mesSelecionado - 1]
+  const toggle = key => setOpen(o => ({...o, [key]: !o[key]}))
 
-  async function handleExcluir(id) {
-    if (!confirm('Excluir este lançamento?')) return
-    try {
-      const res = await fetch('/api/avanco-fisico-realizado', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id })
-      })
-      if (!res.ok) throw new Error()
-      fetchHistorico()
-    } catch {
-      alert('Erro ao excluir. Tente novamente.')
-    }
-  }
+  if (loading) return <div style={S.page}><div style={{padding:40,color:'#a09a90'}}>Carregando...</div></div>
 
   return (
-    <div className="page">
-      <div className="header">
-        <div className="header-top">
-          <div>
-            <div className="obra-eye">AVANÇO FÍSICO REALIZADO</div>
-            <div className="obra-nome">Flats Pampulha</div>
-            <div className="obra-info">Lançamento por atividade</div>
+    <div style={S.page}>
+      <div style={S.wrap}>
+        <div style={S.eyebrow}>Avanço físico realizado — lançamento</div>
+        <div style={S.h1}>Flats Pampulha</div>
+        <div style={S.sub}>Lançar % concluído por item · Hh calculado automaticamente</div>
+
+        <div style={S.nav}>
+          <button style={S.navBtn} onClick={() => router.push('/')}>← Dashboard</button>
+          <button style={S.navBtn} onClick={() => router.push('/avanco-fisico-planejado')}>📋 Planejado</button>
+        </div>
+
+        {/* KPIs */}
+        <div style={S.kpiGrid}>
+          <div style={{...S.kpi, borderLeft:'3px solid #e6a338'}}>
+            <div style={S.kpiLbl}>Avanço médio M{mes}</div>
+            <div style={{...S.kpiVal, color:'#e6a338'}}>{pctMedio.toFixed(1)}%</div>
+            <div style={S.kpiSub}>{NOMES_MESES[mes-1]}/{ANOS[mes-1]}</div>
+          </div>
+          <div style={{...S.kpi, borderLeft:'3px solid #3fae86'}}>
+            <div style={S.kpiLbl}>Hh realizado</div>
+            <div style={{...S.kpiVal, color:'#3fae86', fontSize:16}}>{fmtH(hhRealTotal)}</div>
+            <div style={S.kpiSub}>de {fmtH(hhPlanTotal)} planejados</div>
+          </div>
+          <div style={{...S.kpi, borderLeft:'3px solid #5B9BD5'}}>
+            <div style={S.kpiLbl}>Custo físico realizado</div>
+            <div style={{...S.kpiVal, color:'#5B9BD5', fontSize:16}}>{fmtR(custoRealTotal)}</div>
+            <div style={S.kpiSub}>proporcional ao avanço</div>
+          </div>
+          <div style={{...S.kpi, borderLeft:'3px solid #a09a90'}}>
+            <div style={S.kpiLbl}>Itens lançados</div>
+            <div style={{...S.kpiVal, color:'#ece9e4'}}>{itensLancados}</div>
+            <div style={S.kpiSub}>de {visible.length} itens ativos</div>
           </div>
         </div>
-        <div className="nav">
-          <button className="nav-btn" onClick={() => router.push('/')}>← Voltar ao Dashboard</button>
-          <button className="nav-btn" style={{ marginLeft: 8, backgroundColor: aba === 'lancar' ? 'var(--accent)' : '' }} onClick={() => setAba('lancar')}>Lançar</button>
-          <button className="nav-btn" style={{ marginLeft: 8, backgroundColor: aba === 'historico' ? 'var(--accent)' : '' }} onClick={() => setAba('historico')}>Histórico</button>
-        </div>
-      </div>
 
-      {aba === 'lancar' && (
-        <div className="card">
-          <div className="card-title">📋 Lançar Avanço Físico</div>
-
-          <div style={{ marginBottom: 20 }}>
-            <label style={{ fontSize: 12, color: 'var(--text2)', display: 'block', marginBottom: 6 }}>Mês de Competência</label>
-            <select className="periodo" value={mesSelecionado} onChange={e => setMesSelecionado(parseInt(e.target.value))}>
-              {MESES.map(m => (
-                <option key={m.numero} value={m.numero}>M{m.numero} — {m.label}</option>
+        {/* Controles */}
+        <div style={S.controls}>
+          <div>
+            <label style={S.lbl}>Mês de competência</label>
+            <select style={S.select} value={mes} onChange={e => setMes(parseInt(e.target.value))}>
+              {Array.from({length:20},(_,i) => (
+                <option key={i+1} value={i+1}>M{i+1} — {NOMES_MESES[i]}/{ANOS[i]}</option>
               ))}
             </select>
           </div>
-
-          {mensagem && (
-            <div style={{ padding: '10px 16px', borderRadius: 6, marginBottom: 16, backgroundColor: mensagem.tipo === 'sucesso' ? '#1a3d2b' : '#3d1a1a', color: mensagem.tipo === 'sucesso' ? '#4D9B6A' : '#B03030' }}>
-              {mensagem.texto}
-            </div>
-          )}
-
-          <table>
-            <thead>
-              <tr>
-                <th>Atividade</th>
-                <th style={{ textAlign: 'right', width: 140 }}>% Concluído</th>
-                <th style={{ width: 200 }}>Observação</th>
-              </tr>
-            </thead>
-            <tbody>
-              {atividades.map((at, idx) => (
-                <tr key={at.nome}>
-                  <td>{at.nome}</td>
-                  <td style={{ textAlign: 'right' }}>
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="0.1"
-                      value={at.percentual}
-                      onChange={e => {
-                        const nova = [...atividades]
-                        nova[idx].percentual = e.target.value
-                        setAtividades(nova)
-                      }}
-                      style={{ width: 80, textAlign: 'right', background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 4, padding: '4px 8px', color: 'var(--text1)' }}
-                      placeholder="0.0"
-                    />
-                    <span style={{ marginLeft: 4, color: 'var(--text2)' }}>%</span>
-                  </td>
-                  <td>
-                    <input
-                      type="text"
-                      value={at.observacao}
-                      onChange={e => {
-                        const nova = [...atividades]
-                        nova[idx].observacao = e.target.value
-                        setAtividades(nova)
-                      }}
-                      style={{ width: '100%', background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 4, padding: '4px 8px', color: 'var(--text1)' }}
-                      placeholder="opcional"
-                    />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          <div style={{ marginTop: 20, textAlign: 'right' }}>
+          <div style={{flex:1, minWidth:150}}>
+            <label style={S.lbl}>Buscar</label>
+            <input style={{...S.input, width:'100%', boxSizing:'border-box'}} placeholder="🔍 grupo ou item..." value={q} onChange={e => setQ(e.target.value)} />
+          </div>
+          <div>
+            <label style={S.lbl}>Pavimento</label>
+            <select style={S.select} value={pavF} onChange={e => setPavF(e.target.value)}>
+              <option value="__ALL__">Todos</option>
+              {PAVS.map(p => <option key={p} value={p}>{p}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={S.lbl}>Agrupar por</label>
+            <Seg value={axis} onChange={setAxis} options={[{v:'grupo',l:'Macrogrupo'},{v:'pav',l:'Pavimento'}]} />
+          </div>
+          <div style={{display:'flex', flexDirection:'column', justifyContent:'flex-end'}}>
             <button
-              onClick={handleSalvar}
-              disabled={salvando}
-              style={{ backgroundColor: '#4D9B6A', color: 'white', border: 'none', borderRadius: 6, padding: '10px 24px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+              style={{...S.saveBtn, opacity: saving?0.7:1, background: saved?'#4D9B6A':'#e6a338', color: saved?'#fff':'#231803'}}
+              onClick={handleSave}
+              disabled={saving}
             >
-              {salvando ? 'Salvando...' : '💾 Salvar Avanço'}
+              {saving ? '⏳ Salvando...' : saved ? '✅ Salvo!' : '💾 Salvar Avanço'}
             </button>
           </div>
         </div>
-      )}
 
-      {aba === 'historico' && (
-        <div className="card">
-          <div className="card-title">📊 Histórico de Lançamentos</div>
-          {loading ? (
-            <div style={{ padding: 20, textAlign: 'center' }}>Carregando...</div>
-          ) : historico.length === 0 ? (
-            <div style={{ padding: 20, textAlign: 'center', color: '#999' }}>Nenhum lançamento ainda</div>
-          ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table>
-                <thead>
-                  <tr>
-                      <th>Competência</th>
-                      <th>Mês</th>
-                      <th>Atividade</th>
-                      <th style={{ textAlign: 'right' }}>% Realizado</th>
-                      <th>Observação</th>
-                      <th>Ação</th>
-                    </tr>
-                </thead>
-                <tbody>
-                  {historico.map((item, idx) => (
-                    <tr key={item.id || idx}>
-                      <td>{fmtData(item.competencia)}</td>
-                      <td>M{item.mes_numero}</td>
-                      <td>{item.atividade_nome}</td>
-                      <td style={{ textAlign: 'right', fontWeight: 600 }}>{fmtPerc(item.percentual_realizado * 100)}</td>
-                      <td>{item.observacao || '-'}</td>
-                      <td>
-                        <button onClick={() => handleExcluir(item.id)} style={{ backgroundColor: '#B03030', color: 'white', border: 'none', borderRadius: 4, padding: '4px 10px', cursor: 'pointer', fontSize: 12 }}>
-                          🗑 Excluir
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        {groups.length === 0 && <div style={{color:'#6d675e', textAlign:'center', padding:32}}>Nenhum item ativo neste período.</div>}
+
+        {groups.map((g, gi) => {
+          const gHhPlan = g.rows.reduce((s,r) => s+r.h, 0)
+          const gHhReal = g.rows.reduce((s,r) => s + r.h*((pcts[`${r.i}|${r.p}`]||0)/100), 0)
+          const gPct = gHhPlan > 0 ? (gHhReal/gHhPlan*100) : 0
+          const isOpen = !!open[g.key]
+          const badge = axis==='grupo' ? g.gNum : gi+1
+
+          // Subgroups
+          const subMap = {}
+          g.rows.forEach(r => {
+            const sk = axis==='grupo' ? r.p : String(r.g)
+            const sl = axis==='grupo' ? r.p : r.n
+            if (!subMap[sk]) subMap[sk] = {key:sk, label:sl, gNum:r.g, rows:[]}
+            subMap[sk].rows.push(r)
+          })
+          const subs = Object.values(subMap)
+          if (axis==='grupo') subs.sort((a,b) => {const ia=PAVS.indexOf(a.key),ib=PAVS.indexOf(b.key);return(ia===-1?99:ia)-(ib===-1?99:ib)})
+          else subs.sort((a,b) => a.gNum-b.gNum)
+
+          const barColor = gPct > 100 ? '#B03030' : gPct > 0 ? '#4D9B6A' : '#333'
+
+          return (
+            <div key={g.key} style={S.card}>
+              <div style={S.chead} onClick={() => toggle(g.key)}>
+                <div style={S.badge}>{badge}</div>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:13, fontWeight:500}}>{g.label}</div>
+                  <div style={{fontSize:10, color:'#6d675e', marginTop:1}}>{g.rows.length} itens</div>
+                </div>
+                {/* Barra de progresso do grupo */}
+                <div style={{flex:1, maxWidth:160}}>
+                  <div style={{display:'flex', justifyContent:'space-between', fontSize:10, color:'#6d675e', marginBottom:3}}>
+                    <span>Hh: {fmtH(gHhReal)}</span>
+                    <span style={{color:barColor, fontWeight:600}}>{gPct.toFixed(1)}%</span>
+                  </div>
+                  <div style={{height:6, background:'#1e1e24', borderRadius:3, overflow:'hidden'}}>
+                    <div style={{height:'100%', width:`${Math.min(gPct,100)}%`, background:barColor, borderRadius:3}} />
+                  </div>
+                </div>
+                <div style={{color:'#6d675e', fontSize:12, marginLeft:12}}>{isOpen?'▲':'▼'}</div>
+              </div>
+
+              {isOpen && (
+                <div style={S.body}>
+                  {subs.map(sub => {
+                    const subHhPlan = sub.rows.reduce((s,r) => s+r.h, 0)
+                    const subHhReal = sub.rows.reduce((s,r) => s+r.h*((pcts[`${r.i}|${r.p}`]||0)/100), 0)
+                    return (
+                      <div key={sub.key}>
+                        <div style={{padding:'10px 16px 4px', color:'#3fae86', fontSize:11, letterSpacing:.5, textTransform:'uppercase', fontWeight:600}}>
+                          📐 {sub.label} — {fmtH(subHhReal)} / {fmtH(subHhPlan)} Hh
+                        </div>
+                        {/* Header */}
+                        <div style={{display:'grid', gridTemplateColumns:'50px 1fr 60px 80px 90px 80px', gap:6, padding:'5px 16px', fontSize:9, color:'#6d675e', textTransform:'uppercase', letterSpacing:.5, borderBottom:'1px solid #1a1a20'}}>
+                          <span>EAP</span><span>Descrição</span><span>Período</span><span>Hh Plan</span><span>% Concluído</span><span>Hh Real</span>
+                        </div>
+                        {[...sub.rows].sort((a,b) => a.i.localeCompare(b.i,undefined,{numeric:true})).map((r,ri) => {
+                          const key = `${r.i}|${r.p}`
+                          const pct = pcts[key] || 0
+                          const hhReal = r.h * (pct/100)
+                          const ativo = r.a <= mes && r.b >= mes
+                          return (
+                            <div key={`${r.i}-${ri}`} style={{display:'grid', gridTemplateColumns:'50px 1fr 60px 80px 90px 80px', gap:6, padding:'6px 16px', fontSize:11, alignItems:'center', background:ri%2===0?'rgba(255,255,255,0.01)':'transparent', borderBottom:'1px solid #0f0f11'}}>
+                              <span style={{color:'#6d675e', fontFamily:'monospace', fontSize:10}}>{r.i}</span>
+                              <span style={{color: ativo?'#ece9e4':'#a09a90'}}>{r.d}</span>
+                              <span style={{color: ativo?'#e6a338':'#6d675e', fontSize:10}}>M{String(r.a).padStart(2,'0')}–M{String(r.b).padStart(2,'0')}</span>
+                              <span style={{color:'#6d675e', textAlign:'right'}}>{fmtH(r.h)}</span>
+                              <div>
+                                <PctInput value={pct} onChange={v => setPct(r.i, r.p, v)} disabled={!ativo && pct===0} />
+                                {pct > 0 && (
+                                  <div style={{height:3, background:'#1e1e24', borderRadius:2, marginTop:3, overflow:'hidden'}}>
+                                    <div style={{height:'100%', width:`${pct}%`, background:'#4D9B6A', borderRadius:2}} />
+                                  </div>
+                                )}
+                              </div>
+                              <span style={{color: hhReal>0?'#3fae86':'#444', textAlign:'right', fontWeight:hhReal>0?600:400}}>{hhReal>0?fmtH(hhReal):'—'}</span>
+                            </div>
+                          )
+                        })}
+                        <div style={{display:'flex', justifyContent:'flex-end', gap:20, padding:'8px 16px', borderTop:'1px solid #2a2a31', fontSize:11, color:'#6d675e'}}>
+                          <span>Hh plan: {fmtH(subHhPlan)}</span>
+                          <span style={{color:'#3fae86', fontWeight:600}}>Hh real: {fmtH(subHhReal)}</span>
+                          <span style={{color:'#e6a338', fontWeight:600}}>{subHhPlan>0?(subHhReal/subHhPlan*100).toFixed(1):0}%</span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
-          )}
-        </div>
-      )}
+          )
+        })}
+
+        {/* Footer botão salvar */}
+        {groups.length > 0 && (
+          <div style={{display:'flex', justifyContent:'flex-end', marginTop:16}}>
+            <button
+              style={{...S.saveBtn, opacity:saving?0.7:1, background:saved?'#4D9B6A':'#e6a338', color:saved?'#fff':'#231803', padding:'12px 32px', fontSize:15}}
+              onClick={handleSave}
+              disabled={saving}
+            >
+              {saving ? '⏳ Salvando...' : saved ? '✅ Avanço salvo!' : '💾 Salvar Avanço M'+mes}
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
