@@ -105,7 +105,7 @@ export default function CustosDiretosPlanejados() {
     if (pavF !== '__ALL__' && r.p !== pavF) return false
     if (ql && !r.n.toLowerCase().includes(ql) && !r.d.toLowerCase().includes(ql)) return false
     return true
-  }), [dados, pavF, ql])
+  }), [dados, pavF, q, mesl])
 
   // Group level 1
   const groups = useMemo(() => {
