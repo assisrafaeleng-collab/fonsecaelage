@@ -184,7 +184,7 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
         <div className="kpi kpi-clickable" style={{ borderLeftColor: '#1A5276' }} onClick={() => router.push('/orcamento')}>
           <div className="kpi-label">Custo Total</div>
           <div className="kpi-value">{fmtMoeda(kpis.orcamento_total)}</div>
-          <div className="kpi-sub">Planejado para 20 meses · 📊 Ver detalhes</div>
+          <div className="kpi-sub">`Planejado para ${mesLimite === 20 ? "20 meses" : "M" + mesLimite} · 📊 Ver detalhes`</div>
         </div>
       </div>
 
