@@ -39,7 +39,7 @@ export default function CustosIndiretosRealizados() {
   if (loading) return <div style={S.page}><div style={{padding:40,color:'#a09a90'}}>Carregando...</div></div>
   if (!data) return <div style={S.page}><div style={{padding:40,color:'#B03030'}}>Erro ao carregar.</div></div>
 
-  const { lancamentos=[], planejados=[], totalRealizado=0, totalPlanejado=0 } = data
+  const { lancamentos=[], planejados=[], realPorCategoria={}, totalRealizado=0, totalPlanejado=0 } = data
   const saldo = totalPlanejado - totalRealizado
   const pctGasto = totalPlanejado > 0 ? (totalRealizado/totalPlanejado*100) : 0
 
@@ -95,10 +95,7 @@ export default function CustosIndiretosRealizados() {
             <span style={{textAlign:'right'}}>%</span>
           </div>
           {[...planejados].sort((a,b) => b.valor_total - a.valor_total).map((p, i) => {
-            const words = (p.categoria || '').toLowerCase().split(' ').filter(w => w.length > 3)
-            const realVal = lancamentos
-              .filter(l => words.some(w => (l.classificacao||'').toLowerCase().includes(w) || (l.historico||'').toLowerCase().includes(w)))
-              .reduce((s,l) => s + parseFloat(l.valor||0), 0)
+            const realVal = realPorCategoria[p.categoria] || 0
             const pct = p.valor_total > 0 ? (realVal/p.valor_total*100) : 0
             return (
               <div key={i} style={{...S.row, background: i%2===0 ? 'rgba(255,255,255,0.01)' : 'transparent'}}>
