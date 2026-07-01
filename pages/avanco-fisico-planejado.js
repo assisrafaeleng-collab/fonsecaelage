@@ -98,7 +98,7 @@ export default function AvancoFisicoPlanejado() {
   }
 
   const getStatus = (a, b) => {
-    if (mes > b) return 'concluido'
+    if (mes >= b) return 'concluido'
     if (mes >= a) return 'andamento'
     return 'futuro'
   }
