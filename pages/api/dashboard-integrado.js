@@ -101,16 +101,13 @@ export default async function handler(req, res) {
       avancoRealPorMes[item.mes_numero].itens.push(item)
     })
 
+    const totalHhPlanejado = avancoRealData.reduce((s,i) => s + parseFloat(i.hh_planejado||0), 0) || 1
     const fisRealizada = Object.entries(avancoRealPorMes).map(([mes, val]) => {
-      let somaPonderada = 0
-      val.itens.forEach(item => {
-        const peso = pesosPorGrupo[item.atividade_nome] || 0
-        somaPonderada += parseFloat(item.percentual_realizado || 0) * peso
-      })
+      const hhReal = val.itens.reduce((s,i) => s + parseFloat(i.hh_realizado||0), 0)
       return {
         mes_numero: parseInt(mes),
         competencia: val.competencia,
-        percentual_acumulado: Math.min(somaPonderada, 1)
+        percentual_acumulado: Math.min(hhReal / totalHhPlanejado, 1)
       }
     }).sort((a, b) => a.mes_numero - b.mes_numero)
 
