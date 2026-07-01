@@ -5,28 +5,17 @@ export default async function handler(req, res) {
   }
   const obra_id = 'flats_pampulha'
   try {
-    const { data: lancamentos, error: errLancamentos } = await supabase
+    const { data: lancamentos, error } = await supabase
       .from('custos_lancamentos')
       .select('*')
       .eq('obra_id', obra_id)
       .not('codigo_eap', 'like', '18.%')
       .eq('status', 'Normal')
       .order('data_emissao', { ascending: false })
-    if (errLancamentos) {
-      throw new Error('Erro ao buscar lancamentos: ' + errLancamentos.message)
-    }
-    const total = lancamentos.reduce((sum, item) => sum + parseFloat(item.valor || 0), 0)
-    return res.status(200).json({
-      lancamentos,
-      total,
-      quantidade: lancamentos.length,
-      obra_id
-    })
+    if (error) throw new Error(error.message)
+    const total = (lancamentos||[]).reduce((s, l) => s + parseFloat(l.valor||0), 0)
+    return res.status(200).json({ lancamentos: lancamentos||[], total, quantidade: (lancamentos||[]).length })
   } catch (error) {
-    console.error('Erro na API:', error)
-    return res.status(500).json({
-      error: 'Erro ao buscar dados',
-      message: error.message
-    })
+    return res.status(500).json({ error: error.message })
   }
 }
