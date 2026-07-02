@@ -133,16 +133,13 @@ export default function CustosDiretosRealizados() {
     return map
   }, [lancFiltrados])
 
-  const valPlan = (r) => {
-    if (mes === 20) {
-      if (metric==='custo') return r.c
-      if (metric==='hh') return r.h
-      return r.h / totHh
-    }
+const valPlan = (r) => {
+    if (mes < r.a) return 0
     const numMeses = Math.max(r.b - r.a + 1, 1)
-    if (metric==='custo') return r.c / numMeses
-    if (metric==='hh') return r.h / numMeses
-    return (r.h / numMeses) / totHh
+    const mesesAtivos = Math.min(mes, r.b) - r.a + 1
+    if (metric==='custo') return r.c * mesesAtivos / numMeses
+    if (metric==='hh') return r.h * mesesAtivos / numMeses
+    return (r.h * mesesAtivos / numMeses) / totHh
   }
   const fmtVal = (v) => {
     if (metric==='custo') return fmtR(v)
