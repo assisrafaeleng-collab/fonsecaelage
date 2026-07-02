@@ -70,6 +70,7 @@ export default function CustosDiretosRealizados() {
   const [pavF, setPavF] = useState('__ALL__')
   const [q, setQ] = useState('')
   const [open, setOpen] = useState({})
+  const [openItem, setOpenItem] = useState({})
   const [mes, setMes] = useState(1)
 
   const NOMES_MESES = ['jul','ago','set','out','nov','dez','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez','jan','fev']
@@ -127,8 +128,9 @@ export default function CustosDiretosRealizados() {
       const eap = l.codigo_eap || ''
       const pav = l.pavimento || 'Edifício'
       const key = `${eap}|${pav}`
-      if (!map[key]) map[key] = 0
-      map[key] += parseFloat(l.valor || 0)
+      if (!map[key]) map[key] = { total: 0, lancs: [] }
+      map[key].total += parseFloat(l.valor || 0)
+      map[key].lancs.push(l)
     })
     return map
   }, [lancFiltrados])
@@ -155,7 +157,7 @@ const valPlan = (r) => {
     if (ql && !r.n.toLowerCase().includes(ql) && !r.d.toLowerCase().includes(ql)) return false
     // Mostrar item se: está no período planejado OU tem realizado neste período
     const ativoPeriodo = r.a <= mes
-    const temRealizado = (realizadoEapMap[`${r.i}|${r.p}`] || 0) > 0
+    const temRealizado = (realizadoEapMap[`${r.i}|${r.p}`] ? realizadoEapMap[`${r.i}|${r.p}`].total : 0) > 0
     return ativoPeriodo || temRealizado
   }), [dados, pavF, ql, mes, realizadoEapMap])
 
@@ -180,6 +182,7 @@ const valPlan = (r) => {
   const desvio = totalPlan > 0 ? ((totalReal-totalPlan)/totalPlan*100) : 0
 
   const toggle = key => setOpen(o => ({...o, [key]: !o[key]}))
+  const toggleItem = key => setOpenItem(o => ({...o, [key]: !o[key]}))
 
   if (loading) return <div style={S.page}><div style={{padding:40,color:'#a09a90'}}>Carregando...</div></div>
 
@@ -332,7 +335,9 @@ const valPlan = (r) => {
                         </div>
                         {[...sub.rows].sort((a,b) => a.i.localeCompare(b.i,undefined,{numeric:true})).map((r,ri) => {
                           const rPav = axis==='grupo' ? sub.key : r.p
-                          const rReal = realizadoEapMap[`${r.i}|${rPav}`] || 0
+                          const rEapData = realizadoEapMap[`${r.i}|${rPav}`]
+                          const rReal = rEapData ? rEapData.total : 0
+                          const rLancs = rEapData ? rEapData.lancs : []
                           const rPlan = valPlan(r)
                           const rDesvio = rPlan > 0 ? ((rReal-rPlan)/rPlan*100) : 0
                           return (
@@ -347,7 +352,23 @@ const valPlan = (r) => {
                                 {metric==='custo' && rReal>0 ? `${rDesvio>=0?'+':''}${rDesvio.toFixed(1)}%` : '—'}
                               </span>
                               <span style={{color:'#6d675e', fontSize:9}}>M{String(r.a).padStart(2,'0')}–M{String(r.b).padStart(2,'0')}</span>
+                              {rLancs.length > 0 && <span style={{color:'#6d675e',fontSize:9,cursor:'pointer'}} onClick={e=>{e.stopPropagation();toggleItem(r.i+'|'+rPav)}}>{openItem[r.i+'|'+rPav]?'▲':'▼'}</span>}
                             </div>
+                            {openItem[r.i+'|'+rPav] && rLancs.length > 0 && (
+                              <div style={{padding:'4px 16px 8px 66px',background:'rgba(255,255,255,0.02)'}}>
+                                <div style={{fontSize:10,color:'#6d675e',display:'grid',gridTemplateColumns:'80px 1fr 100px 60px',gap:4,padding:'2px 0',borderBottom:'1px solid #1f1f24',fontWeight:600}}>
+                                  <span>Data</span><span>Descrição</span><span style={{textAlign:'right'}}>Valor</span><span style={{textAlign:'right'}}>Período</span>
+                                </div>
+                                {rLancs.map((lc,li) => (
+                                  <div key={li} style={{fontSize:10,color:'#a09a90',display:'grid',gridTemplateColumns:'80px 1fr 100px 60px',gap:4,padding:'3px 0',borderBottom:'1px solid #1a1a1f'}}>
+                                    <span>{lc.data_emissao ? lc.data_emissao.slice(0,10) : '—'}</span>
+                                    <span>{lc.descricao || lc.codigo_eap}</span>
+                                    <span style={{textAlign:'right',color:'#E91E8C',fontWeight:500}}>{fmtR(parseFloat(lc.valor||0))}</span>
+                                    <span style={{textAlign:'right',color:'#5B9BD5'}}>{compLabel(lc.competencia)}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           )
                         })}
                         <div style={{display:'flex', justifyContent:'flex-end', gap:20, padding:'8px 16px', borderTop:'1px solid #2a2a31', fontSize:12}}>
