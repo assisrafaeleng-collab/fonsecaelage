@@ -12,7 +12,7 @@ const MESES_LABELS = [
 
 const TOTAL_MESES = 20;
 
-function fmt(v) {
+function fmt(v) { v=v||0;
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
