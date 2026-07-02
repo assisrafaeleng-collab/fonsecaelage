@@ -344,6 +344,7 @@ export default function AvancoFisicoRealizado() {
                               <span style={{color:'#6d675e', textAlign:'right'}}>{fmtH(r.h)}</span>
                               <div>
                                 <PctInput value={pct} onChange={v => setPct(r.i, r.p, v)} disabled={!ativo && pct===0} />
+                                {dataLanc && <div style={{fontSize:8, color:'#6d675e', marginTop:2}}>{'\u2705 ' + dataLanc}</div>}
                                 {pct > 0 && (
                                   <div style={{height:3, background:'#1e1e24', borderRadius:2, marginTop:3, overflow:'hidden'}}>
                                     <div style={{height:'100%', width:`${pct}%`, background:'#4D9B6A', borderRadius:2}} />
