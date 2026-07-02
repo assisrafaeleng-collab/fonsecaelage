@@ -336,6 +336,8 @@ export default function AvancoFisicoRealizado() {
                           const pct = pcts[key] || 0
                           const hhReal = r.h * (pct/100)
                           const ativo = r.a <= mes && r.b >= mes
+                          const ex = existentes[key]
+                          const dataLanc = ex && ex.created_at ? new Date(ex.created_at).toLocaleDateString("pt-BR") : null
                           return (
                             <div key={`${r.i}-${ri}`} style={{display:'grid', gridTemplateColumns:'50px 1fr 60px 80px 90px 80px', gap:6, padding:'6px 16px', fontSize:11, alignItems:'center', background:ri%2===0?'rgba(255,255,255,0.01)':'transparent', borderBottom:'1px solid #0f0f11'}}>
                               <span style={{color:'#6d675e', fontFamily:'monospace', fontSize:10}}>{r.i}</span>
