@@ -34,11 +34,14 @@ export default async function handler(req, res) {
 
     // Calcular realizado por categoria usando mapeamento exato
     const realPorCategoria = {}
+    const lancsPorCategoria = {}
     lancamentos.forEach(l => {
       const cat = EAP_CATEGORIA[l.codigo_eap]
       if (cat) {
         if (!realPorCategoria[cat]) realPorCategoria[cat] = 0
         realPorCategoria[cat] += parseFloat(l.valor || 0)
+        if (!lancsPorCategoria[cat]) lancsPorCategoria[cat] = []
+        lancsPorCategoria[cat].push(l)
       }
     })
 
@@ -49,6 +52,7 @@ export default async function handler(req, res) {
       lancamentos,
       planejados,
       realPorCategoria,
+      lancsPorCategoria,
       totalRealizado,
       totalPlanejado,
       quantidade: lancamentos.length
