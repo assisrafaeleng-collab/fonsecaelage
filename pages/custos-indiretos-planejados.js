@@ -46,9 +46,9 @@ export default function CustosIndiretosplanejados() {
   var categorias = (dados && dados.categorias ? dados.categorias : []).map(function(c) {
     return {
       categoria: c.categoria,
-      acumulado: c.valor_total,
-      totalProjeto: c.valor_original,
-      valorNoMes: calcValorNoMes(c, mes),
+      acumulado: c.valor_acumulado,
+      totalProjeto: c.valor_total_projeto,
+      valorNoMes: c.valor_no_mes,
       mes_desembolso: c.mes_desembolso
     };
   });
@@ -175,7 +175,7 @@ export default function CustosIndiretosplanejados() {
         <div className="summary-row">
           <div className="summary-card">
             <div className="sc-label">Total Projeto</div>
-            <div className="sc-value">{dados ? fmt(dados.totalGeral) : '\u2014'}</div>
+            <div className="sc-value">{dados ? fmt(dados.total_projeto) : '\u2014'}</div>
             <div className="sc-sub">24 categorias &middot; 20 meses</div>
           </div>
           <div className="summary-card accent2">
@@ -185,8 +185,8 @@ export default function CustosIndiretosplanejados() {
           </div>
           <div className="summary-card accent3">
             <div className="sc-label">{'Acumulado at\u00e9 ' + mesShort}</div>
-            <div className="sc-value">{dados ? fmt(dados.total) : '\u2014'}</div>
-            <div className="sc-sub">{(dados && dados.quantidade) || 0} categorias</div>
+            <div className="sc-value">{dados ? fmt(dados.total_acumulado) : '\u2014'}</div>
+            <div className="sc-sub">{(dados && dados.qtd_categorias) || 0} categorias</div>
           </div>
         </div>
 
@@ -248,7 +248,7 @@ export default function CustosIndiretosplanejados() {
                       <td className="num val-projeto">{fmt(c.totalProjeto)}</td>
                       <td className="num val-mes">{c.valorNoMes > 0 ? fmt(c.valorNoMes) : '\u2014'}</td>
                       <td className="num val-acum">{fmt(c.acumulado)}</td>
-                      <td className="num val-pct">{pct(c.acumulado, dados ? dados.total : 0)}</td>
+                      <td className="num val-pct">{pct(c.acumulado, dados ? dados.total_acumulado : 0)}</td>
                       <td className="bar-cell">
                         <div className="bar-wrap">
                           <div className="bar-fill" style={{ width: ((c.acumulado / maxBar) * 100) + '%' }}></div>
