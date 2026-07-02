@@ -1,5 +1,5 @@
 // pages/custos-diretos-realizados-lista.js
-import { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/router'
 
 const PAVS = ['1º','2º','3º','4º','5º','6º/Plat','Edifício']
@@ -341,7 +341,8 @@ const valPlan = (r) => {
                           const rPlan = valPlan(r)
                           const rDesvio = rPlan > 0 ? ((rReal-rPlan)/rPlan*100) : 0
                           return (
-                            <div key={`${r.i}-${ri}`} style={{...S.itemRow, background: ri%2===0 ? 'rgba(255,255,255,0.01)' : 'transparent'}}>
+                            <React.Fragment key={`${r.i}-${ri}`}>
+                            <div style={{...S.itemRow, background: ri%2===0 ? 'rgba(255,255,255,0.01)' : 'transparent'}}>
                               <span style={{color:'#6d675e', fontFamily:'monospace', fontSize:10}}>{r.i}</span>
                               <span style={{color:'#a09a90', fontSize:11}}>{r.d}</span>
                               <span style={{textAlign:'right', color:'#5B9BD5', fontWeight:500}}>{fmtVal(rPlan)}</span>
@@ -369,6 +370,7 @@ const valPlan = (r) => {
                                 ))}
                               </div>
                             )}
+                            </React.Fragment>
                           )
                         })}
                         <div style={{display:'flex', justifyContent:'flex-end', gap:20, padding:'8px 16px', borderTop:'1px solid #2a2a31', fontSize:12}}>
