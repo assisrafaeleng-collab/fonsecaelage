@@ -139,9 +139,7 @@ function ImportSection({ onImported }) {
           <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: C.dark, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             1 — Competência (mês de referência)
           </label>
-          <input
-            type="text"
-            placeholder="ex: Maio/2026"
+          <select
             value={competencia}
             onChange={e => setCompetencia(e.target.value)}
             style={{
@@ -149,7 +147,10 @@ function ImportSection({ onImported }) {
               fontSize: 14, width: 220, outline: 'none', fontFamily: 'inherit',
               color: C.dark, background: C.bg,
             }}
-          />
+          >
+            <option value="">Selecione o período...</option>
+            {['M1 — jul/2026','M2 — ago/2026','M3 — set/2026','M4 — out/2026','M5 — nov/2026','M6 — dez/2026','M7 — jan/2027','M8 — fev/2027','M9 — mar/2027','M10 — abr/2027','M11 — mai/2027','M12 — jun/2027','M13 — jul/2027','M14 — ago/2027','M15 — set/2027','M16 — out/2027','M17 — nov/2027','M18 — dez/2027','M19 — jan/2028','M20 — fev/2028'].map(m => <option key={m} value={m}>{m}</option>)}
+          </select>
         </div>
 
         {/* Passo 2: Upload */}
