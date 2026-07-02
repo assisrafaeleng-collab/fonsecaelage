@@ -22,49 +22,56 @@ function pct(v, total) {
 }
 
 function calcValorNoMes(cat, mes) {
-  const md = cat.mes_desembolso;
+  var md = cat.mes_desembolso;
   if (md === 0) return cat.valor_original / TOTAL_MESES;
   if (md === mes) return cat.valor_original;
   return 0;
 }
 
 export default function CustosIndiretosplanejados() {
-  const [mes, setMes] = useState(7);
-  const [busca, setBusca] = useState('');
-  const [ordem, setOrdem] = useState('maior');
-  const [dados, setDados] = useState(null);
-  const [loading, setLoading] = useState(true);
+  var _a = useState(7), mes = _a[0], setMes = _a[1];
+  var _b = useState(''), busca = _b[0], setBusca = _b[1];
+  var _c = useState('maior'), ordem = _c[0], setOrdem = _c[1];
+  var _d = useState(null), dados = _d[0], setDados = _d[1];
+  var _e = useState(true), loading = _e[0], setLoading = _e[1];
 
-  useEffect(() => {
+  useEffect(function() {
     setLoading(true);
-    fetch(`/api/custos-indiretos-planejados?mes=${mes}`)
-      .then(r => r.json())
-      .then(d => { setDados(d); setLoading(false); })
-      .catch(() => setLoading(false));
+    fetch('/api/custos-indiretos-planejados?mes=' + mes)
+      .then(function(r) { return r.json(); })
+      .then(function(d) { setDados(d); setLoading(false); })
+      .catch(function() { setLoading(false); });
   }, [mes]);
 
-  const categorias = (dados?.categorias || []).map(c => ({
-    ...c,
-    acumulado: c.valor_total,
-    totalProjeto: c.valor_original,
-    valorNoMes: calcValorNoMes(c, mes)
-  }));
+  var categorias = (dados && dados.categorias ? dados.categorias : []).map(function(c) {
+    return {
+      categoria: c.categoria,
+      acumulado: c.valor_total,
+      totalProjeto: c.valor_original,
+      valorNoMes: calcValorNoMes(c, mes),
+      mes_desembolso: c.mes_desembolso
+    };
+  });
 
-  const totalNoMes = categorias.reduce((s, c) => s + c.valorNoMes, 0);
+  var totalNoMes = categorias.reduce(function(s, c) { return s + c.valorNoMes; }, 0);
 
-  const filtradas = categorias
-    .filter(c => !busca || c.categoria.toLowerCase().includes(busca.toLowerCase()))
-    .sort((a, b) => {
+  var filtradas = categorias
+    .filter(function(c) { return !busca || c.categoria.toLowerCase().includes(busca.toLowerCase()); })
+    .sort(function(a, b) {
       if (ordem === 'maior') return b.acumulado - a.acumulado;
       if (ordem === 'menor') return a.acumulado - b.acumulado;
       return a.categoria.localeCompare(b.categoria);
     });
 
-  const maxBar = Math.max(...filtradas.map(c => c.acumulado), 1);
+  var maxBar = 1;
+  filtradas.forEach(function(c) { if (c.acumulado > maxBar) maxBar = c.acumulado; });
+
+  var mesLabel = MESES_LABELS[mes - 1] || '';
+  var mesShort = mesLabel.split(' — ')[0] || '';
 
   return (
     <>
-      <Head><title>Custos Indiretos Planejados — Flats Pampulha</title></Head>
+      <Head><title>Custos Indiretos Planejados | Flats Pampulha</title></Head>
       <style jsx global>{`
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -87,7 +94,6 @@ export default function CustosIndiretosplanejados() {
           text-decoration: none; font-size: 13px; transition: .2s;
         }
         .btn-back:hover { border-color: #e09145; color: #e09145; }
-
         .summary-row {
           display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;
           margin: 28px 0 20px;
@@ -101,7 +107,6 @@ export default function CustosIndiretosplanejados() {
         .sc-label { font-size: 11px; text-transform: uppercase; letter-spacing: .8px; opacity: .55; margin-bottom: 6px; }
         .sc-value { font-size: 22px; font-weight: 700; color: #f0f1f3; }
         .sc-sub { font-size: 12px; opacity: .45; margin-top: 4px; }
-
         .filters-box {
           background: #1a1c25; border-radius: 10px; padding: 20px;
           margin-bottom: 20px;
@@ -121,7 +126,6 @@ export default function CustosIndiretosplanejados() {
         }
         .filter-group select:focus, .filter-group input:focus { border-color: #e09145; }
         .filter-group input { min-width: 260px; }
-
         .table-box {
           background: #1a1c25; border-radius: 10px; overflow: hidden;
         }
@@ -142,20 +146,16 @@ export default function CustosIndiretosplanejados() {
         tbody td { padding: 14px 16px; font-size: 14px; }
         tbody td.num { text-align: right; font-variant-numeric: tabular-nums; }
         tbody td.cat-name { font-weight: 500; max-width: 280px; }
-
         .val-projeto { color: #8b8e96; font-size: 13px; }
         .val-mes { color: #5b9cf6; font-weight: 600; }
         .val-acum { color: #e09145; font-weight: 600; }
         .val-pct { font-size: 13px; opacity: .65; white-space: nowrap; }
-
         .bar-cell { width: 120px; }
         .bar-wrap { background: #25272f; border-radius: 3px; height: 6px; overflow: hidden; }
         .bar-fill { height: 100%; border-radius: 3px; background: #5b9cf6; transition: width .4s; }
-
         .loading-msg {
           text-align: center; padding: 60px; opacity: .4; font-size: 15px;
         }
-
         @media (max-width: 900px) {
           .summary-row { grid-template-columns: 1fr; }
           .filters-row { flex-direction: column; }
@@ -169,36 +169,36 @@ export default function CustosIndiretosplanejados() {
       <div className="page-wrap">
         <div className="header-meta">Custos Indiretos Planejados</div>
         <div className="header-title">Flats Pampulha</div>
-        <div className="header-sub">{MESES_LABELS[mes - 1]}</div>
-        <Link href="/" legacyBehavior><a className="btn-back">← Voltar ao Dashboard</a></Link>
+        <div className="header-sub">{mesLabel}</div>
+        <Link href="/" legacyBehavior><a className="btn-back">&larr; Voltar ao Dashboard</a></Link>
 
         <div className="summary-row">
           <div className="summary-card">
             <div className="sc-label">Total Projeto</div>
-            <div className="sc-value">{dados ? fmt(dados.totalGeral) : '—'}</div>
-            <div className="sc-sub">24 categorias · 20 meses</div>
+            <div className="sc-value">{dados ? fmt(dados.totalGeral) : '\u2014'}</div>
+            <div className="sc-sub">24 categorias &middot; 20 meses</div>
           </div>
           <div className="summary-card accent2">
-            <div className="sc-label">Programado {MESES_LABELS[mes - 1]?.split(' — ')[0]}</div>
-            <div className="sc-value">{dados ? fmt(totalNoMes) : '—'}</div>
-            <div className="sc-sub">desembolso no mês</div>
+            <div className="sc-label">{'Programado ' + mesShort}</div>
+            <div className="sc-value">{dados ? fmt(totalNoMes) : '\u2014'}</div>
+            <div className="sc-sub">desembolso no m&ecirc;s</div>
           </div>
           <div className="summary-card accent3">
-            <div className="sc-label">Acumulado até {MESES_LABELS[mes - 1]?.split(' — ')[0]}</div>
-            <div className="sc-value">{dados ? fmt(dados.total) : '—'}</div>
-            <div className="sc-sub">{dados?.quantidade || 0} categorias</div>
+            <div className="sc-label">{'Acumulado at\u00e9 ' + mesShort}</div>
+            <div className="sc-value">{dados ? fmt(dados.total) : '\u2014'}</div>
+            <div className="sc-sub">{(dados && dados.quantidade) || 0} categorias</div>
           </div>
         </div>
 
         <div className="filters-box">
-          <div className="filters-title">⚙ Filtros e Ordenação</div>
+          <div className="filters-title">&#9881; Filtros e Ordena&ccedil;&atilde;o</div>
           <div className="filters-row">
             <div className="filter-group">
-              <label>Período</label>
-              <select value={mes} onChange={e => setMes(Number(e.target.value))}>
-                {MESES_LABELS.map((l, i) => (
-                  <option key={i} value={i + 1}>{l}</option>
-                ))}
+              <label>Per&iacute;odo</label>
+              <select value={mes} onChange={function(e) { setMes(Number(e.target.value)); }}>
+                {MESES_LABELS.map(function(l, i) {
+                  return <option key={i} value={i + 1}>{l}</option>;
+                })}
               </select>
             </div>
             <div className="filter-group">
@@ -207,15 +207,15 @@ export default function CustosIndiretosplanejados() {
                 type="text"
                 placeholder="Digite para filtrar..."
                 value={busca}
-                onChange={e => setBusca(e.target.value)}
+                onChange={function(e) { setBusca(e.target.value); }}
               />
             </div>
             <div className="filter-group">
               <label>Ordenar por</label>
-              <select value={ordem} onChange={e => setOrdem(e.target.value)}>
+              <select value={ordem} onChange={function(e) { setOrdem(e.target.value); }}>
                 <option value="maior">Maior acumulado</option>
                 <option value="menor">Menor acumulado</option>
-                <option value="alfa">A → Z</option>
+                <option value="alfa">A &rarr; Z</option>
               </select>
             </div>
           </div>
@@ -223,7 +223,7 @@ export default function CustosIndiretosplanejados() {
 
         <div className="table-box">
           <div className="table-header">
-            Custos Indiretos por Categoria (até {MESES_LABELS[mes - 1]?.split(' — ')[0]})
+            {'Custos Indiretos por Categoria (at\u00e9 ' + mesShort + ')'}
           </div>
 
           {loading ? (
@@ -234,27 +234,29 @@ export default function CustosIndiretosplanejados() {
                 <tr>
                   <th>Categoria</th>
                   <th className="num">Total Projeto</th>
-                  <th className="num">No Mês</th>
+                  <th className="num">No M&ecirc;s</th>
                   <th className="num">Acumulado</th>
                   <th className="num">%</th>
                   <th className="bar-cell"></th>
                 </tr>
               </thead>
               <tbody>
-                {filtradas.map((c, i) => (
-                  <tr key={i}>
-                    <td className="cat-name">{c.categoria}</td>
-                    <td className="num val-projeto">{fmt(c.totalProjeto)}</td>
-                    <td className="num val-mes">{c.valorNoMes > 0 ? fmt(c.valorNoMes) : '—'}</td>
-                    <td className="num val-acum">{fmt(c.acumulado)}</td>
-                    <td className="num val-pct">{pct(c.acumulado, dados?.total)}</td>
-                    <td className="bar-cell">
-                      <div className="bar-wrap">
-                        <div className="bar-fill" style={{ width: `${(c.acumulado / maxBar) * 100}%` }} />
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {filtradas.map(function(c, i) {
+                  return (
+                    <tr key={i}>
+                      <td className="cat-name">{c.categoria}</td>
+                      <td className="num val-projeto">{fmt(c.totalProjeto)}</td>
+                      <td className="num val-mes">{c.valorNoMes > 0 ? fmt(c.valorNoMes) : '\u2014'}</td>
+                      <td className="num val-acum">{fmt(c.acumulado)}</td>
+                      <td className="num val-pct">{pct(c.acumulado, dados ? dados.total : 0)}</td>
+                      <td className="bar-cell">
+                        <div className="bar-wrap">
+                          <div className="bar-fill" style={{ width: ((c.acumulado / maxBar) * 100) + '%' }}></div>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}
@@ -263,5 +265,3 @@ export default function CustosIndiretosplanejados() {
     </>
   );
 }
-
-// force deploy v2
