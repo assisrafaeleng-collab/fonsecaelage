@@ -139,7 +139,7 @@ function ImportSection({ onImported }) {
           <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: C.dark, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             1 — Competência (mês de referência)
           </label>
-          <select
+         <select
             value={competencia}
             onChange={e => setCompetencia(e.target.value)}
             style={{
@@ -149,7 +149,15 @@ function ImportSection({ onImported }) {
             }}
           >
             <option value="">Selecione o período...</option>
-            {['M1 — jul/2026','M2 — ago/2026','M3 — set/2026','M4 — out/2026','M5 — nov/2026','M6 — dez/2026','M7 — jan/2027','M8 — fev/2027','M9 — mar/2027','M10 — abr/2027','M11 — mai/2027','M12 — jun/2027','M13 — jul/2027','M14 — ago/2027','M15 — set/2027','M16 — out/2027','M17 — nov/2027','M18 — dez/2027','M19 — jan/2028','M20 — fev/2028'].map(m => <option key={m} value={m}>{m}</option>)}
+            {[
+              {v:'2026-07',l:'M1 — jul/2026'},{v:'2026-08',l:'M2 — ago/2026'},{v:'2026-09',l:'M3 — set/2026'},
+              {v:'2026-10',l:'M4 — out/2026'},{v:'2026-11',l:'M5 — nov/2026'},{v:'2026-12',l:'M6 — dez/2026'},
+              {v:'2027-01',l:'M7 — jan/2027'},{v:'2027-02',l:'M8 — fev/2027'},{v:'2027-03',l:'M9 — mar/2027'},
+              {v:'2027-04',l:'M10 — abr/2027'},{v:'2027-05',l:'M11 — mai/2027'},{v:'2027-06',l:'M12 — jun/2027'},
+              {v:'2027-07',l:'M13 — jul/2027'},{v:'2027-08',l:'M14 — ago/2027'},{v:'2027-09',l:'M15 — set/2027'},
+              {v:'2027-10',l:'M16 — out/2027'},{v:'2027-11',l:'M17 — nov/2027'},{v:'2027-12',l:'M18 — dez/2027'},
+              {v:'2028-01',l:'M19 — jan/2028'},{v:'2028-02',l:'M20 — fev/2028'}
+            ].map(m => <option key={m.v} value={m.v}>{m.l}</option>)}
           </select>
         </div>
 
