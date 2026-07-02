@@ -7,6 +7,9 @@ const fmtR = v => 'R$ ' + Math.round(v).toLocaleString('pt-BR')
 const fmtH = v => Math.round(v).toLocaleString('pt-BR') + ' Hh'
 const fmtP = v => (v * 100).toFixed(1).replace('.', ',') + '%'
 
+const COMP_MAP = {'2026-07':'M1','2026-08':'M2','2026-09':'M3','2026-10':'M4','2026-11':'M5','2026-12':'M6','2027-01':'M7','2027-02':'M8','2027-03':'M9','2027-04':'M10','2027-05':'M11','2027-06':'M12','2027-07':'M13','2027-08':'M14','2027-09':'M15','2027-10':'M16','2027-11':'M17','2027-12':'M18','2028-01':'M19','2028-02':'M20'}
+function compLabel(comp) { return COMP_MAP[comp] || comp }
+
 const S = {
   page: { minHeight:'100vh', background:'#0f0f11', color:'#ece9e4', fontFamily:'"Segoe UI",system-ui,sans-serif', fontVariantNumeric:'tabular-nums' },
   wrap: { maxWidth:1140, margin:'0 auto', padding:'0 20px 40px' },
@@ -31,8 +34,8 @@ const S = {
   body: { borderTop:'1px solid #2a2a31' },
   subsec: { padding:'10px 16px 4px', color:'#3fae86', fontSize:11, letterSpacing:.5, textTransform:'uppercase', fontWeight:600 },
   empty: { color:'#6d675e', textAlign:'center', padding:32, fontSize:14 },
-  thRow: { display:'grid', gridTemplateColumns:'50px 1fr 120px 120px 80px 70px', gap:6, padding:'6px 16px 4px', fontSize:9, color:'#6d675e', textTransform:'uppercase', letterSpacing:'.5px', borderBottom:'1px solid #2a2a31' },
-  itemRow: { display:'grid', gridTemplateColumns:'50px 1fr 120px 120px 80px 70px', gap:6, padding:'5px 16px', fontSize:11, alignItems:'center' },
+  thRow: { display:'grid', gridTemplateColumns:'50px 1fr 120px 120px 80px 80px', gap:6, padding:'6px 16px 4px', fontSize:9, color:'#6d675e', textTransform:'uppercase', letterSpacing:'.5px', borderBottom:'1px solid #2a2a31' },
+  itemRow: { display:'grid', gridTemplateColumns:'50px 1fr 120px 120px 80px 80px', gap:6, padding:'5px 16px', fontSize:11, alignItems:'center' },
 }
 
 function Seg({ value, onChange, options }) {
@@ -135,7 +138,7 @@ export default function CustosDiretosRealizados() {
     return map
   }, [lancFiltrados])
 
-const valPlan = (r) => {
+  const valPlan = (r) => {
     if (mes < r.a) return 0
     const numMeses = Math.max(r.b - r.a + 1, 1)
     const mesesAtivos = Math.min(mes, r.b) - r.a + 1
@@ -155,7 +158,6 @@ const valPlan = (r) => {
   const visible = useMemo(() => dados.filter(r => {
     if (pavF !== '__ALL__' && r.p !== pavF) return false
     if (ql && !r.n.toLowerCase().includes(ql) && !r.d.toLowerCase().includes(ql)) return false
-    // Mostrar item se: está no período planejado OU tem realizado neste período
     const ativoPeriodo = r.a <= mes
     const temRealizado = (realizadoEapMap[`${r.i}|${r.p}`] ? realizadoEapMap[`${r.i}|${r.p}`].total : 0) > 0
     return ativoPeriodo || temRealizado
@@ -340,36 +342,49 @@ const valPlan = (r) => {
                           const rLancs = rEapData ? rEapData.lancs : []
                           const rPlan = valPlan(r)
                           const rDesvio = rPlan > 0 ? ((rReal-rPlan)/rPlan*100) : 0
+                          const itemKey = `${r.i}|${rPav}`
                           return (
                             <React.Fragment key={`${r.i}-${ri}`}>
-                            <div style={{...S.itemRow, background: ri%2===0 ? 'rgba(255,255,255,0.01)' : 'transparent'}}>
-                              <span style={{color:'#6d675e', fontFamily:'monospace', fontSize:10}}>{r.i}</span>
-                              <span style={{color:'#a09a90', fontSize:11}}>{r.d}</span>
-                              <span style={{textAlign:'right', color:'#5B9BD5', fontWeight:500}}>{fmtVal(rPlan)}</span>
-                              <span style={{textAlign:'right', color: rReal>0 ? '#E91E8C' : '#444', fontWeight: rReal>0 ? 600 : 400}}>
-                                {metric==='custo' ? (rReal>0 ? fmtR(rReal) : '—') : '—'}
-                              </span>
-                              <span style={{textAlign:'right', fontSize:11, color: rReal===0?'#444':rDesvio>5?'#B03030':rDesvio>0?'#C8860A':'#4D9B6A', fontWeight:600}}>
-                                {metric==='custo' && rReal>0 ? `${rDesvio>=0?'+':''}${rDesvio.toFixed(1)}%` : '—'}
-                              </span>
-                              <span style={{color:'#6d675e', fontSize:9}}>M{String(r.a).padStart(2,'0')}–M{String(r.b).padStart(2,'0')}</span>
-                              {rLancs.length > 0 && <span style={{color:'#6d675e',fontSize:9,cursor:'pointer'}} onClick={e=>{e.stopPropagation();toggleItem(r.i+'|'+rPav)}}>{openItem[r.i+'|'+rPav]?'▲':'▼'}</span>}
-                            </div>
-                            {openItem[r.i+'|'+rPav] && rLancs.length > 0 && (
-                              <div style={{padding:'4px 16px 8px 66px',background:'rgba(255,255,255,0.02)'}}>
-                                <div style={{fontSize:10,color:'#6d675e',display:'grid',gridTemplateColumns:'80px 1fr 100px 60px',gap:4,padding:'2px 0',borderBottom:'1px solid #1f1f24',fontWeight:600}}>
-                                  <span>Data</span><span>Descrição</span><span style={{textAlign:'right'}}>Valor</span><span style={{textAlign:'right'}}>Período</span>
-                                </div>
-                                {rLancs.map((lc,li) => (
-                                  <div key={li} style={{fontSize:10,color:'#a09a90',display:'grid',gridTemplateColumns:'80px 1fr 100px 60px',gap:4,padding:'3px 0',borderBottom:'1px solid #1a1a1f'}}>
-                                    <span>{lc.data_emissao ? lc.data_emissao.slice(0,10) : '—'}</span>
-                                    <span>{lc.descricao || lc.codigo_eap}</span>
-                                    <span style={{textAlign:'right',color:'#E91E8C',fontWeight:500}}>{fmtR(parseFloat(lc.valor||0))}</span>
-                                    <span style={{textAlign:'right',color:'#5B9BD5'}}>{compLabel(lc.competencia)}</span>
-                                  </div>
-                                ))}
+                              <div style={{...S.itemRow, background: ri%2===0 ? 'rgba(255,255,255,0.01)' : 'transparent'}}>
+                                <span style={{color:'#6d675e', fontFamily:'monospace', fontSize:10}}>{r.i}</span>
+                                <span style={{color:'#a09a90', fontSize:11}}>{r.d}</span>
+                                <span style={{textAlign:'right', color:'#5B9BD5', fontWeight:500}}>{fmtVal(rPlan)}</span>
+                                <span style={{textAlign:'right', color: rReal>0 ? '#E91E8C' : '#444', fontWeight: rReal>0 ? 600 : 400}}>
+                                  {metric==='custo' ? (rReal>0 ? fmtR(rReal) : '—') : '—'}
+                                </span>
+                                <span style={{textAlign:'right', fontSize:11, color: rReal===0?'#444':rDesvio>5?'#B03030':rDesvio>0?'#C8860A':'#4D9B6A', fontWeight:600}}>
+                                  {metric==='custo' && rReal>0 ? `${rDesvio>=0?'+':''}${rDesvio.toFixed(1)}%` : '—'}
+                                </span>
+                                <span style={{display:'flex', alignItems:'center', gap:4}}>
+                                  <span style={{color:'#6d675e', fontSize:9}}>M{String(r.a).padStart(2,'0')}–M{String(r.b).padStart(2,'0')}</span>
+                                  {rLancs.length > 0 && (
+                                    <span
+                                      style={{color:'#e6a338', fontSize:10, cursor:'pointer', marginLeft:4}}
+                                      onClick={(e) => { e.stopPropagation(); toggleItem(itemKey); }}
+                                    >
+                                      {openItem[itemKey] ? '▲' : '▼'}
+                                    </span>
+                                  )}
+                                </span>
                               </div>
-                            )}
+                              {openItem[itemKey] && rLancs.length > 0 && (
+                                <div style={{padding:'4px 16px 8px 66px', background:'rgba(255,255,255,0.02)', borderBottom:'1px solid #1f1f24'}}>
+                                  <div style={{fontSize:10, color:'#6d675e', display:'grid', gridTemplateColumns:'80px 1fr 100px 60px', gap:4, padding:'4px 0', borderBottom:'1px solid #2a2a31', fontWeight:600}}>
+                                    <span>Data</span>
+                                    <span>Descrição</span>
+                                    <span style={{textAlign:'right'}}>Valor</span>
+                                    <span style={{textAlign:'right'}}>Período</span>
+                                  </div>
+                                  {rLancs.map((lc, li) => (
+                                    <div key={li} style={{fontSize:10, color:'#a09a90', display:'grid', gridTemplateColumns:'80px 1fr 100px 60px', gap:4, padding:'3px 0', borderBottom:'1px solid #1a1a1f'}}>
+                                      <span>{lc.data_emissao ? lc.data_emissao.slice(0,10) : '—'}</span>
+                                      <span>{lc.descricao || lc.codigo_eap}</span>
+                                      <span style={{textAlign:'right', color:'#E91E8C', fontWeight:500}}>{fmtR(parseFloat(lc.valor||0))}</span>
+                                      <span style={{textAlign:'right', color:'#5B9BD5'}}>{compLabel(lc.competencia)}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </React.Fragment>
                           )
                         })}
