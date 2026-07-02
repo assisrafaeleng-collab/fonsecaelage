@@ -101,7 +101,7 @@ export default function CustosDiretosRealizados() {
 
   // Lançamentos filtrados até o período
   const lancFiltrados = useMemo(() => lanc.filter(l => {
-    const comp = l.data_emissao ? l.data_emissao.slice(0,7) : ''
+    const comp = l.competencia || ''
     return comp <= dataLimite
   }), [lanc, dataLimite])
 
