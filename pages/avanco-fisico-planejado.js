@@ -87,9 +87,18 @@ export default function AvancoFisicoPlanejado() {
   const totC = useMemo(() => dados.reduce((s,r) => s+r.c, 0) || 1, [dados])
 
   const valItem = r => {
-    if (metric==='custo') return r.c
-    if (metric==='hh') return r.h
-    return r.h / totHh
+    if (mes < r.a) return 0
+    const numMeses = Math.max(r.b - r.a + 1, 1)
+    const mesesAtivos = Math.min(mes, r.b) - r.a + 1
+    if (metric==='custo') return r.c * mesesAtivos / numMeses
+    if (metric==='hh') return r.h * mesesAtivos / numMeses
+    return (r.h * mesesAtivos / numMeses) / totHh
+  }
+  const pctPlan = r => {
+    if (mes < r.a) return 0
+    const numMeses = Math.max(r.b - r.a + 1, 1)
+    const mesesAtivos = Math.min(mes, r.b) - r.a + 1
+    return Math.min(100, (mesesAtivos / numMeses) * 100)
   }
   const fmtVal = v => {
     if (metric==='custo') return fmtR(v)
@@ -300,7 +309,12 @@ export default function AvancoFisicoPlanejado() {
                               <span style={{color:'#6d675e', fontFamily:'monospace', fontSize:10}}>{r.i}</span>
                               <span style={{color:'#a09a90'}}>{r.d}</span>
                               <span style={{color:stC, fontSize:10}}>M{String(r.a).padStart(2,'0')}–M{String(r.b).padStart(2,'0')}</span>
-                              <div><TimelineBar a={r.a} b={r.b} mes={mes} /></div>
+                              <div><div style={{textAlign:'center'}}>
+                                <span style={{fontSize:12, fontWeight:600, color: pctPlan(r)>=100?'#4D9B6A':pctPlan(r)>0?'#e6a338':'#444'}}>{pctPlan(r).toFixed(0)}%</span>
+                                <div style={{height:3, background:'#1e1e24', borderRadius:2, marginTop:2}}>
+                                  <div style={{height:'100%', width:pctPlan(r)+'%', background:pctPlan(r)>=100?'#4D9B6A':'#e6a338', borderRadius:2}} />
+                                </div>
+                              </div></div>
                               <span style={{textAlign:'right', color:'#5B9BD5', fontWeight:500}}>{fmtVal(valItem(r))}</span>
                             </div>
                           )
