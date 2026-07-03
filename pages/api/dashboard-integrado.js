@@ -181,7 +181,7 @@ export default async function handler(req, res) {
       desvio_financeiro_perc: parseFloat(desvioFinanceiroPerc.toFixed(2)),
       desvio_fisico: parseFloat((avancoFisicoReal - avancoFisicoPlano).toFixed(2)),
       projecao_custo_final: eac,
-      saldo_orcamento: orcamentoTotal - acwp,
+      saldo_orcamento: totalDiretos - acwpProducao,
       mes_atual: mesAtual,
       projecao_data_conclusao: dataProjetadaConclusao.toISOString().slice(0, 10),
       desvio_prazo_dias: diffDias,
