@@ -166,18 +166,18 @@ export default function ImpactoAtraso({ mes }) {
               ⏱ Custo recorrente — cada mês de obra custa isto, independente do avanço
             </div>
             <div style={{display:'flex', alignItems:'baseline', gap:12, marginBottom:10}}>
-              <span style={{fontSize:26, fontWeight:700, color:'#e6a338'}}>{fmtR(C.recorrenteMensal)}</span>
+              <span style={{fontSize:32, fontWeight:700, color:'#e6a338'}}>{fmtR(C.recorrenteMensal)}</span>
               <span style={{fontSize:12, color:'#a09a90'}}>/mês</span>
             </div>
-            <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', gap:8}}>
+            <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(240px, 1fr))', gap:10}}>
               {C.detalheInd.map((d, i) => (
-                <div key={i} style={{display:'flex', justifyContent:'space-between', fontSize:11, color:'#a09a90', padding:'4px 10px', background:'#1a1a20', borderRadius:6}}>
+                <div key={i} style={{display:'flex', justifyContent:'space-between', fontSize:12, color:'var(--text2, #a09a90)', padding:'10px 14px', background:'#17171b', border:'1px solid #2a2a31', borderRadius:8}}>
                   <span>{d.nome}</span>
                   <span style={{color:'#ece9e4', fontWeight:600}}>{fmtR(d.mensal)}/m</span>
                 </div>
               ))}
               {Object.entries(C.detalheDir).map(([nome, mensal], i) => (
-                <div key={'d'+i} style={{display:'flex', justifyContent:'space-between', fontSize:11, color:'#a09a90', padding:'4px 10px', background:'#1a1a20', borderRadius:6}}>
+                <div key={'d'+i} style={{display:'flex', justifyContent:'space-between', fontSize:12, color:'var(--text2, #a09a90)', padding:'10px 14px', background:'#17171b', border:'1px solid #2a2a31', borderRadius:8}}>
                   <span>{nome}</span>
                   <span style={{color:'#ece9e4', fontWeight:600}}>{fmtR(mensal)}/m</span>
                 </div>
@@ -192,9 +192,9 @@ export default function ImpactoAtraso({ mes }) {
             </div>
             <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:10}}>
               {C.cenarios.map((cen, i) => (
-                <div key={i} style={{background:'#1a1a20', borderRadius:10, padding:'12px 14px', borderLeft:'3px solid #C8860A'}}>
+                <div key={i} style={{background:'#17171b', border:'1px solid #2a2a31', borderRadius:10, padding:'16px 18px', borderLeft:'3px solid #C8860A'}}>
                   <div style={{fontSize:10, color:'#6d675e', marginBottom:4}}>Atraso de {cen.meses} {cen.meses === 1 ? 'mês' : 'meses'}</div>
-                  <div style={{fontSize:17, fontWeight:700, color:'#C8860A'}}>{fmtR(cen.total)}</div>
+                  <div style={{fontSize:22, fontWeight:700, color:'#C8860A'}}>{fmtR(cen.total)}</div>
                   <div style={{fontSize:9, color:'#6d675e', marginTop:2}}>{fmtR(cen.base)} + {fmtR(cen.taxaAdm)} ADM</div>
                 </div>
               ))}
@@ -224,9 +224,9 @@ export default function ImpactoAtraso({ mes }) {
                     custoAtr.total = custoAtr.base + custoAtr.taxaAdm
                     const eacT = C.eacDireto + C.totalIndiretosOrcado + custoAtr.total
                     return (
-                      <div key={cen.key} style={{background:'#1a1a20', borderRadius:10, padding:'14px 16px', borderLeft:`3px solid ${cen.cor}`}}>
+                      <div key={cen.key} style={{background:'#17171b', border:'1px solid #2a2a31', borderRadius:10, padding:'18px 20px', borderLeft:`3px solid ${cen.cor}`}}>
                         <div style={{fontSize:10, color:'#6d675e', textTransform:'uppercase', letterSpacing:.5, marginBottom:6}}>{cen.label}</div>
-                        <div style={{fontSize:20, fontWeight:700, color: cen.cor, marginBottom:2}}>{cen.data.prazo.toFixed(1)} meses</div>
+                        <div style={{fontSize:24, fontWeight:700, color: cen.cor, marginBottom:4}}>{cen.data.prazo.toFixed(1)} meses</div>
                         <div style={{fontSize:9, color:'#6d675e', marginBottom:10}}>{cen.data.atraso > 0.05 ? `+${cen.data.atraso.toFixed(1)}m atraso` : 'no prazo ou adiantado'} · {cen.desc}</div>
                         <div style={{borderTop:'1px solid #2a2a31', paddingTop:8}}>
                           <div style={{fontSize:9, color:'#6d675e'}}>Custo do atraso</div>
