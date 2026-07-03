@@ -1,5 +1,6 @@
 // components/Dashboard.jsx
 // ✅ fmtMoeda importada de lib/constants — sem duplicata local
+import ImpactoAtraso from './ImpactoAtraso'
 import PaineisAnalise from './PaineisAnalise'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
@@ -370,7 +371,7 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
           </div>
         </div>
       </div>
-
+<ImpactoAtraso mes={mesLimite} />
       <PaineisAnalise mes={mesLimite} />
     </div>
   )
