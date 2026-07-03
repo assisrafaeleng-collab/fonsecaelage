@@ -132,19 +132,19 @@ export default async function handler(req, res) {
     const finPlanMesAtual = finPlanejada.find(f => f.mes_numero === mesRefBCWS) || finPlanejada[finPlanejada.length - 1]
     const fisPlanMesAtual = fisPlanejada.find(f => f.mes_numero === mesRefBCWS) || fisPlanejada[fisPlanejada.length - 1]
 
-    const bcws = fisPlanMesAtual ? fisPlanMesAtual.percentual_acumulado * orcamentoTotal : 0
+    const bcws = fisPlanMesAtual ? fisPlanMesAtual.percentual_acumulado * totalDiretos : 0
     const avancoFisicoPlano = fisPlanMesAtual ? fisPlanMesAtual.percentual_acumulado * 100 : 0
-    const bcwp = (avancoFisicoReal / 100) * orcamentoTotal
+    const bcwp = (avancoFisicoReal / 100) * totalDiretos
 
-    // ACWP para EVM: exclui custos pre-obra (terreno, ITBI, registro, escritura, alvaras, projeto estrutural, advocaticios, ART)
-    const EAP_PRE_OBRA = ['18.1.20','18.1.11','18.1.12','18.1.13','18.1.14','18.1.15','18.1.4','18.1.19','18.1.22']
+    // ACWP para EVM: apenas custos DIRETOS realizados (codigo_eap que nao comeca com 18.)
     const todoslancamentos = custosRes.data || []
-    const custosPreObra = todoslancamentos.filter(l => EAP_PRE_OBRA.includes(l.codigo_eap)).reduce((s,l) => s + parseFloat(l.valor||0), 0)
-    const acwpProducao = Math.max(0, acwp - custosPreObra)
+    const acwpProducao = todoslancamentos
+      .filter(l => l.status === 'Normal' && !(l.codigo_eap || '').startsWith('18.'))
+      .reduce((s,l) => s + parseFloat(l.valor||0), 0)
     const cpi = acwpProducao > 0 ? bcwp / acwpProducao : 1
     const spi = bcws > 0 ? bcwp / bcws : 1
-    const eac = cpi > 0 ? orcamentoTotal / cpi : orcamentoTotal
-    const saldoReal = orcamentoTotal - eac
+    const eac = cpi > 0 ? totalDiretos / cpi : totalDiretos
+    const saldoReal = totalDiretos - eac
     const desvioFinanceiro = acwp - bcws
     const desvioFinanceiroPerc = bcws > 0 ? (desvioFinanceiro / bcws) * 100 : 0
     const cv = bcwp - acwp
