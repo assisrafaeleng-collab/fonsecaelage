@@ -126,8 +126,11 @@ export default async function handler(req, res) {
     const custoIndiretoReal = finRealizada.length > 0 ? finRealizada[finRealizada.length - 1].valor_indireto : 0
     const avancoFisicoReal = fisRealizada.length > 0 ? fisRealizada[fisRealizada.length - 1].percentual_acumulado * 100 : 0
 
-    const finPlanMesAtual = finPlanejada.find(f => f.mes_numero === mesLimite) || finPlanejada[finPlanejada.length - 1]
-    const fisPlanMesAtual = fisPlanejada.find(f => f.mes_numero === mesLimite) || fisPlanejada[fisPlanejada.length - 1]
+    const mesRefBCWS = fisRealizada.length > 0
+      ? Math.min(fisRealizada[fisRealizada.length - 1].mes_numero, mesLimite)
+      : mesLimite
+    const finPlanMesAtual = finPlanejada.find(f => f.mes_numero === mesRefBCWS) || finPlanejada[finPlanejada.length - 1]
+    const fisPlanMesAtual = fisPlanejada.find(f => f.mes_numero === mesRefBCWS) || fisPlanejada[fisPlanejada.length - 1]
 
     const bcws = finPlanMesAtual ? finPlanMesAtual.valor_acumulado : 0
     const avancoFisicoPlano = fisPlanMesAtual ? fisPlanMesAtual.percentual_acumulado * 100 : 0
