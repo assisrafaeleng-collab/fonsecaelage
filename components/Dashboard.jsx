@@ -325,7 +325,7 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
         </div>
       </div>
 
-      <ComparativoFisico mesLimite={mesLimite} />
+      
 
      <div className="card">
         <div className="card-title">💰 Projeção Financeira e Prazo</div>
