@@ -136,7 +136,12 @@ export default async function handler(req, res) {
     const avancoFisicoPlano = fisPlanMesAtual ? fisPlanMesAtual.percentual_acumulado * 100 : 0
     const bcwp = (avancoFisicoReal / 100) * orcamentoTotal
 
-    const cpi = acwp > 0 ? bcwp / acwp : 1
+    // ACWP para EVM: exclui custos pre-obra (terreno, ITBI, registro, escritura, alvaras, projeto estrutural, advocaticios, ART)
+    const EAP_PRE_OBRA = ['18.1.20','18.1.11','18.1.12','18.1.13','18.1.14','18.1.15','18.1.4','18.1.19','18.1.22']
+    const todoslancamentos = custosRes.data || []
+    const custosPreObra = todoslancamentos.filter(l => EAP_PRE_OBRA.includes(l.codigo_eap)).reduce((s,l) => s + parseFloat(l.valor||0), 0)
+    const acwpProducao = Math.max(0, acwp - custosPreObra)
+    const cpi = acwpProducao > 0 ? bcwp / acwpProducao : 1
     const spi = bcws > 0 ? bcwp / bcws : 1
     const eac = cpi > 0 ? orcamentoTotal / cpi : orcamentoTotal
     const saldoReal = orcamentoTotal - eac
