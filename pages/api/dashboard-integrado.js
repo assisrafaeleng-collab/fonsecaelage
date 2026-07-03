@@ -201,6 +201,9 @@ export default async function handler(req, res) {
       : null
     const ultimoMesFinReal = finRealizada.length > 0 ? finRealizada[finRealizada.length - 1].mes_numero : 0
 
+    // Indiretos recorrentes que compoem a curva financeira (funcao do tempo)
+    // Adm local 23500 + Locacoes/Funcionarios ~40632 + Contabeis 1459 + IPTU 463
+    const RECORRENTE_MENSAL_PLAN = 23500 + 1459 + 463 + (356776/20) + (455860/20)
     const meses = []
     let ultimoFisRealConhecido = null
     for (let i = 1; i <= 20; i++) {
@@ -215,8 +218,8 @@ export default async function handler(req, res) {
       meses.push({
         mes_numero: i,
         competencia: finPlan ? finPlan.competencia : null,
-        financeiro_planejado: finPlan ? finPlan.valor_acumulado : null,
-        financeiro_realizado: i <= ultimoMesFinReal && finReal ? finReal.valor_acumulado : null,
+        financeiro_planejado: fisPlan ? (fisPlan.percentual_acumulado * totalDiretos + RECORRENTE_MENSAL_PLAN * i) : null,
+        financeiro_realizado: (i <= mesLimite && i <= ultimoMesFinReal && finReal) ? (finReal.valor_direto != null ? finReal.valor_direto + RECORRENTE_MENSAL_PLAN * i : finReal.valor_acumulado) : null,
         fisico_planejado: fisPlan ? fisPlan.percentual_acumulado * 100 : null,
         fisico_realizado: fisRealFinal,
       })
