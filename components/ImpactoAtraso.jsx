@@ -207,8 +207,11 @@ export default function ImpactoAtraso({ mes }) {
           {/* Projeção pelo SPI */}
           <div>
             <div style={{fontSize:11, color:'var(--text2, #A8A8A8)', textTransform:'uppercase', letterSpacing:.5, marginBottom:10, fontWeight:600}}>
-              🔮 Projeção no ritmo atual (SPI {C.spi.toFixed(2)})
+              🔮 Cenários de risco (SPI atual {C.spi.toFixed(2)})
             </div>
+              <div style={{fontSize:10, color:'#6d675e', fontStyle:'italic', marginBottom:10, marginTop:-4}}>
+                SPI inicial alto é comum (obra começa com serviços leves) e não garante o ritmo no miolo da obra. Cenários abaixo são projeções conservadoras de segurança.
+              </div>
             {!C.spiConfiavel ? (
               <div style={{background:'rgba(200,134,10,0.10)', border:'1px solid #C8860A44', borderRadius:8, padding:'12px 14px', fontSize:12, color:'#ece9e4', lineHeight:1.6}}>
                 ⚠️ Avanço físico ainda muito baixo ({C.avancoReal.toFixed(1)}%) para projetar prazo com confiança.
@@ -219,9 +222,9 @@ export default function ImpactoAtraso({ mes }) {
               <div>
                 <div style={{display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:10, marginBottom:12}}>
                   {[
-                    { key:'otimista', label:'Otimista (SPI puro)', desc:'mantém eficiência atual', cor:'#4D9B6A', data: C.cen3.otimista },
-                    { key:'realista', label:'Realista (média)', desc:'ponderado entre planejado e pior caso', cor:'#C8860A', data: C.cen3.realista },
-                    { key:'pessimista', label:'Pessimista (SPI × CPI)', desc:'penaliza prazo e custo juntos', cor:'#B03030', data: C.cen3.pessimista },
+                    { key:'otimista', label:'Se o ritmo atual se mantiver', desc:'projeção pelo SPI atual', cor:'#4D9B6A', data: C.cen3.otimista },
+                    { key:'realista', label:'Com perda parcial de ritmo', desc:'cenário esperado no miolo da obra', cor:'#C8860A', data: C.cen3.realista },
+                    { key:'pessimista', label:'Com imprevistos (retrabalho/clima)', desc:'reserva de segurança máxima', cor:'#B03030', data: C.cen3.pessimista },
                   ].map(cen => {
                     const custoAtr = { base: cen.data.atraso * C.recorrenteMensal, taxaAdm: cen.data.atraso * C.recorrenteMensal * 0.12 }
                     custoAtr.total = custoAtr.base + custoAtr.taxaAdm
@@ -230,9 +233,9 @@ export default function ImpactoAtraso({ mes }) {
                       <div key={cen.key} style={{background:'var(--bg2)', border:'1px solid var(--border)', borderRadius:10, padding:'18px 20px', borderLeft:`3px solid ${cen.cor}`}}>
                         <div style={{fontSize:10, color:'#6d675e', textTransform:'uppercase', letterSpacing:.5, marginBottom:6}}>{cen.label}</div>
                         <div style={{fontSize:24, fontWeight:700, color: cen.cor, marginBottom:4}}>{cen.data.prazo.toFixed(1)} meses</div>
-                        <div style={{fontSize:9, color:'#6d675e', marginBottom:10}}>{cen.data.atraso > 0.05 ? `+${cen.data.atraso.toFixed(1)}m atraso` : 'no prazo ou adiantado'} · {cen.desc}</div>
+                        <div style={{fontSize:9, color:'#6d675e', marginBottom:10}}>{cen.data.atraso > 0.05 ? `+${cen.data.atraso.toFixed(1)}m de margem de risco` : 'dentro do prazo'} · {cen.desc}</div>
                         <div style={{borderTop:'1px solid #2a2a31', paddingTop:8}}>
-                          <div style={{fontSize:9, color:'#6d675e'}}>Custo do atraso</div>
+                          <div style={{fontSize:9, color:'#6d675e'}}>Custo da margem de risco</div>
                           <div style={{fontSize:13, fontWeight:600, color: cen.cor}}>{fmtR(custoAtr.total)}</div>
                         </div>
                         <div style={{marginTop:6, position:'relative'}} className="eac-tooltip-wrap">
