@@ -2,6 +2,15 @@
 // Painel de impacto do atraso: prazo projetado + custos recorrentes estendidos + Taxa ADM
 import React, { useState, useEffect, useMemo } from 'react'
 
+// Estilo global inline para o tooltip
+if (typeof window !== 'undefined' && !document.getElementById('eac-tooltip-style')) {
+  const style = document.createElement('style')
+  style.id = 'eac-tooltip-style'
+  style.textContent = `.eac-tooltip-wrap:hover .eac-tooltip-box { display: block !important; }`
+  document.head.appendChild(style)
+}
+
+
 const fmtR = v => 'R$ ' + Math.round(v || 0).toLocaleString('pt-BR')
 
 const PRAZO_ORIGINAL = 20
@@ -223,16 +232,44 @@ export default function ImpactoAtraso({ mes }) {
                           <div style={{fontSize:9, color:'#6d675e'}}>Custo do atraso</div>
                           <div style={{fontSize:13, fontWeight:600, color: cen.cor}}>{fmtR(custoAtr.total)}</div>
                         </div>
-                        <div style={{marginTop:6}} title={`Decomposição do EAC Total:
-• Custo Direto Projetado (via CPI): ${fmtR(C.eacDireto)}
-• Indiretos Totais: ${fmtR(C.totalIndiretosOrcado)}
-• Custo do Atraso: ${fmtR(custoAtr.total)}
-─────────────────
-• Total: ${fmtR(eacT)}
-• Orçamento original: ${fmtR(C.orcamentoTotal)}
-• Diferença: ${eacT > C.orcamentoTotal ? '+' : ''}${fmtR(eacT - C.orcamentoTotal)}`}>
-                          <div style={{fontSize:9, color:'#6d675e'}}>EAC Total ⓘ</div>
+                        <div style={{marginTop:6, position:'relative'}} className="eac-tooltip-wrap">
+                          <div style={{fontSize:9, color:'#6d675e'}}>EAC Total <span style={{color:'#e6a338'}}>ⓘ</span></div>
                           <div style={{fontSize:13, fontWeight:600, color: eacT > C.orcamentoTotal ? '#B03030' : '#4D9B6A', cursor:'help'}}>{fmtR(eacT)}</div>
+                          <div className="eac-tooltip-box" style={{
+                            position:'absolute', bottom:'calc(100% + 8px)', left:0, right:0,
+                            background:'#0f0f11', border:'1px solid #3a3a44', borderRadius:8,
+                            padding:'10px 12px', fontSize:11, color:'#ece9e4', lineHeight:1.6,
+                            zIndex:1000, boxShadow:'0 8px 20px rgba(0,0,0,0.6)',
+                            display:'none', minWidth:220,
+                          }}>
+                            <div style={{fontWeight:700, color:'#e6a338', marginBottom:6, fontSize:10, textTransform:'uppercase', letterSpacing:.5}}>Decomposição do EAC Total</div>
+                            <div style={{display:'flex', justifyContent:'space-between', gap:12}}>
+                              <span style={{color:'#a09a90'}}>Custo Direto (÷CPI)</span>
+                              <span style={{fontWeight:600}}>{fmtR(C.eacDireto)}</span>
+                            </div>
+                            <div style={{display:'flex', justifyContent:'space-between', gap:12}}>
+                              <span style={{color:'#a09a90'}}>Indiretos Totais</span>
+                              <span style={{fontWeight:600}}>{fmtR(C.totalIndiretosOrcado)}</span>
+                            </div>
+                            <div style={{display:'flex', justifyContent:'space-between', gap:12}}>
+                              <span style={{color:'#a09a90'}}>Custo do Atraso</span>
+                              <span style={{fontWeight:600}}>{fmtR(custoAtr.total)}</span>
+                            </div>
+                            <div style={{borderTop:'1px solid #3a3a44', marginTop:6, paddingTop:6, display:'flex', justifyContent:'space-between', gap:12}}>
+                              <span style={{color:'#ece9e4', fontWeight:600}}>Total EAC</span>
+                              <span style={{fontWeight:700, color: eacT > C.orcamentoTotal ? '#B03030' : '#4D9B6A'}}>{fmtR(eacT)}</span>
+                            </div>
+                            <div style={{display:'flex', justifyContent:'space-between', gap:12, marginTop:4}}>
+                              <span style={{color:'#6d675e'}}>Orçamento original</span>
+                              <span style={{color:'#a09a90'}}>{fmtR(C.orcamentoTotal)}</span>
+                            </div>
+                            <div style={{display:'flex', justifyContent:'space-between', gap:12}}>
+                              <span style={{color:'#6d675e'}}>Diferença</span>
+                              <span style={{fontWeight:600, color: eacT > C.orcamentoTotal ? '#B03030' : '#4D9B6A'}}>
+                                {eacT > C.orcamentoTotal ? '+' : ''}{fmtR(eacT - C.orcamentoTotal)}
+                              </span>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     )
