@@ -145,7 +145,7 @@ export default async function handler(req, res) {
     const spi = bcws > 0 ? bcwp / bcws : 1
     const eac = cpi > 0 ? totalDiretos / cpi : totalDiretos
     const saldoReal = totalDiretos - eac
-    const desvioFinanceiro = acwp - bcws
+    const desvioFinanceiro = acwpProducao - bcws
     const desvioFinanceiroPerc = bcws > 0 ? (desvioFinanceiro / bcws) * 100 : 0
     const cv = bcwp - acwpProducao
     const sv = bcwp - bcws
