@@ -415,10 +415,7 @@ export default function PaineisAnalise({ mes }) {
       <Secao titulo="Indicadores EVM & Projeção" icone="🎯" defaultOpen={false}>
         <SemaforoEVM mes={mes} />
       </Secao>
-      <Secao titulo="Curva S — Físico × Financeiro" icone="📈" defaultOpen={false}>
-        <CurvaS mes={mes} />
-      </Secao>
-      <Secao titulo="Mapa de Avanço por Pavimento" icone="🏢" defaultOpen={false}>
+          <Secao titulo="Mapa de Avanço por Pavimento" icone="🏢" defaultOpen={false}>
         <Heatmap mes={mes} />
       </Secao>
     </div>
