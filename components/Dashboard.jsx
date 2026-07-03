@@ -1,6 +1,6 @@
 // components/Dashboard.jsx
 // ✅ fmtMoeda importada de lib/constants — sem duplicata local
-
+import PaineisAnalise from './PaineisAnalise'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
 import { Line } from 'react-chartjs-2'
@@ -327,7 +327,7 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
 
       <ComparativoFisico mesLimite={mesLimite} />
 
-      <div className="card">
+     <div className="card">
         <div className="card-title">💰 Projeção Financeira e Prazo</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '24px' }}>
           <div>
@@ -370,6 +370,8 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
           </div>
         </div>
       </div>
+
+      <PaineisAnalise mes={mesLimite} />
     </div>
   )
 }
