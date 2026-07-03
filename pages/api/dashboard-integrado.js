@@ -132,7 +132,7 @@ export default async function handler(req, res) {
     const finPlanMesAtual = finPlanejada.find(f => f.mes_numero === mesRefBCWS) || finPlanejada[finPlanejada.length - 1]
     const fisPlanMesAtual = fisPlanejada.find(f => f.mes_numero === mesRefBCWS) || fisPlanejada[fisPlanejada.length - 1]
 
-    const bcws = finPlanMesAtual ? finPlanMesAtual.valor_acumulado : 0
+    const bcws = fisPlanMesAtual ? fisPlanMesAtual.percentual_acumulado * orcamentoTotal : 0
     const avancoFisicoPlano = fisPlanMesAtual ? fisPlanMesAtual.percentual_acumulado * 100 : 0
     const bcwp = (avancoFisicoReal / 100) * orcamentoTotal
 
