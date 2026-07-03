@@ -85,17 +85,20 @@ export default function ImpactoAtraso({ mes }) {
     const spiConfiavel = avancoReal >= 3  // pelo menos 3% físico executado
     let cen3 = null
     if (spi > 0.05) {
-      // Otimista: só SPI (mantém eficiência atual)
-      const otimistaPrazo = Math.min(PRAZO_ORIGINAL / spi, 60)
-      // Pessimista: SPI × CPI (ponderação clássica EAC penalizada)
-      // Quando SPI×CPI > 1 (obra bem), força mínimo do prazo planejado (nao terminar antes por otimismo)
-      const fator = spi * cpi
-      const pessimistaPrazo = fator > 0.05
-        ? Math.min(Math.max(PRAZO_ORIGINAL / fator, PRAZO_ORIGINAL * 0.9), 60)
-        : 60
-      // Realista: média entre planejado e pior cenário observado
-      const piorObs = Math.max(otimistaPrazo, pessimistaPrazo, PRAZO_ORIGINAL)
-      const realistaPrazo = (PRAZO_ORIGINAL + piorObs) / 2
+      // OTIMISTA: mantém o ritmo atual (SPI), mas nunca termina antes do planejado
+      // (não faz sentido projetar entrega antes do prazo com base em início de obra)
+      const otimistaPrazo = Math.min(Math.max(PRAZO_ORIGINAL / spi, PRAZO_ORIGINAL), 60)
+
+      // REALISTA: assume perda parcial do ritmo — SPI ponderado (média entre SPI atual e 1,0)
+      // + margem de risco de 15%
+      const spiRealista = (spi + 1) / 2
+      const realistaPrazo = Math.min((PRAZO_ORIGINAL / Math.min(spiRealista, 1)) * 1.15, 60)
+
+      // PESSIMISTA: assume que o ritmo cai para no máximo 1,0 (não conta o "adiantamento" atual)
+      // e adiciona margem de risco de 30% (imprevistos, retrabalho, clima)
+      const spiPessimista = Math.min(spi, 1)
+      const pessimistaPrazo = Math.min((PRAZO_ORIGINAL / spiPessimista) * 1.30, 60)
+
       cen3 = {
         otimista: { prazo: otimistaPrazo, atraso: Math.max(0, otimistaPrazo - PRAZO_ORIGINAL) },
         realista: { prazo: realistaPrazo, atraso: Math.max(0, realistaPrazo - PRAZO_ORIGINAL) },
