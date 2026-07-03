@@ -140,12 +140,12 @@ export default function ImpactoAtraso({ mes }) {
   const C = calc
 
   return (
-    <div style={{background:'#17171b', border:'1px solid #2a2a31', borderRadius:12, marginBottom:12, overflow:'hidden'}}>
+    <div className="card" style={{padding:0, overflow:'hidden', marginBottom:16}}>
       <div
-        style={{display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 18px', cursor:'pointer', userSelect:'none'}}
+        style={{display:'flex', alignItems:'center', justifyContent:'space-between', padding:'18px 24px', cursor:'pointer', userSelect:'none', borderBottom: open ? '1px solid var(--border, #2A2A2A)' : 'none'}}
         onClick={() => setOpen(o => !o)}
       >
-        <div style={{fontSize:13, fontWeight:600, color:'#ece9e4', display:'flex', alignItems:'center', gap:8}}>
+        <div style={{fontSize:15, fontWeight:700, color:'var(--text1, #E8E8E8)', display:'flex', alignItems:'center', gap:10}}>
           <span>💸</span>
           <span>Impacto do Atraso — Custo Recorrente & Projeção</span>
           {C.mesesAtraso > 0.5 && (
@@ -158,11 +158,11 @@ export default function ImpactoAtraso({ mes }) {
       </div>
 
       {open && (
-        <div style={{borderTop:'1px solid #2a2a31', padding:'16px 18px'}}>
+        <div style={{padding:'20px 24px'}}>
 
           {/* Custo recorrente mensal */}
           <div style={{marginBottom:18}}>
-            <div style={{fontSize:11, color:'#6d675e', textTransform:'uppercase', letterSpacing:.5, marginBottom:8}}>
+            <div style={{fontSize:11, color:'var(--text2, #A8A8A8)', textTransform:'uppercase', letterSpacing:.5, marginBottom:10, fontWeight:600}}>
               ⏱ Custo recorrente — cada mês de obra custa isto, independente do avanço
             </div>
             <div style={{display:'flex', alignItems:'baseline', gap:12, marginBottom:10}}>
@@ -187,7 +187,7 @@ export default function ImpactoAtraso({ mes }) {
 
           {/* Cenários de atraso */}
           <div style={{marginBottom:18}}>
-            <div style={{fontSize:11, color:'#6d675e', textTransform:'uppercase', letterSpacing:.5, marginBottom:8}}>
+            <div style={{fontSize:11, color:'var(--text2, #A8A8A8)', textTransform:'uppercase', letterSpacing:.5, marginBottom:10, fontWeight:600}}>
               📉 Quanto custa atrasar? (recorrentes + Taxa ADM 12%)
             </div>
             <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:10}}>
@@ -203,7 +203,7 @@ export default function ImpactoAtraso({ mes }) {
 
           {/* Projeção pelo SPI */}
           <div>
-            <div style={{fontSize:11, color:'#6d675e', textTransform:'uppercase', letterSpacing:.5, marginBottom:8}}>
+            <div style={{fontSize:11, color:'var(--text2, #A8A8A8)', textTransform:'uppercase', letterSpacing:.5, marginBottom:10, fontWeight:600}}>
               🔮 Projeção no ritmo atual (SPI {C.spi.toFixed(2)})
             </div>
             {!C.spiConfiavel ? (
