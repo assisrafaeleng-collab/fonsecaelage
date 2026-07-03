@@ -299,9 +299,9 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
           <div className="kpi evm-card" style={{ borderLeftColor: kpis.eac <= kpis.orcamento_total ? '#4D9B6A' : '#B03030' }}>
-            <div className="kpi-label">EAC — Projeção de Custo Final</div>
+            <div className="kpi-label">EAC Direto — Projeção Custo de Produção</div>
             <div className="kpi-value" style={{ fontSize: '18px', color: kpis.eac <= kpis.orcamento_total ? '#4D9B6A' : '#B03030' }}>{fmtMoeda(kpis.eac)}</div>
-            <div className="kpi-sub">Orçamento ÷ CPI — custo projetado real</div>
+            <div className="kpi-sub">Só custo direto · usa CPI · não inclui indiretos</div>
             <div className="evm-tooltip"><b>Estimate at Completion</b><br/>EAC = Orçamento ÷ CPI. Projeção honesta do custo final.</div>
           </div>
           <div className="kpi evm-card" style={{ borderLeftColor: kpis.saldo_real >= 0 ? '#4D9B6A' : '#B03030' }}>

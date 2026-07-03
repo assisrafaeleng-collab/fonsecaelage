@@ -223,9 +223,16 @@ export default function ImpactoAtraso({ mes }) {
                           <div style={{fontSize:9, color:'#6d675e'}}>Custo do atraso</div>
                           <div style={{fontSize:13, fontWeight:600, color: cen.cor}}>{fmtR(custoAtr.total)}</div>
                         </div>
-                        <div style={{marginTop:6}}>
-                          <div style={{fontSize:9, color:'#6d675e'}}>EAC Total</div>
-                          <div style={{fontSize:13, fontWeight:600, color: eacT > C.orcamentoTotal ? '#B03030' : '#4D9B6A'}}>{fmtR(eacT)}</div>
+                        <div style={{marginTop:6}} title={`Decomposição do EAC Total:
+• Custo Direto Projetado (via CPI): ${fmtR(C.eacDireto)}
+• Indiretos Totais: ${fmtR(C.totalIndiretosOrcado)}
+• Custo do Atraso: ${fmtR(custoAtr.total)}
+─────────────────
+• Total: ${fmtR(eacT)}
+• Orçamento original: ${fmtR(C.orcamentoTotal)}
+• Diferença: ${eacT > C.orcamentoTotal ? '+' : ''}${fmtR(eacT - C.orcamentoTotal)}`}>
+                          <div style={{fontSize:9, color:'#6d675e'}}>EAC Total ⓘ</div>
+                          <div style={{fontSize:13, fontWeight:600, color: eacT > C.orcamentoTotal ? '#B03030' : '#4D9B6A', cursor:'help'}}>{fmtR(eacT)}</div>
                         </div>
                       </div>
                     )
