@@ -10,8 +10,8 @@ export default async function handler(req, res) {
 
   try {
     const [finPlanejadaRes, fisPlanejadaRes, custosRes, horasRes, avancoRealRes, indiretosPlanoRes, diretosPlanoRes] = await Promise.all([
-      supabase.from('v_curva_s_financeira_planejada').select('*').eq('obra_id', obra_id).lte('mes_numero', mesLimite).order('mes_numero'),
-      supabase.from('v_curva_s_fisica_planejada').select('*').eq('obra_id', obra_id).lte('mes_numero', mesLimite).order('mes_numero'),
+      supabase.from('v_curva_s_financeira_planejada').select('*').eq('obra_id', obra_id).order('mes_numero'),
+      supabase.from('v_curva_s_fisica_planejada').select('*').eq('obra_id', obra_id).order('mes_numero'),
       supabase.from('custos_lancamentos').select('competencia, valor, status, grupo_custo, codigo_eap').eq('obra_id', obra_id).order('competencia'),
       supabase.from('cronograma_horas_planejado').select('grupo_nome, horas_totais').eq('obra_id', obra_id),
       supabase.from('avanco_fisico_realizado').select('mes_numero, competencia, atividade_nome, percentual_realizado, hh_planejado, hh_realizado').eq('obra_id', obra_id).lte('mes_numero', mesLimite).order('mes_numero'),
@@ -203,13 +203,13 @@ export default async function handler(req, res) {
 
     const meses = []
     let ultimoFisRealConhecido = null
-    for (let i = 1; i <= mesLimite; i++) {
+    for (let i = 1; i <= 20; i++) {
       const finPlan = finPlanejada.find(f => f.mes_numero === i)
       const fisPlan = fisPlanejada.find(f => f.mes_numero === i)
-      const finReal = finRealizada.find(f => f.mes_numero === i)
+      const finReal = i <= mesLimite ? finRealizada.find(f => f.mes_numero === i) : null
       const anoMesDoMes = finPlan?.competencia ? finPlan.competencia.slice(0, 7) : null
       const fisRealValor = anoMesDoMes != null ? (fisRealPorAnoMes[anoMesDoMes] ?? null) : null
-      const fisRealFinal = (ultimaAnoMesFisReal && anoMesDoMes && anoMesDoMes <= ultimaAnoMesFisReal)
+      const fisRealFinal = (i <= mesLimite && ultimaAnoMesFisReal && anoMesDoMes && anoMesDoMes <= ultimaAnoMesFisReal)
         ? (fisRealValor !== null ? fisRealValor : ultimoFisRealConhecido)
         : null
       meses.push({
