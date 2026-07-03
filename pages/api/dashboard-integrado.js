@@ -147,7 +147,7 @@ export default async function handler(req, res) {
     const saldoReal = totalDiretos - eac
     const desvioFinanceiro = acwp - bcws
     const desvioFinanceiroPerc = bcws > 0 ? (desvioFinanceiro / bcws) * 100 : 0
-    const cv = bcwp - acwp
+    const cv = bcwp - acwpProducao
     const sv = bcwp - bcws
 
     const mesAtual = Math.max(finRealizada.length, fisRealizada.length, 1)
@@ -170,6 +170,7 @@ export default async function handler(req, res) {
       bcwp: parseFloat(bcwp.toFixed(2)),
       bcws: parseFloat(bcws.toFixed(2)),
       acwp: parseFloat(acwp.toFixed(2)),
+      acwp_producao: parseFloat(acwpProducao.toFixed(2)),
       cpi: parseFloat(cpi.toFixed(3)),
       spi: parseFloat(spi.toFixed(3)),
       cv: parseFloat(cv.toFixed(2)),

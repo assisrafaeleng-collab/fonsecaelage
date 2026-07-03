@@ -263,8 +263,8 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
           </div>
           <div className="kpi evm-card" style={{ borderLeftColor: '#E91E8C' }}>
             <div className="kpi-label">ACWP — Custo Real</div>
-            <div className="kpi-value" style={{ fontSize: '18px' }}>{fmtMoeda(kpis.acwp)}</div>
-            <div className="kpi-sub">Quanto foi efetivamente gasto</div>
+            <div className="kpi-value" style={{ fontSize: '18px' }}>{fmtMoeda(kpis.acwp_producao)}</div>
+            <div className="kpi-sub">Custo direto realizado (sem terreno)</div>
             <div className="evm-tooltip"><b>Actual Cost of Work Performed</b><br/>Quanto foi efetivamente gasto até agora.</div>
           </div>
         </div>
