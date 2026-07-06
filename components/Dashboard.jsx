@@ -75,6 +75,7 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
   const [dadosOrcamento, setDadosOrcamento] = useState(null)
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState(null)
+  const [evmAberto, setEvmAberto] = useState(false)
 
   function navRestrita(destino) {
     if (onNavRestrita) {
@@ -247,7 +248,11 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
           BLOCO EVM — Earned Value Management
       ================================================================ */}
       <div className="card">
-        <div className="card-title">📐 Análise EVM — Valor Agregado</div>
+        <div className="card-title" onClick={() => setEvmAberto(o => !o)} style={{cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center', userSelect:'none'}}>
+          <span>📐 Análise EVM — Valor Agregado</span>
+          <span style={{fontSize:12, color:'#6d675e'}}>{evmAberto ? '▲' : '▼'}</span>
+        </div>
+        {evmAberto && (<>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '16px' }}>
           <div className="kpi evm-card" style={{ borderLeftColor: '#5B9BD5' }}>
@@ -317,6 +322,9 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
             <div className="evm-tooltip"><b>Saldo Aparente</b><br/>Orçamento − Custo Realizado. Pode ser enganoso.</div>
           </div>
         </div>
+      </div>
+
+      </>)}
       </div>
 
       <div className="card">
