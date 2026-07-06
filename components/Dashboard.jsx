@@ -176,7 +176,7 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
   const custoIndiretoReal = kpis.custo_indireto_realizado || 0
   const saldoCustoDireto = custoDiretoPlano - custoDiretoReal
   const saldoCustoIndireto = custoIndiretoPlano - custoIndiretoReal
-  const projecaoCustoFinal = kpis.eac || 0
+  const projecaoCustoFinal = kpis.eac_total || kpis.eac || 0
   const desvioFinanceiroValor = Math.abs((kpis.acwp_producao || 0) - (dadosOrcamento ? dadosOrcamento.custos_diretos : 0))
 
   return (
