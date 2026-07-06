@@ -188,22 +188,6 @@ export default function ImpactoAtraso({ mes }) {
             </div>
           </div>
 
-          {/* Cenários de atraso */}
-          <div style={{marginBottom:18}}>
-            <div style={{fontSize:11, color:'var(--text2, #A8A8A8)', textTransform:'uppercase', letterSpacing:.5, marginBottom:10, fontWeight:600}}>
-              📉 Quanto custa atrasar? (recorrentes + Taxa ADM 12%)
-            </div>
-            <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:10}}>
-              {C.cenarios.map((cen, i) => (
-                <div key={i} style={{background:'var(--bg2)', border:'1px solid var(--border)', borderRadius:10, padding:'16px 18px', borderLeft:'3px solid #C8860A'}}>
-                  <div style={{fontSize:10, color:'#6d675e', marginBottom:4}}>Atraso de {cen.meses} {cen.meses === 1 ? 'mês' : 'meses'}</div>
-                  <div style={{fontSize:22, fontWeight:700, color:'#C8860A'}}>{fmtR(cen.total)}</div>
-                  <div style={{fontSize:9, color:'#6d675e', marginTop:2}}>{fmtR(cen.base)} + {fmtR(cen.taxaAdm)} ADM</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
           {/* Projeção pelo SPI */}
           <div>
             <div style={{fontSize:11, color:'var(--text2, #A8A8A8)', textTransform:'uppercase', letterSpacing:.5, marginBottom:10, fontWeight:600}}>
