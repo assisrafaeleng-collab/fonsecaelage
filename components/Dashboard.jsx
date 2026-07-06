@@ -69,6 +69,15 @@ function ComparativoFisico({ mesLimite }) {
   )
 }
 
+
+  // CSS para tooltips dos cards de projecao
+  if (typeof window !== 'undefined' && !document.getElementById('proj-tooltip-style')) {
+    const style = document.createElement('style')
+    style.id = 'proj-tooltip-style'
+    style.textContent = '.proj-tooltip-wrap { position: relative; } .proj-tooltip-box { display: none; } .proj-tooltip-wrap:hover .proj-tooltip-box { display: block !important; }'
+    document.head.appendChild(style)
+  }
+
 export default function Dashboard({ updates, selectedId, onSelectId, mesLimite = 20, onNavRestrita }) {
   const router = useRouter()
   const [dados, setDados] = useState(null)
@@ -337,8 +346,30 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
      <div className="card">
         <div className="card-title">💰 Projeção Financeira e Prazo</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '24px' }}>
-          <div>
-            <div style={{ fontSize: '11px', color: 'var(--text2)', marginBottom: '8px' }}>Projeção de Custo Final</div>
+          <div className="proj-tooltip-wrap">
+            <div style={{ fontSize: '11px', color: 'var(--text2)', marginBottom: '8px' }}>Projeção de Custo Final <span style={{color:'#e6a338', cursor:'help'}}>ⓘ</span></div>
+            <div className="proj-tooltip-box" style={{
+              position:'absolute', top:'calc(100% + 8px)', left:0, minWidth:280,
+              background:'#0f0f11', border:'1px solid #3a3a44', borderRadius:8,
+              padding:'12px 14px', fontSize:11, color:'#ece9e4', lineHeight:1.6,
+              zIndex:1000, boxShadow:'0 8px 20px rgba(0,0,0,0.6)'
+            }}>
+              <div style={{fontWeight:700, color:'#e6a338', marginBottom:8, fontSize:10, textTransform:'uppercase', letterSpacing:.5}}>Como é calculado</div>
+              <div style={{marginBottom:6}}>Projeção da <b>obra completa</b> se a eficiência atual (CPI) se mantiver:</div>
+              <div style={{display:'flex', justifyContent:'space-between', gap:12}}>
+                <span style={{color:'#a09a90'}}>EAC Direto (Custo Direto ÷ CPI)</span>
+                <span style={{fontWeight:600}}>{fmtMoeda(kpis.eac || 0)}</span>
+              </div>
+              <div style={{display:'flex', justifyContent:'space-between', gap:12}}>
+                <span style={{color:'#a09a90'}}>+ Indiretos + custo do atraso</span>
+                <span style={{fontWeight:600}}>{fmtMoeda((kpis.eac_total || 0) - (kpis.eac || 0))}</span>
+              </div>
+              <div style={{borderTop:'1px solid #3a3a44', marginTop:6, paddingTop:6, display:'flex', justifyContent:'space-between'}}>
+                <span style={{color:'#ece9e4', fontWeight:600}}>= Custo Final Projetado</span>
+                <span style={{fontWeight:700, color: projecaoCustoFinal > kpis.orcamento_total ? '#B03030' : '#4D9B6A'}}>{fmtMoeda(projecaoCustoFinal)}</span>
+              </div>
+              <div style={{marginTop:8, fontSize:10, color:'#6d675e', fontStyle:'italic'}}>vs Orçamento original: {fmtMoeda(kpis.orcamento_total)}</div>
+            </div>
             <div style={{ fontSize: '22px', fontWeight: '700', marginBottom: '4px' }}>{fmtMoeda(projecaoCustoFinal)}</div>
             <div className="kpi-sub">
               {projecaoCustoFinal > kpis.orcamento_total
@@ -347,8 +378,32 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
               }
             </div>
           </div>
-          <div>
-            <div style={{ fontSize: '11px', color: 'var(--text2)', marginBottom: '8px' }}>Desvio Financeiro Acumulado</div>
+          <div className="proj-tooltip-wrap">
+            <div style={{ fontSize: '11px', color: 'var(--text2)', marginBottom: '8px' }}>Desvio Financeiro Acumulado <span style={{color:'#e6a338', cursor:'help'}}>ⓘ</span></div>
+            <div className="proj-tooltip-box" style={{
+              position:'absolute', top:'calc(100% + 8px)', left:0, minWidth:280,
+              background:'#0f0f11', border:'1px solid #3a3a44', borderRadius:8,
+              padding:'12px 14px', fontSize:11, color:'#ece9e4', lineHeight:1.6,
+              zIndex:1000, boxShadow:'0 8px 20px rgba(0,0,0,0.6)'
+            }}>
+              <div style={{fontWeight:700, color:'#e6a338', marginBottom:8, fontSize:10, textTransform:'uppercase', letterSpacing:.5}}>Como é calculado</div>
+              <div style={{marginBottom:6}}>Diferença entre gasto previsto e gasto real até este mês:</div>
+              <div style={{display:'flex', justifyContent:'space-between', gap:12}}>
+                <span style={{color:'#a09a90'}}>Custo Direto Planejado</span>
+                <span style={{fontWeight:600}}>{fmtMoeda(custoDiretoPlano)}</span>
+              </div>
+              <div style={{display:'flex', justifyContent:'space-between', gap:12}}>
+                <span style={{color:'#a09a90'}}>− Custo Direto Realizado</span>
+                <span style={{fontWeight:600}}>{fmtMoeda(kpis.acwp_producao || 0)}</span>
+              </div>
+              <div style={{borderTop:'1px solid #3a3a44', marginTop:6, paddingTop:6, display:'flex', justifyContent:'space-between'}}>
+                <span style={{color:'#ece9e4', fontWeight:600}}>= Desvio</span>
+                <span style={{fontWeight:700, color: kpis.desvio_financeiro <= 0 ? '#4D9B6A' : '#B03030'}}>{fmtMoeda(desvioFinanceiroValor)}</span>
+              </div>
+              <div style={{marginTop:8, fontSize:10, color:'#6d675e', fontStyle:'italic'}}>
+                ⚠️ Ingênuo: pode incluir atividades não executadas. Para eficiência real, veja CV no EVM.
+              </div>
+            </div>
             <div style={{ fontSize: '22px', fontWeight: '700', marginBottom: '4px', color: kpis.desvio_financeiro <= 0 ? '#4D9B6A' : '#B03030' }}>
               {fmtMoeda(desvioFinanceiroValor)}
             </div>
