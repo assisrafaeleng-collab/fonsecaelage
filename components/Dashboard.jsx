@@ -325,7 +325,6 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
       </div>
 
       </>)}
-      </div>
 
       <div className="card">
         <div className="card-title">📊 Curva S — Acompanhamento Físico-Financeiro</div>
