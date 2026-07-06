@@ -221,6 +221,11 @@ export default function ImpactoAtraso({ mes }) {
                         <div style={{borderTop:'1px solid #2a2a31', paddingTop:8}}>
                           <div style={{fontSize:9, color:'#6d675e'}}>Custo da margem de risco</div>
                           <div style={{fontSize:13, fontWeight:600, color: cen.cor}}>{fmtR(custoAtr.total)}</div>
+                          {custoAtr.total > 0 && (
+                            <div style={{fontSize:9, color:'#6d675e', marginTop:2}}>
+                              {fmtR(custoAtr.base)} recorrentes + {fmtR(custoAtr.taxaAdm)} Taxa ADM (12%)
+                            </div>
+                          )}
                         </div>
                         <div style={{marginTop:6, position:'relative'}} className="eac-tooltip-wrap">
                           <div style={{fontSize:9, color:'#6d675e'}}>EAC Total <span style={{color:'#e6a338'}}>ⓘ</span></div>
