@@ -78,7 +78,9 @@ export default function ImpactoAtraso({ mes }) {
       }
     })
 
-    const recorrenteMensal = recIndireto + recDireto
+    const recorrenteBase = recIndireto + recDireto
+    const taxaAdmMensal = recorrenteBase * 0.12
+    const recorrenteMensal = recorrenteBase + taxaAdmMensal
 
     // ── Prazo projetado: 3 cenários ──
     const cpi = kpis.cpi || 1
@@ -131,7 +133,7 @@ export default function ImpactoAtraso({ mes }) {
 
     return {
       spi, spiConfiavel, avancoReal,
-      recorrenteMensal, recIndireto, recDireto, detalheInd, detalheDir,
+      recorrenteMensal, recIndireto, recDireto, detalheInd, detalheDir, taxaAdmMensal, recorrenteBase,
       prazoProjetado, mesesAtraso, projetado, cenarios, cen3,
       eacDireto, totalIndiretosOrcado, eacTotal, orcamentoTotal,
     }
@@ -185,6 +187,10 @@ export default function ImpactoAtraso({ mes }) {
                   <span style={{color:'#ece9e4', fontWeight:600}}>{fmtR(mensal)}/m</span>
                 </div>
               ))}
+              <div style={{display:'flex', justifyContent:'space-between', fontSize:12, color:'var(--text2, #a09a90)', padding:'10px 14px', background:'var(--bg2)', border:'1px solid var(--border)', borderRadius:8}}>
+                <span>Taxa ADM (12% sobre recorrentes)</span>
+                <span style={{color:'#ece9e4', fontWeight:600}}>{fmtR(C.taxaAdmMensal)}/m</span>
+              </div>
             </div>
           </div>
 
@@ -210,7 +216,7 @@ export default function ImpactoAtraso({ mes }) {
                     { key:'realista', label:'Com perda parcial de ritmo', desc:'cenário esperado no miolo da obra', cor:'#C8860A', data: C.cen3.realista },
                     { key:'pessimista', label:'Com imprevistos (retrabalho/clima)', desc:'reserva de segurança máxima', cor:'#B03030', data: C.cen3.pessimista },
                   ].map(cen => {
-                    const custoAtr = { base: cen.data.atraso * C.recorrenteMensal, taxaAdm: cen.data.atraso * C.recorrenteMensal * 0.12 }
+                    const custoAtr = { base: cen.data.atraso * C.recorrenteBase, taxaAdm: cen.data.atraso * C.recorrenteBase * 0.12 }
                     custoAtr.total = custoAtr.base + custoAtr.taxaAdm
                     const eacT = C.eacDireto + C.totalIndiretosOrcado + custoAtr.total
                     return (
