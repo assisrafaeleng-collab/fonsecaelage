@@ -197,18 +197,18 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, flexWrap: 'wrap' }}>
               <div>
-                <div style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 4 }}>Direto</div>
-                <div style={{ fontSize: 24, fontWeight: 700, color: '#C8860A' }}>{fmtMoeda(kpis.custo_direto_total || 3424958)}</div>
+                <div style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 4 }}>DIRETO</div>
+                <div style={{ fontSize: 24, fontWeight: 700, color: '#ece9e4' }}>{fmtMoeda(kpis.custo_direto_total || 3424958)}</div>
               </div>
               <div style={{ fontSize: 22, color: 'var(--text2)', fontWeight: 400, alignSelf: 'flex-end', paddingBottom: 4 }}>+</div>
               <div>
-                <div style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 4 }}>Indireto</div>
-                <div style={{ fontSize: 24, fontWeight: 700, color: '#9B59B6' }}>{fmtMoeda(kpis.custo_indireto_total || 2483856)}</div>
+                <div style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 4 }}>INDIRETO</div>
+                <div style={{ fontSize: 24, fontWeight: 700, color: '#ece9e4' }}>{fmtMoeda(kpis.custo_indireto_total || 2483856)}</div>
               </div>
               <div style={{ fontSize: 22, color: 'var(--text2)', fontWeight: 400, alignSelf: 'flex-end', paddingBottom: 4 }}>=</div>
               <div>
-                <div style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 4 }}>Total</div>
-                <div style={{ fontSize: 26, fontWeight: 700, color: '#5B9BD5' }}>{fmtMoeda((kpis.custo_direto_total || 3424958) + (kpis.custo_indireto_total || 2483856))}</div>
+                <div style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 4 }}>TOTAL</div>
+                <div style={{ fontSize: 26, fontWeight: 700, color: '#ece9e4' }}>{fmtMoeda((kpis.custo_direto_total || 3424958) + (kpis.custo_indireto_total || 2483856))}</div>
               </div>
             </div>
           </div>
