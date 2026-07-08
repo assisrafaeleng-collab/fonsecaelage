@@ -13,7 +13,7 @@ const GRUPOS_NOMES = {
 }
 
 const S = {
-  section: { background:'var(--bg2)', border:'1px solid var(--border)', borderRadius:12, marginBottom:12, overflow:'hidden' },
+  section: { background:'var(--bg)', border:'1px solid var(--border)', borderRadius:12, marginBottom:12, overflow:'hidden' },
   sectionHead: { display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 18px', cursor:'pointer', userSelect:'none' },
   sectionTitle: { fontSize:13, fontWeight:600, color:'#ece9e4', display:'flex', alignItems:'center', gap:8 },
   badge: { fontSize:10, padding:'2px 8px', borderRadius:10, fontWeight:700 },
