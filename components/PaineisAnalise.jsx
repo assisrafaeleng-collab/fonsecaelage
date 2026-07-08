@@ -146,8 +146,8 @@ function Alertas({ mes }) {
         return (
           <div key={i} style={{
             display:'flex', alignItems:'center', gap:12, padding:'12px 14px', marginBottom:8, borderRadius:8,
-            background: 'var(--bg2)',
-            border: '1px solid var(--border)',
+            background: a.nivel==='alto' ? 'rgba(176,48,48,0.12)' : 'rgba(200,134,10,0.10)',
+            border: `1px solid ${a.nivel==='alto' ? '#B0303055' : '#C8860A44'}`,
             opacity: resolvido ? 0.5 : 1,
             transition: 'opacity 0.2s'
           }}>
