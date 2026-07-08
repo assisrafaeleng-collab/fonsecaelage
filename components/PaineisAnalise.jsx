@@ -13,11 +13,11 @@ const GRUPOS_NOMES = {
 }
 
 const S = {
-  section: { background:'#17171b', border:'1px solid #2a2a31', borderRadius:12, marginBottom:12, overflow:'hidden' },
+  section: { background:'var(--bg2)', border:'1px solid var(--border)', borderRadius:12, marginBottom:12, overflow:'hidden' },
   sectionHead: { display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 18px', cursor:'pointer', userSelect:'none' },
   sectionTitle: { fontSize:13, fontWeight:600, color:'#ece9e4', display:'flex', alignItems:'center', gap:8 },
   badge: { fontSize:10, padding:'2px 8px', borderRadius:10, fontWeight:700 },
-  body: { borderTop:'1px solid #2a2a31', padding:'16px 18px' },
+  body: { borderTop:'1px solid var(--border)', padding:'16px 18px' },
 }
 
 function Secao({ titulo, icone, badge, badgeColor, children, defaultOpen=false }) {
