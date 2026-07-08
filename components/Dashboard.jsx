@@ -1,7 +1,7 @@
 // components/Dashboard.jsx
 // ✅ fmtMoeda importada de lib/constants — sem duplicata local
 import ImpactoAtraso from './ImpactoAtraso'
-import PaineisAnalise from './PaineisAnalise'
+import PaineisAnalise, { Heatmap } from './PaineisAnalise'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
 import { Line } from 'react-chartjs-2'
@@ -339,6 +339,11 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
         <div style={{ height: '400px', position: 'relative' }}>
           <Line data={chartData} options={chartOptions} />
         </div>
+      </div>
+
+      <div className="card">
+        <div className="card-title">🏢 Mapa de Avanço por Pavimento</div>
+        <Heatmap mes={mesLimite} />
       </div>
 
       

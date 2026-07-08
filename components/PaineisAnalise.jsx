@@ -232,7 +232,7 @@ function CurvaS({ mes }) {
 }
 
 // ─── HEATMAP POR PAVIMENTO ────────────────────────────────────
-function Heatmap({ mes }) {
+export function Heatmap({ mes }) {
   const [dados, setDados] = useState([])
   const [avanco, setAvanco] = useState({})
   const [loading, setLoading] = useState(true)
@@ -413,9 +413,7 @@ export default function PaineisAnalise({ mes }) {
         <Alertas mes={mes} />
       </Secao>
       
-          <Secao titulo="Mapa de Avanço por Pavimento" icone="🏢" defaultOpen={false}>
-        <Heatmap mes={mes} />
-      </Secao>
+    
     </div>
   )
 }
