@@ -171,6 +171,8 @@ export default async function handler(req, res) {
 
     const kpis = {
       orcamento_total: orcamentoTotal,
+      custo_direto_total: parseFloat(totalDiretos.toFixed(2)),
+      custo_indireto_total: parseFloat(totalIndiretos.toFixed(2)),
       custo_realizado: acwp,
       custo_direto_realizado: custoDiretoReal,
       custo_indireto_realizado: custoIndiretoReal,
