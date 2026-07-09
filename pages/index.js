@@ -23,13 +23,13 @@ function ModalSenha({ destino, onClose }) {
       display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
     }}>
       <div style={{
-        background: '#1E1E1E', border: '1px solid #2A2A2A', borderRadius: 12,
+        background: '#1b1b20', border: '1px solid rgba(255,255,255,0.14)', borderRadius: 12,
         padding: 32, width: 320, boxShadow: '0 8px 32px rgba(0,0,0,0.5)'
       }}>
-        <div style={{ fontSize: 16, fontWeight: 700, color: '#E8E8E8', marginBottom: 8 }}>
-          🔒 Área Restrita
+        <div style={{ fontSize: 16, fontWeight: 700, color: '#eeeef2', marginBottom: 8 }}>
+          Área Restrita
         </div>
-        <div style={{ fontSize: 12, color: '#A8A8A8', marginBottom: 20 }}>
+        <div style={{ fontSize: 12, color: '#9a9aa6', marginBottom: 20 }}>
           Digite a senha para acessar esta área.
         </div>
         <input
@@ -41,16 +41,16 @@ function ModalSenha({ destino, onClose }) {
           autoFocus
           style={{
             width: '100%', padding: '10px 14px', borderRadius: 6, fontSize: 14,
-            background: '#141414', border: `1px solid ${erro ? '#B03030' : '#2A2A2A'}`,
-            color: '#E8E8E8', outline: 'none', marginBottom: 8, boxSizing: 'border-box'
+            background: '#131316', border: `1px solid ${erro ? '#d6453c' : 'rgba(255,255,255,0.14)'}`,
+            color: '#eeeef2', outline: 'none', marginBottom: 8, boxSizing: 'border-box'
           }}
         />
-        {erro && <div style={{ color: '#B03030', fontSize: 12, marginBottom: 8 }}>Senha incorreta. Tente novamente.</div>}
+        {erro && <div style={{ color: '#d6453c', fontSize: 12, marginBottom: 8 }}>Senha incorreta. Tente novamente.</div>}
         <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
           <button
             onClick={handleConfirmar}
             style={{
-              flex: 1, background: '#C8860A', color: 'white', border: 'none',
+              flex: 1, background: '#e0a93b', color: '#131316', border: 'none',
               borderRadius: 6, padding: '10px', fontSize: 14, fontWeight: 700, cursor: 'pointer'
             }}
           >
@@ -59,8 +59,8 @@ function ModalSenha({ destino, onClose }) {
           <button
             onClick={onClose}
             style={{
-              flex: 1, background: 'transparent', color: '#A8A8A8',
-              border: '1px solid #2A2A2A', borderRadius: 6, padding: '10px',
+              flex: 1, background: 'transparent', color: '#9a9aa6',
+              border: '1px solid rgba(255,255,255,0.14)', borderRadius: 6, padding: '10px',
               fontSize: 14, cursor: 'pointer'
             }}
           >
@@ -170,8 +170,8 @@ export default function Home() {
         </div>
 
         <div className="nav">
-          <button className="nav-btn active">📊 Dashboard</button>
-          <button className="nav-btn" onClick={() => handleNavRestrita('/custos')}>💰 Lançamentos de Custos</button>
+          <button className="nav-btn active">Dashboard</button>
+          <button className="nav-btn" onClick={() => handleNavRestrita('/custos')}>Lançamentos de Custos</button>
         </div>
       </div>
 

@@ -15,18 +15,17 @@ const GRUPOS_NOMES = {
 const S = {
   section: { background:'var(--bg)', border:'1px solid var(--border)', borderRadius:12, marginBottom:12, overflow:'hidden' },
   sectionHead: { display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 18px', cursor:'pointer', userSelect:'none' },
-  sectionTitle: { fontSize:13, fontWeight:600, color:'#ece9e4', display:'flex', alignItems:'center', gap:8 },
+  sectionTitle: { fontSize:13, fontWeight:600, color:'#eeeef2', display:'flex', alignItems:'center', gap:8 },
   badge: { fontSize:10, padding:'2px 8px', borderRadius:10, fontWeight:700 },
   body: { borderTop:'1px solid var(--border)', padding:'16px 18px' },
 }
 
-function Secao({ titulo, icone, badge, badgeColor, children, defaultOpen=false }) {
+function Secao({ titulo, badge, badgeColor, children, defaultOpen=false }) {
   const [open, setOpen] = useState(defaultOpen)
   return (
     <div style={S.section}>
       <div style={S.sectionHead} onClick={() => setOpen(o => !o)}>
         <div style={S.sectionTitle}>
-          <span>{icone}</span>
           <span>{titulo}</span>
           {badge != null && (
             <span style={{...S.badge, background: badgeColor || '#2a2a31', color:'#fff'}}>{badge}</span>
@@ -135,7 +134,7 @@ function Alertas({ mes }) {
   }
 
   if (loading) return <div style={{color:'#6d675e', fontSize:12}}>Analisando...</div>
-  if (alertas.length === 0) return <div style={{color:'#4D9B6A', fontSize:13}}>✅ Nenhum desvio relevante detectado até M{mes}.</div>
+  if (alertas.length === 0) return <div style={{color:'#3f9e6c', fontSize:13}}>Nenhum desvio relevante detectado até M{mes}.</div>
 
   return (
     <div>
@@ -146,8 +145,8 @@ function Alertas({ mes }) {
         return (
           <div key={i} style={{
             display:'flex', alignItems:'center', gap:12, padding:'12px 14px', marginBottom:8, borderRadius:8,
-            background: a.nivel==='alto' ? 'rgba(176,48,48,0.12)' : 'rgba(200,134,10,0.10)',
-            border: `1px solid ${a.nivel==='alto' ? '#B0303055' : '#C8860A44'}`,
+            background: a.nivel==='alto' ? 'rgba(214,69,60,0.12)' : 'rgba(224,169,59,0.10)',
+            border: `1px solid ${a.nivel==='alto' ? '#d6453c55' : '#e0a93b44'}`,
             opacity: resolvido ? 0.5 : 1,
             transition: 'opacity 0.2s'
           }}>
@@ -155,14 +154,14 @@ function Alertas({ mes }) {
               type="checkbox"
               checked={resolvido}
               onChange={() => toggleResolvido(key)}
-              style={{width:16, height:16, cursor:'pointer', accentColor: '#4D9B6A', flexShrink:0}}
+              style={{width:16, height:16, cursor:'pointer', accentColor: '#3f9e6c', flexShrink:0}}
               title={resolvido ? 'Desmarcar' : 'Marcar como resolvido'}
             />
-            <span style={{flexShrink:0}}>{resolvido ? '✅' : (a.nivel==='alto' ? '🔴' : '🟡')}</span>
+            <span style={{flexShrink:0, fontSize:11, color: resolvido ? '#3f9e6c' : (a.nivel==='alto' ? '#d6453c' : '#e0a93b')}}>{resolvido ? 'Resolvido' : (a.nivel==='alto' ? 'Alto' : 'Médio')}</span>
             <span style={{
-              fontSize:12, color:'#ece9e4', lineHeight:1.5, flex:1,
+              fontSize:12, color:'#eeeef2', lineHeight:1.5, flex:1,
               textDecoration: resolvido ? 'line-through' : 'none',
-              color: resolvido ? '#6d675e' : '#ece9e4'
+              color: resolvido ? '#6d675e' : '#eeeef2'
             }}>{a.msg}</span>
           </div>
         )
@@ -213,10 +212,10 @@ function CurvaS({ mes }) {
   }
 
   const series = [
-    { nome:'Físico Planejado', cor:'#5B9BD5', dados: getSeries(curvas.fisico_planejado), dash:'4,3' },
-    { nome:'Físico Realizado', cor:'#5B9BD5', dados: getSeries(curvas.fisico_realizado), dash:null },
-    { nome:'Financeiro Planejado', cor:'#E91E8C', dados: getSeries(curvas.financeiro_planejado), dash:'4,3' },
-    { nome:'Financeiro Realizado', cor:'#E91E8C', dados: getSeries(curvas.financeiro_realizado), dash:null },
+    { nome:'Físico Planejado', cor:'#6f86c9', dados: getSeries(curvas.fisico_planejado), dash:'4,3' },
+    { nome:'Físico Realizado', cor:'#4a8fe0', dados: getSeries(curvas.fisico_realizado), dash:null },
+    { nome:'Financeiro Planejado', cor:'#9a8a5f', dados: getSeries(curvas.financeiro_planejado), dash:'4,3' },
+    { nome:'Financeiro Realizado', cor:'#e0a93b', dados: getSeries(curvas.financeiro_realizado), dash:null },
   ]
 
   const x = i => PAD + (i / (meses-1)) * (W - PAD*2)
@@ -335,10 +334,10 @@ export function Heatmap({ mes }) {
     if (real >= plan - 5) {
       // Em dia ou adiantado: verde com intensidade pelo avanço
       const alpha = 0.15 + (real/100) * 0.55
-      return `rgba(77,155,106,${alpha})`
+      return `rgba(63,158,108,${alpha})`
     }
-    if (real >= plan * 0.6) return 'rgba(200,134,10,0.45)'  // levemente atrasado
-    return 'rgba(176,48,48,0.5)'  // muito atrasado
+    if (real >= plan * 0.6) return 'rgba(224,169,59,0.45)'  // levemente atrasado
+    return 'rgba(214,69,60,0.5)'  // muito atrasado
   }
 
   return (
@@ -365,7 +364,7 @@ export function Heatmap({ mes }) {
                         style={{
                           background: cellColor(cell), borderRadius:4, height:28,
                           display:'flex', alignItems:'center', justifyContent:'center',
-                          fontSize:9, color:'#ece9e4', fontWeight:600, cursor:'default',
+                          fontSize:9, color:'#eeeef2', fontWeight:600, cursor:'default',
                         }}>
                         {cell.real > 0 || cell.plan > 0 ? `${cell.real.toFixed(0)}%` : ''}
                       </div>
@@ -378,9 +377,9 @@ export function Heatmap({ mes }) {
         </tbody>
       </table>
       <div style={{display:'flex', gap:14, marginTop:10, justifyContent:'center', flexWrap:'wrap'}}>
-        <span style={{fontSize:9, color:'#a09a90'}}><span style={{display:'inline-block',width:10,height:10,background:'rgba(77,155,106,0.6)',borderRadius:2,marginRight:4}}/>Em dia</span>
-        <span style={{fontSize:9, color:'#a09a90'}}><span style={{display:'inline-block',width:10,height:10,background:'rgba(200,134,10,0.45)',borderRadius:2,marginRight:4}}/>Atenção</span>
-        <span style={{fontSize:9, color:'#a09a90'}}><span style={{display:'inline-block',width:10,height:10,background:'rgba(176,48,48,0.5)',borderRadius:2,marginRight:4}}/>Atrasado</span>
+        <span style={{fontSize:9, color:'#a09a90'}}><span style={{display:'inline-block',width:10,height:10,background:'rgba(63,158,108,0.6)',borderRadius:2,marginRight:4}}/>Em dia</span>
+        <span style={{fontSize:9, color:'#a09a90'}}><span style={{display:'inline-block',width:10,height:10,background:'rgba(224,169,59,0.45)',borderRadius:2,marginRight:4}}/>Atenção</span>
+        <span style={{fontSize:9, color:'#a09a90'}}><span style={{display:'inline-block',width:10,height:10,background:'rgba(214,69,60,0.5)',borderRadius:2,marginRight:4}}/>Atrasado</span>
         <span style={{fontSize:9, color:'#a09a90'}}><span style={{display:'inline-block',width:10,height:10,background:'#1a1a20',border:'1px solid #2a2a31',borderRadius:2,marginRight:4}}/>Futuro</span>
       </div>
     </div>
@@ -400,8 +399,8 @@ function SemaforoEVM({ mes }) {
 
   if (!kpis) return <div style={{color:'#6d675e', fontSize:12}}>Carregando indicadores...</div>
 
-  const cor = v => v >= 1 ? '#4D9B6A' : v >= 0.9 ? '#C8860A' : '#B03030'
-  const emoji = v => v >= 1 ? '🟢' : v >= 0.9 ? '🟡' : '🔴'
+  const cor = v => v >= 1 ? '#3f9e6c' : v >= 0.9 ? '#e0a93b' : '#d6453c'
+  const status = v => v >= 1 ? 'Bom' : v >= 0.9 ? 'Atenção' : 'Crítico'
 
   const indicadores = [
     { nome:'CPI — Eficiência de Custo', valor: kpis.cpi, desc: kpis.cpi >= 1 ? 'Gastando menos que o previsto' : 'Gastando mais que o previsto' },
@@ -414,7 +413,7 @@ function SemaforoEVM({ mes }) {
         {indicadores.map((ind, i) => (
           <div key={i} style={{background:'#1a1a20', borderRadius:10, padding:'14px 16px', borderLeft:`3px solid ${cor(ind.valor)}`}}>
             <div style={{fontSize:10, color:'#6d675e', textTransform:'uppercase', marginBottom:4}}>{ind.nome}</div>
-            <div style={{fontSize:24, fontWeight:700, color:cor(ind.valor)}}>{emoji(ind.valor)} {(ind.valor || 0).toFixed(2)}</div>
+            <div style={{fontSize:24, fontWeight:700, color:cor(ind.valor)}}>{status(ind.valor)} {(ind.valor || 0).toFixed(2)}</div>
             <div style={{fontSize:11, color:'#a09a90', marginTop:4}}>{ind.desc}</div>
           </div>
         ))}
@@ -423,11 +422,11 @@ function SemaforoEVM({ mes }) {
         <div style={{fontSize:10, color:'#6d675e', textTransform:'uppercase', marginBottom:8}}>Projeção no ritmo atual (EAC)</div>
         <div style={{display:'flex', gap:24, flexWrap:'wrap'}}>
           <div>
-            <div style={{fontSize:18, fontWeight:700, color:'#ece9e4'}}>{fmtR(kpis.eac)}</div>
+            <div style={{fontSize:18, fontWeight:700, color:'#eeeef2'}}>{fmtR(kpis.eac)}</div>
             <div style={{fontSize:10, color:'#6d675e'}}>custo final projetado</div>
           </div>
           <div>
-            <div style={{fontSize:18, fontWeight:700, color: kpis.eac > kpis.orcamento_total ? '#B03030' : '#4D9B6A'}}>
+            <div style={{fontSize:18, fontWeight:700, color: kpis.eac > kpis.orcamento_total ? '#d6453c' : '#3f9e6c'}}>
               {kpis.eac > kpis.orcamento_total ? '+' : ''}{fmtR(kpis.eac - kpis.orcamento_total)}
             </div>
             <div style={{fontSize:10, color:'#6d675e'}}>vs orçamento ({fmtR(kpis.orcamento_total)})</div>
@@ -444,7 +443,7 @@ export default function PaineisAnalise({ mes }) {
 
   return (
     <div style={{marginTop:16}}>
-      <Secao titulo="Alertas de Desvio" icone="⚠️" defaultOpen={false}>
+      <Secao titulo="Alertas de Desvio" defaultOpen={false}>
         <Alertas mes={mes} />
       </Secao>
       

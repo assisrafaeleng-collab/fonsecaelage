@@ -150,11 +150,10 @@ export default function ImpactoAtraso({ mes }) {
         style={{display:'flex', alignItems:'center', justifyContent:'space-between', padding:'18px 24px', cursor:'pointer', userSelect:'none', borderBottom: open ? '1px solid var(--border, #2A2A2A)' : 'none'}}
         onClick={() => setOpen(o => !o)}
       >
-        <div style={{fontSize:15, fontWeight:700, color:'var(--text1, #E8E8E8)', display:'flex', alignItems:'center', gap:10}}>
-          <span>💸</span>
+        <div style={{fontSize:15, fontWeight:700, color:'var(--text1, #eeeef2)', display:'flex', alignItems:'center', gap:10}}>
           <span>Impacto do Atraso — Custo Recorrente & Projeção</span>
           {C.mesesAtraso > 0.5 && (
-            <span style={{fontSize:10, padding:'2px 8px', borderRadius:10, fontWeight:700, background:'#B03030', color:'#fff'}}>
+            <span style={{fontSize:10, padding:'2px 8px', borderRadius:10, fontWeight:700, background:'#d6453c', color:'#fff'}}>
               +{C.mesesAtraso.toFixed(1)} meses projetados
             </span>
           )}
@@ -167,8 +166,8 @@ export default function ImpactoAtraso({ mes }) {
 
           {/* Custo recorrente mensal */}
           <div style={{marginBottom:18}}>
-            <div style={{fontSize:11, color:'var(--text2, #A8A8A8)', textTransform:'uppercase', letterSpacing:.5, marginBottom:10, fontWeight:600}}>
-              ⏱ Custo recorrente — cada mês de obra custa isto, independente do avanço
+            <div style={{fontSize:11, color:'var(--text2, #9a9aa6)', textTransform:'uppercase', letterSpacing:.5, marginBottom:10, fontWeight:600}}>
+              Custo recorrente — cada mês de obra custa isto, independente do avanço
             </div>
             <div style={{display:'flex', alignItems:'baseline', gap:12, marginBottom:10}}>
               <span style={{fontSize:32, fontWeight:700, color:'#e6a338'}}>{fmtR(C.recorrenteMensal)}</span>
@@ -178,33 +177,33 @@ export default function ImpactoAtraso({ mes }) {
               {C.detalheInd.map((d, i) => (
                 <div key={i} style={{display:'flex', justifyContent:'space-between', fontSize:12, color:'var(--text2, #a09a90)', padding:'10px 14px', background:'var(--bg2)', border:'1px solid var(--border)', borderRadius:8}}>
                   <span>{d.nome}</span>
-                  <span style={{color:'#ece9e4', fontWeight:600}}>{fmtR(d.mensal)}/m</span>
+                  <span style={{color:'#eeeef2', fontWeight:600}}>{fmtR(d.mensal)}/m</span>
                 </div>
               ))}
               {Object.entries(C.detalheDir).map(([nome, mensal], i) => (
                 <div key={'d'+i} style={{display:'flex', justifyContent:'space-between', fontSize:12, color:'var(--text2, #a09a90)', padding:'10px 14px', background:'var(--bg2)', border:'1px solid var(--border)', borderRadius:8}}>
                   <span>{nome}</span>
-                  <span style={{color:'#ece9e4', fontWeight:600}}>{fmtR(mensal)}/m</span>
+                  <span style={{color:'#eeeef2', fontWeight:600}}>{fmtR(mensal)}/m</span>
                 </div>
               ))}
               <div style={{display:'flex', justifyContent:'space-between', fontSize:12, color:'var(--text2, #a09a90)', padding:'10px 14px', background:'var(--bg2)', border:'1px solid var(--border)', borderRadius:8}}>
                 <span>Taxa ADM (12% sobre recorrentes)</span>
-                <span style={{color:'#ece9e4', fontWeight:600}}>{fmtR(C.taxaAdmMensal)}/m</span>
+                <span style={{color:'#eeeef2', fontWeight:600}}>{fmtR(C.taxaAdmMensal)}/m</span>
               </div>
             </div>
           </div>
 
           {/* Projeção pelo SPI */}
           <div>
-            <div style={{fontSize:11, color:'var(--text2, #A8A8A8)', textTransform:'uppercase', letterSpacing:.5, marginBottom:10, fontWeight:600}}>
-              🔮 Cenários de risco (SPI atual {C.spi.toFixed(2)})
+            <div style={{fontSize:11, color:'var(--text2, #9a9aa6)', textTransform:'uppercase', letterSpacing:.5, marginBottom:10, fontWeight:600}}>
+              Cenários de risco (SPI atual {C.spi.toFixed(2)})
             </div>
               <div style={{fontSize:10, color:'#6d675e', fontStyle:'italic', marginBottom:10, marginTop:-4}}>
                 SPI inicial alto é comum (obra começa com serviços leves) e não garante o ritmo no miolo da obra. Cenários abaixo são projeções conservadoras de segurança.
               </div>
             {!C.spiConfiavel ? (
-              <div style={{background:'rgba(200,134,10,0.10)', border:'1px solid #C8860A44', borderRadius:8, padding:'12px 14px', fontSize:12, color:'#ece9e4', lineHeight:1.6}}>
-                ⚠️ Avanço físico ainda muito baixo ({C.avancoReal.toFixed(1)}%) para projetar prazo com confiança.
+              <div style={{background:'rgba(224,169,59,0.10)', border:'1px solid #e0a93b44', borderRadius:8, padding:'12px 14px', fontSize:12, color:'#eeeef2', lineHeight:1.6}}>
+                Avanço físico ainda muito baixo ({C.avancoReal.toFixed(1)}%) para projetar prazo com confiança.
                 A projeção pelo SPI só se torna estatisticamente válida com ~3% ou mais de obra executada.
                 Use os cenários fixos acima como referência de impacto.
               </div>
@@ -212,9 +211,9 @@ export default function ImpactoAtraso({ mes }) {
               <div>
                 <div style={{display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:10, marginBottom:12}}>
                   {[
-                    { key:'otimista', label:'Se o ritmo atual se mantiver', desc:'projeção pelo SPI atual', cor:'#4D9B6A', data: C.cen3.otimista },
-                    { key:'realista', label:'Com perda parcial de ritmo', desc:'cenário esperado no miolo da obra', cor:'#C8860A', data: C.cen3.realista },
-                    { key:'pessimista', label:'Com imprevistos (retrabalho/clima)', desc:'reserva de segurança máxima', cor:'#B03030', data: C.cen3.pessimista },
+                    { key:'otimista', label:'Se o ritmo atual se mantiver', desc:'projeção pelo SPI atual', cor:'#3f9e6c', data: C.cen3.otimista },
+                    { key:'realista', label:'Com perda parcial de ritmo', desc:'cenário esperado no miolo da obra', cor:'#e0a93b', data: C.cen3.realista },
+                    { key:'pessimista', label:'Com imprevistos (retrabalho/clima)', desc:'reserva de segurança máxima', cor:'#d6453c', data: C.cen3.pessimista },
                   ].map(cen => {
                     const custoAtr = { base: cen.data.atraso * C.recorrenteBase, taxaAdm: cen.data.atraso * C.recorrenteBase * 0.12 }
                     custoAtr.total = custoAtr.base + custoAtr.taxaAdm
@@ -235,11 +234,11 @@ export default function ImpactoAtraso({ mes }) {
                         </div>
                         <div style={{marginTop:6, position:'relative'}} className="eac-tooltip-wrap">
                           <div style={{fontSize:9, color:'#6d675e'}}>EAC Total <span style={{color:'#e6a338'}}>ⓘ</span></div>
-                          <div style={{fontSize:13, fontWeight:600, color: eacT > C.orcamentoTotal ? '#B03030' : '#4D9B6A', cursor:'help'}}>{fmtR(eacT)}</div>
+                          <div style={{fontSize:13, fontWeight:600, color: eacT > C.orcamentoTotal ? '#d6453c' : '#3f9e6c', cursor:'help'}}>{fmtR(eacT)}</div>
                           <div className="eac-tooltip-box" style={{
                             position:'absolute', bottom:'calc(100% + 8px)', left:0, right:0,
                             background:'#0f0f11', border:'1px solid #3a3a44', borderRadius:8,
-                            padding:'10px 12px', fontSize:11, color:'#ece9e4', lineHeight:1.6,
+                            padding:'10px 12px', fontSize:11, color:'#eeeef2', lineHeight:1.6,
                             zIndex:1000, boxShadow:'0 8px 20px rgba(0,0,0,0.6)',
                             display:'none', minWidth:220,
                           }}>
@@ -257,8 +256,8 @@ export default function ImpactoAtraso({ mes }) {
                               <span style={{fontWeight:600}}>{fmtR(custoAtr.total)}</span>
                             </div>
                             <div style={{borderTop:'1px solid #3a3a44', marginTop:6, paddingTop:6, display:'flex', justifyContent:'space-between', gap:12}}>
-                              <span style={{color:'#ece9e4', fontWeight:600}}>Total EAC</span>
-                              <span style={{fontWeight:700, color: eacT > C.orcamentoTotal ? '#B03030' : '#4D9B6A'}}>{fmtR(eacT)}</span>
+                              <span style={{color:'#eeeef2', fontWeight:600}}>Total EAC</span>
+                              <span style={{fontWeight:700, color: eacT > C.orcamentoTotal ? '#d6453c' : '#3f9e6c'}}>{fmtR(eacT)}</span>
                             </div>
                             <div style={{display:'flex', justifyContent:'space-between', gap:12, marginTop:4}}>
                               <span style={{color:'#6d675e'}}>Orçamento original</span>
@@ -266,7 +265,7 @@ export default function ImpactoAtraso({ mes }) {
                             </div>
                             <div style={{display:'flex', justifyContent:'space-between', gap:12}}>
                               <span style={{color:'#6d675e'}}>Diferença</span>
-                              <span style={{fontWeight:600, color: eacT > C.orcamentoTotal ? '#B03030' : '#4D9B6A'}}>
+                              <span style={{fontWeight:600, color: eacT > C.orcamentoTotal ? '#d6453c' : '#3f9e6c'}}>
                                 {eacT > C.orcamentoTotal ? '+' : ''}{fmtR(eacT - C.orcamentoTotal)}
                               </span>
                             </div>
