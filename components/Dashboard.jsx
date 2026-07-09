@@ -1,7 +1,7 @@
 // components/Dashboard.jsx
 // fmtMoeda importada de lib/constants — sem duplicata local
 import ImpactoAtraso from './ImpactoAtraso'
-import PaineisAnalise, { Heatmap } from './PaineisAnalise'
+import PaineisAnalise, { FisicoPorAtividade, Heatmap } from './PaineisAnalise'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
 import { Line } from 'react-chartjs-2'
@@ -145,10 +145,32 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
   const chartData = {
     labels,
     datasets: [
-      { label: 'Financeiro Planejado', data: finPlan, borderColor: '#9a8a5f', backgroundColor: 'rgba(154, 138, 95, 0.1)', borderWidth: 2, borderDash: [6, 4], pointRadius: 3, pointHoverRadius: 5, pointStyle: 'circle', pointBackgroundColor: 'transparent', yAxisID: 'y-financeiro', tension: 0.3 },
-      { label: 'Financeiro Realizado', data: finReal, borderColor: '#e0a93b', backgroundColor: 'rgba(224,169,59,0.12)', borderWidth: 3, borderDash: [], pointRadius: 4, pointHoverRadius: 6, pointStyle: 'circle', pointBackgroundColor: '#e0a93b', yAxisID: 'y-financeiro', tension: 0.3 },
-      { label: 'Físico Planejado', data: fisPlan, borderColor: '#6f86c9', backgroundColor: 'rgba(111, 134, 201, 0.1)', borderWidth: 2, borderDash: [6, 4], pointRadius: 3, pointHoverRadius: 5, pointStyle: 'circle', pointBackgroundColor: 'transparent', yAxisID: 'y-fisico', tension: 0.3 },
-      { label: 'Físico Realizado', data: fisReal, borderColor: '#4a8fe0', backgroundColor: 'rgba(74, 143, 224, 0.1)', borderWidth: 3, borderDash: [], pointRadius: 4, pointHoverRadius: 6, pointStyle: 'circle', pointBackgroundColor: '#4a8fe0', yAxisID: 'y-fisico', tension: 0.3 }
+      { label: 'Financeiro Planejado', data: finPlan, borderColor: '#9a8a5f', backgroundColor: 'rgba(154, 138, 95, 0.1)', fill: false, borderWidth: 1.5, borderDash: [5, 4], pointRadius: 3, pointHoverRadius: 5, pointStyle: 'circle', pointBackgroundColor: 'transparent', yAxisID: 'y-financeiro', tension: 0.3 },
+      {
+        label: 'Financeiro Realizado',
+        data: finReal,
+        borderColor: '#3f9e6c',
+        backgroundColor: (context) => {
+          const { chart } = context
+          const { ctx, chartArea } = chart
+          if (!chartArea) return 'rgba(63,158,108,0.12)'
+          const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom)
+          gradient.addColorStop(0, 'rgba(63,158,108,0.18)')
+          gradient.addColorStop(1, 'rgba(63,158,108,0)')
+          return gradient
+        },
+        fill: true,
+        borderWidth: 2.5,
+        borderDash: [],
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        pointStyle: 'circle',
+        pointBackgroundColor: '#3f9e6c',
+        yAxisID: 'y-financeiro',
+        tension: 0.35
+      },
+      { label: 'Físico Planejado', data: fisPlan, borderColor: '#6f86c9', backgroundColor: 'rgba(111, 134, 201, 0.1)', fill: false, borderWidth: 1.5, borderDash: [5, 4], pointRadius: 3, pointHoverRadius: 5, pointStyle: 'circle', pointBackgroundColor: 'transparent', yAxisID: 'y-fisico', tension: 0.3 },
+      { label: 'Físico Realizado', data: fisReal, borderColor: '#4a8fe0', backgroundColor: 'rgba(74, 143, 224, 0.1)', fill: false, borderWidth: 2.5, borderDash: [], pointRadius: 4, pointHoverRadius: 6, pointStyle: 'circle', pointBackgroundColor: '#4a8fe0', yAxisID: 'y-fisico', tension: 0.35 }
     ]
   }
 
@@ -157,7 +179,7 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
     maintainAspectRatio: false,
     interaction: { mode: 'index', intersect: false },
     plugins: {
-      legend: { display: true, position: 'top', labels: { color: '#9a9aa6', font: { size: 11 }, usePointStyle: true, padding: 15 } },
+      legend: { display: false, position: 'top', labels: { color: '#9a9aa6', font: { size: 11 }, usePointStyle: true, padding: 15 } },
       tooltip: {
         backgroundColor: 'rgba(20,20,24,0.96)', titleColor: '#9a9aa6', bodyColor: '#9a9aa6', borderColor: 'rgba(255,255,255,0.14)', borderWidth: 1, padding: 12, displayColors: true,
         callbacks: {
@@ -420,6 +442,16 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
 
       <div className="card">
         <div className="card-title">Curva S — Acompanhamento Físico-Financeiro</div>
+        <div style={{ display:'flex', gap:'20px', flexWrap:'wrap', margin:'10px 0 6px' }}>
+          <span style={{ display:'flex', alignItems:'center', gap:'7px', font:"500 11px 'IBM Plex Sans'", color:'#9a9aa6' }}>
+            <span style={{ width:'18px', height:0, borderTop:'2px solid #3f9e6c' }}></span>Financeiro realizado</span>
+          <span style={{ display:'flex', alignItems:'center', gap:'7px', font:"500 11px 'IBM Plex Sans'", color:'#9a9aa6' }}>
+            <span style={{ width:'18px', height:0, borderTop:'2px dashed #9a8a5f' }}></span>Financeiro planejado</span>
+          <span style={{ display:'flex', alignItems:'center', gap:'7px', font:"500 11px 'IBM Plex Sans'", color:'#9a9aa6' }}>
+            <span style={{ width:'18px', height:0, borderTop:'2px solid #4a8fe0' }}></span>Físico realizado</span>
+          <span style={{ display:'flex', alignItems:'center', gap:'7px', font:"500 11px 'IBM Plex Sans'", color:'#9a9aa6' }}>
+            <span style={{ width:'18px', height:0, borderTop:'2px dashed #6f86c9' }}></span>Físico planejado</span>
+        </div>
         <div style={{ height: '400px', position: 'relative' }}>
           <Line data={chartData} options={chartOptions} />
         </div>
@@ -428,6 +460,11 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
       <div className="card">
         <div className="card-title">Mapa de Avanço por Pavimento</div>
         <Heatmap mes={mesLimite} />
+      </div>
+
+      <div className="card">
+        <div className="card-title">Físico por Atividade</div>
+        <FisicoPorAtividade mes={mesLimite} />
       </div>
 
       

@@ -20,6 +20,118 @@ const S = {
   body: { borderTop:'1px solid var(--border)', padding:'16px 18px' },
 }
 
+function hasLancamento(avanco, key) {
+  return Object.prototype.hasOwnProperty.call(avanco, key)
+}
+
+function useHeatmapSource(mes) {
+  const [dados, setDados] = useState([])
+  const [avanco, setAvanco] = useState({})
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const [d, ...avancos] = await Promise.all([
+          fetch('/dados.json').then(r => r.json()),
+          ...Array.from({ length: mes }, (_, i) => fetch(`/api/avanco-fisico-realizado?mes=${i + 1}`).then(r => r.json()))
+        ])
+        setDados(d || [])
+
+        const map = {}
+        avancos.forEach(res => {
+          ;(res.data || []).forEach(item => {
+            const key = `${item.codigo_eap}|${item.pavimento}`
+            map[key] = Math.max(map[key] || 0, parseFloat(item.percentual_realizado || 0))
+          })
+        })
+        setAvanco(map)
+      } catch (e) {
+        console.error(e)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    load()
+  }, [mes])
+
+  return { dados, avanco, loading }
+}
+
+function buildHeatmapGrid(dados, avanco, mes) {
+  const grupos = [...new Set(dados.filter(r => r.g <= 16).map(r => r.g))].sort((a, b) => a - b)
+  const cells = {}
+
+  grupos.forEach(g => {
+    PAVS.forEach(pav => {
+      const items = dados.filter(r => r.g === g && r.p === pav)
+      if (items.length === 0) return
+
+      const totHh = items.reduce((s, r) => s + (r.h || 0), 0)
+      let realHh = 0
+      let planPct = 0
+      let planCount = 0
+      let launched = false
+
+      items.forEach(r => {
+        const key = `${r.i}|${pav}`
+        const itemLancado = hasLancamento(avanco, key)
+        const pct = itemLancado ? parseFloat(avanco[key] || 0) : 0
+
+        launched = launched || itemLancado
+        realHh += (r.h || 0) * pct / 100
+
+        if (mes >= r.a) {
+          const numMeses = Math.max(r.b - r.a + 1, 1)
+          const ativos = Math.min(mes, r.b) - r.a + 1
+          planPct += Math.min(100, ativos / numMeses * 100)
+        }
+        planCount++
+      })
+
+      const realPct = totHh > 0
+        ? (realHh / totHh * 100)
+        : (items.length > 0 ? items.reduce((s, r) => s + (hasLancamento(avanco, `${r.i}|${pav}`) ? (avanco[`${r.i}|${pav}`] || 0) : 0), 0) / items.length : 0)
+      const planAvg = planCount > 0 ? planPct / planCount : 0
+
+      cells[`${g}|${pav}`] = {
+        real: realPct,
+        plan: planAvg,
+        items: items.length,
+        launched
+      }
+    })
+  })
+
+  return { grupos, cells }
+}
+
+function buildAtividades(grid) {
+  return grid.grupos.map(g => {
+    const cells = PAVS
+      .map(pav => grid.cells[`${g}|${pav}`])
+      .filter(Boolean)
+    const launchedCells = cells.filter(cell => cell.launched)
+    const baseCells = launchedCells.length > 0 ? launchedCells : cells
+    const realizado = baseCells.length > 0
+      ? baseCells.reduce((sum, cell) => sum + cell.real, 0) / baseCells.length
+      : 0
+    const planejado = baseCells.length > 0
+      ? baseCells.reduce((sum, cell) => sum + cell.plan, 0) / baseCells.length
+      : null
+    const delta = planejado == null ? null : realizado - planejado
+
+    return {
+      grupo: g,
+      nome: GRUPOS_NOMES[g] || `Grupo ${g}`,
+      realizado,
+      planejado,
+      delta
+    }
+  })
+}
+
 function Secao({ titulo, badge, badgeColor, children, defaultOpen=false }) {
   const [open, setOpen] = useState(defaultOpen)
   return (
@@ -267,62 +379,10 @@ function CurvaS({ mes }) {
 
 // ─── HEATMAP POR PAVIMENTO ────────────────────────────────────
 export function Heatmap({ mes }) {
-  const [dados, setDados] = useState([])
-  const [avanco, setAvanco] = useState({})
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    async function load() {
-      try {
-        const [d, ...avancos] = await Promise.all([
-          fetch('/dados.json').then(r => r.json()),
-          ...Array.from({length: mes}, (_, i) => fetch(`/api/avanco-fisico-realizado?mes=${i+1}`).then(r => r.json()))
-        ])
-        setDados(d || [])
-        // Merge all months - keep latest percentual per item
-        const map = {}
-        avancos.forEach(res => {
-          (res.data || []).forEach(item => {
-            const key = `${item.codigo_eap}|${item.pavimento}`
-            map[key] = Math.max(map[key] || 0, parseFloat(item.percentual_realizado || 0))
-          })
-        })
-        setAvanco(map)
-      } catch(e) { console.error(e) }
-      finally { setLoading(false) }
-    }
-    load()
-  }, [mes])
+  const { dados, avanco, loading } = useHeatmapSource(mes)
 
   const grid = useMemo(() => {
-    // grupos 1-16 (exclui 17/18)
-    const grupos = [...new Set(dados.filter(r => r.g <= 16).map(r => r.g))].sort((a,b) => a-b)
-    const cells = {}
-    grupos.forEach(g => {
-      PAVS.forEach(pav => {
-        const items = dados.filter(r => r.g === g && r.p === pav)
-        if (items.length === 0) return
-        const totHh = items.reduce((s,r) => s + (r.h || 0), 0)
-        let realHh = 0
-        let planPct = 0
-        let planCount = 0
-        items.forEach(r => {
-          const pct = avanco[`${r.i}|${pav}`] || 0
-          realHh += (r.h || 0) * pct / 100
-          // planned progress
-          if (mes >= r.a) {
-            const numMeses = Math.max(r.b - r.a + 1, 1)
-            const ativos = Math.min(mes, r.b) - r.a + 1
-            planPct += Math.min(100, ativos / numMeses * 100)
-          }
-          planCount++
-        })
-        const realPct = totHh > 0 ? (realHh / totHh * 100) : (items.length > 0 ? items.reduce((s,r) => s + (avanco[`${r.i}|${pav}`]||0), 0) / items.length : 0)
-        const planAvg = planCount > 0 ? planPct / planCount : 0
-        cells[`${g}|${pav}`] = { real: realPct, plan: planAvg, items: items.length }
-      })
-    })
-    return { grupos, cells }
+    return buildHeatmapGrid(dados, avanco, mes)
   }, [dados, avanco, mes])
 
   if (loading) return <div style={{color:'#6d675e', fontSize:12}}>Carregando mapa...</div>
@@ -342,33 +402,38 @@ export function Heatmap({ mes }) {
 
   return (
     <div style={{overflowX:'auto'}}>
-      <table style={{borderCollapse:'collapse', width:'100%', minWidth:600}}>
+      <table style={{borderCollapse:'collapse', borderSpacing:0, width:'100%', minWidth:600}}>
         <thead>
           <tr>
-            <th style={{fontSize:9, color:'#6d675e', padding:'4px 8px', textAlign:'left'}}>PAV</th>
+            <th style={{fontSize:10, color:'#6d675e', padding:'0 6px 2px', textAlign:'left', lineHeight:1}}>PAV</th>
             {grid.grupos.map(g => (
-              <th key={g} style={{fontSize:8, color:'#6d675e', padding:'4px 2px', textAlign:'center'}}>{g}<br/>{GRUPOS_NOMES[g]}</th>
+              <th key={g} style={{color:'#6d675e', padding:'0 1px 2px', textAlign:'center', minWidth:38, lineHeight:1}}>
+                <div style={{display:'flex', flexDirection:'column', alignItems:'center', lineHeight:1.1}}>
+                  <span style={{fontSize:10, fontWeight:700, color:'#9a9aa6'}}>{g}</span>
+                  <span style={{fontSize:10}}>{GRUPOS_NOMES[g]}</span>
+                </div>
+              </th>
             ))}
           </tr>
         </thead>
         <tbody>
           {[...PAVS].reverse().map(pav => (
-            <tr key={pav}>
-              <td style={{fontSize:10, color:'#a09a90', padding:'2px 8px', fontWeight:600, whiteSpace:'nowrap'}}>{pav}</td>
+            <tr key={pav} style={{height:22}}>
+              <td style={{fontSize:10, color:'#a09a90', padding:'0 6px', fontWeight:600, whiteSpace:'nowrap', lineHeight:1}}>{pav}</td>
               {grid.grupos.map(g => {
                 const cell = grid.cells[`${g}|${pav}`]
                 return (
-                  <td key={g} style={{padding:2}}>
+                  <td key={g} style={{padding:0, lineHeight:1}}>
                     {cell ? (
                       <div title={`Grupo ${g} · ${pav}\nReal: ${cell.real.toFixed(0)}% · Plan: ${cell.plan.toFixed(0)}%\n${cell.items} itens`}
                         style={{
-                          background: cellColor(cell), borderRadius:4, height:28,
+                          background: cellColor(cell), borderRadius:4, height:22,
                           display:'flex', alignItems:'center', justifyContent:'center',
                           fontSize:9, color:'#eeeef2', fontWeight:600, cursor:'default',
                         }}>
                         {cell.real > 0 || cell.plan > 0 ? `${cell.real.toFixed(0)}%` : ''}
                       </div>
-                    ) : <div style={{height:28}} />}
+                    ) : <div style={{height:22, background:'rgba(255,255,255,0.02)', borderRadius:4}} />}
                   </td>
                 )
               })}
@@ -381,6 +446,82 @@ export function Heatmap({ mes }) {
         <span style={{fontSize:9, color:'#a09a90'}}><span style={{display:'inline-block',width:10,height:10,background:'rgba(224,169,59,0.45)',borderRadius:2,marginRight:4}}/>Atenção</span>
         <span style={{fontSize:9, color:'#a09a90'}}><span style={{display:'inline-block',width:10,height:10,background:'rgba(214,69,60,0.5)',borderRadius:2,marginRight:4}}/>Atrasado</span>
         <span style={{fontSize:9, color:'#a09a90'}}><span style={{display:'inline-block',width:10,height:10,background:'#1a1a20',border:'1px solid #2a2a31',borderRadius:2,marginRight:4}}/>Futuro</span>
+      </div>
+    </div>
+  )
+}
+
+export function FisicoPorAtividade({ mes }) {
+  const { dados, avanco, loading } = useHeatmapSource(mes)
+
+  const atividades = useMemo(() => {
+    const grid = buildHeatmapGrid(dados, avanco, mes)
+    return buildAtividades(grid)
+  }, [dados, avanco, mes])
+
+  if (loading) return <div style={{color:'#6d675e', fontSize:12}}>Carregando atividades...</div>
+
+  return (
+    <div>
+      {atividades.map(at => {
+        const realizado = Math.max(0, Math.min(at.realizado, 100))
+        const planejado = at.planejado == null ? null : Math.max(0, Math.min(at.planejado, 100))
+        const delta = at.delta
+        const noRitmo = delta == null || delta >= 0
+
+        return (
+          <div key={at.grupo} className="prog-row">
+            <div className="prog-lbl">{at.grupo}. {at.nome}</div>
+            <div className="prog-track">
+              {planejado != null && (
+                <div
+                  className="prog-fill"
+                  style={{
+                    width: `${planejado}%`,
+                    background: 'rgba(111,134,201,0.4)',
+                    position: 'absolute',
+                    left: 0,
+                    top: 0
+                  }}
+                />
+              )}
+              <div
+                className="prog-fill"
+                style={{
+                  width: `${realizado}%`,
+                  background: noRitmo ? '#3f9e6c' : '#d6453c',
+                  position: 'absolute',
+                  left: 0,
+                  top: 0,
+                  zIndex: 1
+                }}
+              />
+            </div>
+            <div className="prog-pct">{fmtP(realizado)}</div>
+            {delta == null ? (
+              <div className="prog-delta">-</div>
+            ) : (
+              <div className={`prog-delta ${delta >= 0 ? 'pos' : 'neg'}`}>
+                {delta >= 0 ? '+' : ''}{fmtP(delta)}
+              </div>
+            )}
+          </div>
+        )
+      })}
+
+      <div style={{ display:'flex', gap:16, flexWrap:'wrap', marginTop:10, font:"500 10px 'IBM Plex Sans'", color:'#63636e' }}>
+        <span style={{ display:'flex', alignItems:'center', gap:6 }}>
+          <span style={{ width:9, height:9, background:'rgba(111,134,201,0.4)', borderRadius:2, display:'inline-block' }}></span>
+          Planejado
+        </span>
+        <span style={{ display:'flex', alignItems:'center', gap:6 }}>
+          <span style={{ width:9, height:9, background:'#3f9e6c', borderRadius:2, display:'inline-block' }}></span>
+          Realizado (sem ritmo)
+        </span>
+        <span style={{ display:'flex', alignItems:'center', gap:6 }}>
+          <span style={{ width:9, height:9, background:'#d6453c', borderRadius:2, display:'inline-block' }}></span>
+          Atrasado
+        </span>
       </div>
     </div>
   )
