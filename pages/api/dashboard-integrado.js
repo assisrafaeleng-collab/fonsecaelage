@@ -229,8 +229,8 @@ export default async function handler(req, res) {
       meses.push({
         mes_numero: i,
         competencia: finPlan ? finPlan.competencia : null,
-        financeiro_planejado: fisPlan ? (fisPlan.percentual_acumulado * totalDiretos + RECORRENTE_MENSAL_PLAN * i) : null,
-        financeiro_realizado: (i <= mesLimite && i <= ultimoMesFinReal && finReal) ? (finReal.valor_direto != null ? finReal.valor_direto + RECORRENTE_MENSAL_PLAN * i : finReal.valor_acumulado) : null,
+        financeiro_planejado: fisPlan ? (fisPlan.percentual_acumulado * totalDiretos) : null,
+        financeiro_realizado: (i <= mesLimite && i <= ultimoMesFinReal && finReal) ? (finReal.valor_direto != null ? finReal.valor_direto : finReal.valor_acumulado) : null,
         fisico_planejado: fisPlan ? fisPlan.percentual_acumulado * 100 : null,
         fisico_realizado: fisRealFinal,
       })

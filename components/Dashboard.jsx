@@ -70,11 +70,6 @@ function ComparativoFisico({ mesLimite }) {
             })()}
           </div>
         ))}
-        <div style={{ display: 'flex', gap: 20, marginTop: 12, fontSize: 11, color: 'var(--text2)' }}>
-          <span><span style={{ display: 'inline-block', width: 12, height: 12, background: '#3f9e6c', borderRadius: 2, marginRight: 4, verticalAlign: 'middle' }}></span>Executado</span>
-          <span><span style={{ display: 'inline-block', width: 12, height: 12, background: '#d6453c', borderRadius: 2, marginRight: 4, verticalAlign: 'middle' }}></span>Atraso</span>
-          <span><span style={{ display: 'inline-block', width: 12, height: 12, background: '#6f86c9', opacity: 0.35, borderRadius: 2, marginRight: 4, verticalAlign: 'middle' }}></span>A executar</span>
-        </div>
       </div>
     </div>
   )
@@ -574,3 +569,4 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
     </div>
   )
 }
+
