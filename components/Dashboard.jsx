@@ -53,16 +53,27 @@ function ComparativoFisico({ mesLimite }) {
                 </span>
               </span>
             </div>
-            <div style={{ position: 'relative', height: 10, background: 'var(--bg2)', borderRadius: 5, overflow: 'hidden' }}>
-              <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${Math.min(at.planejado, 100)}%`, background: '#6f86c9', borderRadius: 5, opacity: 0.5 }} />
-              <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${Math.min(at.realizado, 100)}%`, background: at.realizado >= at.planejado ? '#3f9e6c' : '#4a8fe0', borderRadius: 5 }} />
-            </div>
+            {(() => {
+              const r = Math.min(Math.max(at.realizado, 0), 100)
+              const p = Math.min(Math.max(at.planejado, 0), 100)
+              const atraso = Math.max(0, p - r)
+              const restante = Math.max(0, 100 - Math.max(r, p))
+              return (
+                <div style={{ position: 'relative', height: 10, background: 'var(--bg2)', borderRadius: 5, overflow: 'hidden', display: 'flex' }}>
+                  <div style={{ height: '100%', width: `${r}%`, background: '#3f9e6c' }} title={`Executado: ${r.toFixed(1)}%`} />
+                  {atraso > 0 && (
+                    <div style={{ height: '100%', width: `${atraso}%`, background: '#d6453c' }} title={`Atraso: ${atraso.toFixed(1)}%`} />
+                  )}
+                  <div style={{ height: '100%', width: `${restante}%`, background: '#6f86c9', opacity: 0.35 }} title={`A executar: ${restante.toFixed(1)}%`} />
+                </div>
+              )
+            })()}
           </div>
         ))}
         <div style={{ display: 'flex', gap: 20, marginTop: 12, fontSize: 11, color: 'var(--text2)' }}>
-          <span><span style={{ display: 'inline-block', width: 12, height: 12, background: '#6f86c9', opacity: 0.5, borderRadius: 2, marginRight: 4, verticalAlign: 'middle' }}></span>Planejado</span>
-          <span><span style={{ display: 'inline-block', width: 12, height: 12, background: '#3f9e6c', borderRadius: 2, marginRight: 4, verticalAlign: 'middle' }}></span>Realizado (adiantado)</span>
-          <span><span style={{ display: 'inline-block', width: 12, height: 12, background: '#4a8fe0', borderRadius: 2, marginRight: 4, verticalAlign: 'middle' }}></span>Realizado (atrasado)</span>
+          <span><span style={{ display: 'inline-block', width: 12, height: 12, background: '#3f9e6c', borderRadius: 2, marginRight: 4, verticalAlign: 'middle' }}></span>Executado</span>
+          <span><span style={{ display: 'inline-block', width: 12, height: 12, background: '#d6453c', borderRadius: 2, marginRight: 4, verticalAlign: 'middle' }}></span>Atraso</span>
+          <span><span style={{ display: 'inline-block', width: 12, height: 12, background: '#6f86c9', opacity: 0.35, borderRadius: 2, marginRight: 4, verticalAlign: 'middle' }}></span>A executar</span>
         </div>
       </div>
     </div>
