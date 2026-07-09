@@ -473,29 +473,33 @@ export function FisicoPorAtividade({ mes }) {
           <div key={at.grupo} className="prog-row">
             <div className="prog-lbl">{at.grupo}. {at.nome}</div>
             <div className="prog-track">
-              {planejado != null && (
-                <div
-                  className="prog-fill"
-                  style={{
-                    width: `${planejado}%`,
-                    background: 'rgba(111,134,201,0.4)',
-                    position: 'absolute',
-                    left: 0,
-                    top: 0
-                  }}
-                />
-              )}
-              <div
-                className="prog-fill"
-                style={{
-                  width: `${realizado}%`,
-                  background: noRitmo ? '#3f9e6c' : '#d6453c',
-                  position: 'absolute',
-                  left: 0,
-                  top: 0,
-                  zIndex: 1
-                }}
-              />
+              {(() => {
+                const r = realizado
+                const p = planejado ?? r
+                const atraso = Math.max(0, p - r)
+                const restante = Math.max(0, 100 - Math.max(r, p))
+                return (
+                  <>
+                    <div
+                      className="prog-fill"
+                      style={{ width: `${r}%`, background: '#3f9e6c', position: 'absolute', left: 0, top: 0, zIndex: 2 }}
+                      title={`Executado: ${r.toFixed(1)}%`}
+                    />
+                    {atraso > 0 && (
+                      <div
+                        className="prog-fill"
+                        style={{ width: `${atraso}%`, background: '#d6453c', position: 'absolute', left: `${r}%`, top: 0, zIndex: 2 }}
+                        title={`Atraso: ${atraso.toFixed(1)}%`}
+                      />
+                    )}
+                    <div
+                      className="prog-fill"
+                      style={{ width: `${restante}%`, background: 'rgba(111,134,201,0.4)', position: 'absolute', left: `${Math.max(r, p)}%`, top: 0, zIndex: 1 }}
+                      title={`A executar: ${restante.toFixed(1)}%`}
+                    />
+                  </>
+                )
+              })()}
             </div>
             <div className="prog-pct">{fmtP(realizado)}</div>
             {delta == null ? (
@@ -511,16 +515,20 @@ export function FisicoPorAtividade({ mes }) {
 
       <div style={{ display:'flex', gap:16, flexWrap:'wrap', marginTop:10, font:"500 10px 'IBM Plex Sans'", color:'#63636e' }}>
         <span style={{ display:'flex', alignItems:'center', gap:6 }}>
-          <span style={{ width:9, height:9, background:'rgba(111,134,201,0.4)', borderRadius:2, display:'inline-block' }}></span>
-          Planejado
+          <span style={{ width:9, height:9, background:'#3f9e6c', borderRadius:2, display:'inline-block' }}></span>
+          Executado
         </span>
         <span style={{ display:'flex', alignItems:'center', gap:6 }}>
           <span style={{ width:9, height:9, background:'#3f9e6c', borderRadius:2, display:'inline-block' }}></span>
-          Realizado (sem ritmo)
+          Executado
         </span>
         <span style={{ display:'flex', alignItems:'center', gap:6 }}>
           <span style={{ width:9, height:9, background:'#d6453c', borderRadius:2, display:'inline-block' }}></span>
-          Atrasado
+          Atraso
+        </span>
+        <span style={{ display:'flex', alignItems:'center', gap:6 }}>
+          <span style={{ width:9, height:9, background:'rgba(111,134,201,0.4)', borderRadius:2, display:'inline-block' }}></span>
+          A executar
         </span>
       </div>
     </div>
