@@ -33,7 +33,7 @@ function useHeatmapSource(mes) {
     async function load() {
       try {
         const [d, ...avancos] = await Promise.all([
-          fetch('/dados.json').then(r => r.json()),
+          fetch('/api/orcamento-itens', { cache: 'no-store' }).then(r => r.json()),
           ...Array.from({ length: mes }, (_, i) => fetch(`/api/avanco-fisico-realizado?mes=${i + 1}`).then(r => r.json()))
         ])
         setDados(d || [])
