@@ -84,7 +84,7 @@ export default function AvancoFisicoRealizado() {
   const [existentes, setExistentes] = useState({}) // lançamentos já salvos
 
   useEffect(() => {
-    fetch('/dados.json').then(r => r.json()).then(d => { setDados(d); setLoading(false) }).catch(() => setLoading(false))
+    fetch('/api/orcamento-itens', { cache: 'no-store' }).then(r => r.json()).then(d => { setDados(Array.isArray(d) ? d : []); setLoading(false) }).catch(() => setLoading(false))
   }, [])
 
   // Buscar lançamentos existentes quando mês muda

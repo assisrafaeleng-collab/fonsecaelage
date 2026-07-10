@@ -88,7 +88,7 @@ export default function CustosDiretosRealizados() {
     async function load() {
       try {
         const [d, l] = await Promise.all([
-          fetch('/dados.json').then(r => r.json()),
+          fetch('/api/orcamento-itens', { cache: 'no-store' }).then(r => r.json()),
           fetch('/api/custos-diretos-realizados-lista').then(r => r.json()),
         ])
         setDados(d || [])

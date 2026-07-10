@@ -63,7 +63,7 @@ export default function ExtratoMensal() {
   const [view, setView] = useState('direto') // 'direto' | 'indireto'
 
   useEffect(() => {
-    fetch('/dados.json').then(r => r.json()).then(d => setDados(d)).catch(() => {})
+    fetch('/api/orcamento-itens', { cache: 'no-store' }).then(r => r.json()).then(d => setDados(Array.isArray(d) ? d : [])).catch(() => {})
   }, [])
 
   useEffect(() => {
