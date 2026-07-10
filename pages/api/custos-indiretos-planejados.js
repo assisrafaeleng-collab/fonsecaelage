@@ -11,7 +11,7 @@ export default async function handler(req, res) {
 
     const { data, error } = await supabase
       .from('custos_indiretos_planejados')
-      .select('categoria, valor_total, mes_desembolso');
+      .select('categoria, valor_total, mes_desembolso, cod_eap');
 
     if (error) throw error;
 
@@ -38,7 +38,8 @@ export default async function handler(req, res) {
         valor_total_projeto: item.valor_total,
         valor_no_mes: Math.round(valorNoMes * 100) / 100,
         valor_acumulado: Math.round(valorAcumulado * 100) / 100,
-        mes_desembolso: md
+        mes_desembolso: md,
+        cod_eap: item.cod_eap || ''
       };
     });
 
