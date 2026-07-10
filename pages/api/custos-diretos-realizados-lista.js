@@ -9,7 +9,7 @@ export default async function handler(req, res) {
       .from('custos_lancamentos')
       .select('*')
       .eq('obra_id', obra_id)
-      .not('codigo_eap', 'like', '18.%')
+      .not('codigo_eap', 'like', '19.%')
       .eq('status', 'Normal')
       .order('data_emissao', { ascending: false })
     if (error) throw new Error(error.message)

@@ -58,7 +58,7 @@ export default async function handler(req, res) {
       .forEach(c => {
         const comp = normalizaCompetencia(c.competencia)
         const eap = c.codigo_eap || ''
-        const isIndireto = eap.startsWith('18.')
+        const isIndireto = eap.startsWith('19.')
         const valor = parseFloat(c.valor)
         if (!custosAgrupados[comp]) custosAgrupados[comp] = 0
         custosAgrupados[comp] += valor
@@ -136,10 +136,10 @@ export default async function handler(req, res) {
     const avancoFisicoPlano = fisPlanMesAtual ? fisPlanMesAtual.percentual_acumulado * 100 : 0
     const bcwp = (avancoFisicoReal / 100) * totalDiretos
 
-    // ACWP para EVM: apenas custos DIRETOS realizados (codigo_eap que nao comeca com 18.)
+    // ACWP para EVM: apenas custos DIRETOS realizados (codigo_eap que nao comeca com 19.)
     const todoslancamentos = custosRes.data || []
     const acwpProducao = todoslancamentos
-      .filter(l => l.status === 'Normal' && !(l.codigo_eap || '').startsWith('18.'))
+      .filter(l => l.status === 'Normal' && !(l.codigo_eap || '').startsWith('19.'))
       .reduce((s,l) => s + parseFloat(l.valor||0), 0)
     const cpi = acwpProducao > 0 ? bcwp / acwpProducao : 1
     const spi = bcws > 0 ? bcwp / bcws : 1
