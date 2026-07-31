@@ -24,112 +24,89 @@ export default async function handler(req, res) {
     return res.status(200).json({ data: data || [] })
   }
 
+  // POST agora recebe INCREMENTOS (nao mais o total).
+  // Cada lancamento traz "incremento" (%). Grava no historico e atualiza a foto
+  // com a SOMA de todos os incrementos do item (travada em 100).
   if (req.method === 'POST') {
     const { mes, lancamentos } = req.body
     if (!mes || !lancamentos) return res.status(400).json({ error: 'mes e lancamentos obrigatorios' })
 
-    // Buscar existentes do mês
-    const { data: existentes, error: fetchErr } = await supabase
-      .from('avanco_fisico_realizado')
-      .select('id, codigo_eap, pavimento, percentual_realizado')
-      .eq('obra_id', obra_id)
-      .eq('mes_numero', mes)
+    // Considera apenas itens com incremento > 0
+    const incs = lancamentos
+      .map(l => ({ ...l, incremento: parseFloat(l.incremento != null ? l.incremento : l.percentual_realizado) || 0 }))
+      .filter(l => l.incremento > 0)
 
-    if (fetchErr) return res.status(500).json({ error: fetchErr.message })
+    if (incs.length === 0) {
+      return res.status(200).json({ success: true, gravados: 0, aviso: 'Nenhum incremento informado' })
+    }
 
-    const existMap = {}
-    ;(existentes || []).forEach(e => {
-      existMap[e.codigo_eap + '|' + e.pavimento] = e
-    })
+    const semana = calcSemana(new Date())
+    const erros = []
+    const rejeitados = []
+    let gravados = 0
 
-    const toInsert = []
-    const toUpdate = []
-    const toDeleteIds = []
-    const historico = []   // <-- NOVO: linhas append-only p/ curva semanal
+    for (const l of incs) {
+      const cod = l.codigo_eap
+      const pav = l.pavimento
 
-    const agora = new Date()
-    const semana = calcSemana(agora)
+      // 1) soma atual do historico deste item
+      const { data: hist, error: e1 } = await supabase
+        .from('avanco_fisico_historico')
+        .select('percentual_realizado')
+        .eq('obra_id', obra_id).eq('codigo_eap', cod).eq('pavimento', pav)
+      if (e1) { erros.push(cod + ': ' + e1.message); continue }
 
-    lancamentos.forEach(l => {
-      const key = l.codigo_eap + '|' + l.pavimento
-      const exist = existMap[key]
-      const pct = parseFloat(l.percentual_realizado) || 0
+      const acumAtual = (hist || []).reduce((s, r) => s + (parseFloat(r.percentual_realizado) || 0), 0)
 
-      if (exist) {
-        if (pct > 0 && pct !== exist.percentual_realizado) {
-          // Mudou: atualizar (foto atual) + registrar no historico
-          toUpdate.push({ id: exist.id, ...l, obra_id })
-          historico.push(l)
-        } else if (pct === 0) {
-          // Zerou: deletar da foto atual (nao registra no historico)
-          toDeleteIds.push(exist.id)
-        }
-        // Se igual, nao faz nada (preserva created_at, nao duplica historico)
-        delete existMap[key]
-      } else if (pct > 0) {
-        // Novo: inserir (foto atual) + registrar no historico
-        toInsert.push({ ...l, obra_id })
-        historico.push(l)
+      // 2) rejeita se ultrapassar 100
+      if (acumAtual + l.incremento > 100) {
+        rejeitados.push({ codigo_eap: cod, pavimento: pav, acumulado: acumAtual, incremento: l.incremento,
+          motivo: `Passaria de 100% (atual ${acumAtual}% + ${l.incremento}%)` })
+        continue
       }
-    })
 
-    let erros = []
+      const novoAcum = acumAtual + l.incremento
+      const hh_plan = parseFloat(l.hh_planejado) || 0
+      const hh_real_acum = hh_plan * (novoAcum / 100)
 
-    // Inserir novos
-    if (toInsert.length > 0) {
-      const { error } = await supabase.from('avanco_fisico_realizado').insert(toInsert)
-      if (error) erros.push('insert: ' + error.message)
-    }
-
-    // Atualizar existentes
-    for (const item of toUpdate) {
-      const { id, ...rest } = item
-      const { error } = await supabase.from('avanco_fisico_realizado').update(rest).eq('id', id)
-      if (error) erros.push('update ' + id + ': ' + error.message)
-    }
-
-    // Deletar zerados
-    if (toDeleteIds.length > 0) {
-      const { error } = await supabase.from('avanco_fisico_realizado').delete().in('id', toDeleteIds)
-      if (error) erros.push('delete: ' + error.message)
-    }
-
-    // NOVO: gravar historico (append-only, nunca update/delete)
-    let hist_gravados = 0
-    if (historico.length > 0) {
-      const linhasHist = historico.map(l => ({
-        obra_id,
-        codigo_eap: l.codigo_eap,
-        pavimento: l.pavimento,
-        atividade_nome: l.atividade_nome,
-        grupo_num: l.grupo_num,
-        mes_numero: l.mes_numero != null ? l.mes_numero : mes,
-        competencia: l.competencia,
-        percentual_realizado: parseFloat(l.percentual_realizado) || 0,
-        hh_planejado: l.hh_planejado,
-        hh_realizado: l.hh_realizado,
+      // 3) grava o incremento no historico (append-only)
+      const { error: e2 } = await supabase.from('avanco_fisico_historico').insert([{
+        obra_id, codigo_eap: cod, pavimento: pav, atividade_nome: l.atividade_nome,
+        grupo_num: l.grupo_num, mes_numero: l.mes_numero != null ? l.mes_numero : mes,
+        competencia: l.competencia, percentual_realizado: l.incremento,
+        hh_planejado: hh_plan, hh_realizado: hh_plan * (l.incremento / 100),
         semana_numero: semana,
-        // data_lancamento usa o default now() do banco
-      }))
-      const { error } = await supabase.from('avanco_fisico_historico').insert(linhasHist)
-      if (error) {
-        // Nao quebra o salvamento principal se o historico falhar; apenas reporta
-        erros.push('historico: ' + error.message)
+      }])
+      if (e2) { erros.push(cod + ' historico: ' + e2.message); continue }
+
+      // 4) atualiza a "foto atual" com o acumulado somado (upsert manual)
+      const { data: fotoExist, error: e3 } = await supabase
+        .from('avanco_fisico_realizado')
+        .select('id')
+        .eq('obra_id', obra_id).eq('codigo_eap', cod).eq('pavimento', pav).eq('mes_numero', mes)
+        .maybeSingle()
+      if (e3) { erros.push(cod + ' foto: ' + e3.message); continue }
+
+      const fotoData = {
+        obra_id, codigo_eap: cod, pavimento: pav, atividade_nome: l.atividade_nome,
+        grupo_num: l.grupo_num, mes_numero: mes, competencia: l.competencia,
+        percentual_realizado: novoAcum, hh_planejado: hh_plan, hh_realizado: hh_real_acum,
+        custo_planejado: l.custo_planejado,
+      }
+
+      if (fotoExist) {
+        const { error } = await supabase.from('avanco_fisico_realizado')
+          .update(fotoData).eq('id', fotoExist.id)
+        if (error) erros.push(cod + ' update foto: ' + error.message); else gravados++
       } else {
-        hist_gravados = linhasHist.length
+        const { error } = await supabase.from('avanco_fisico_realizado').insert([fotoData])
+        if (error) erros.push(cod + ' insert foto: ' + error.message); else gravados++
       }
     }
 
-    if (erros.length > 0) return res.status(500).json({ error: erros.join('; ') })
+    if (erros.length > 0) return res.status(500).json({ error: erros.join('; '), rejeitados })
 
-    return res.status(200).json({
-      success: true,
-      inseridos: toInsert.length,
-      atualizados: toUpdate.length,
-      removidos: toDeleteIds.length,
-      historico: hist_gravados,
-      semana
-    })
+    return res.status(200).json({ success: true, gravados, rejeitados, semana })
   }
 
   return res.status(405).json({ error: 'Method not allowed' })

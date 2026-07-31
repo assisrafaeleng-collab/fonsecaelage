@@ -139,7 +139,8 @@ export default function AvancoFisicoRealizado() {
   const [pavF, setPavF] = useState('__ALL__')
   const [q, setQ] = useState('')
   const [open, setOpen] = useState({})
-  const [pcts, setPcts] = useState({}) // key: `${eap}|${pav}` -> pct
+  const [pcts, setPcts] = useState({}) // key: `${eap}|${pav}` -> ACUMULADO (soma do historico)
+  const [incrementos, setIncrementos] = useState({}) // key -> incremento sendo digitado agora
   const [existentes, setExistentes] = useState({}) // lançamentos já salvos
   const [memAberta, setMemAberta] = useState(null) // key do item com memória de cálculo aberta
 
@@ -147,23 +148,29 @@ export default function AvancoFisicoRealizado() {
     fetch('/api/orcamento-itens', { cache: 'no-store' }).then(r => r.json()).then(d => { setDados(Array.isArray(d) ? d : []); setLoading(false) }).catch(() => setLoading(false))
   }, [])
 
-  // Buscar lançamentos existentes quando mês muda
+  // Carrega os acumulados (soma do historico) de todos os itens
+  const carregarResumo = () => {
+    fetch('/api/avanco-fisico-resumo?obra_id=flats_pampulha', { cache: 'no-store' })
+      .then(r => r.json())
+      .then(d => setPcts(d.acumulados || {}))
+      .catch(() => {})
+  }
+
+  // Buscar lançamentos existentes (datas) quando mês muda + acumulados
   useEffect(() => {
     if (!mes) return
     fetch(`/api/avanco-fisico-realizado?mes=${mes}&obra_id=flats_pampulha`)
       .then(r => r.json())
       .then(d => {
         const map = {}
-        const pctsMap = {}
         ;(d.data || d || []).forEach(item => {
           const key = `${item.codigo_eap}|${item.pavimento}`
           map[key] = item
-          pctsMap[key] = parseFloat(item.percentual_realizado || 0)
         })
         setExistentes(map)
-        setPcts(pctsMap)
       })
       .catch(() => {})
+    carregarResumo()
   }, [mes])
 
   const totHh = useMemo(() => dados.reduce((s,r) => s+r.h, 0) || 1, [dados])
@@ -217,7 +224,13 @@ export default function AvancoFisicoRealizado() {
   }, [visible, pcts])
 
   const setPct = (eap, pav, val) => {
-    setPcts(p => ({...p, [`${eap}|${pav}`]: val}))
+    const key = `${eap}|${pav}`
+    const acum = pcts[key] || 0
+    if (acum + val > 100) {
+      alert(`Esse incremento passaria de 100%.\nAcumulado atual: ${acum.toFixed(1)}% + ${val}% = ${(acum+val).toFixed(1)}%.\nAjuste o valor.`)
+      return
+    }
+    setIncrementos(p => ({...p, [key]: val}))
     setSaved(false)
   }
 
@@ -226,7 +239,7 @@ export default function AvancoFisicoRealizado() {
     try {
       const competencia = `2026-${String(6+mes).padStart(2,'0')}-01`
       const lancamentos = visible
-        .filter(r => (pcts[`${r.i}|${r.p}`] || 0) >= 0)
+        .filter(r => (incrementos[`${r.i}|${r.p}`] || 0) > 0)
         .map(r => ({
           obra_id: 'flats_pampulha',
           competencia,
@@ -235,20 +248,32 @@ export default function AvancoFisicoRealizado() {
           atividade_nome: r.d,
           pavimento: r.p,
           grupo_num: r.g,
-          percentual_realizado: pcts[`${r.i}|${r.p}`] || 0,
+          incremento: incrementos[`${r.i}|${r.p}`] || 0,
           hh_planejado: r.h,
-          hh_realizado: r.h * ((pcts[`${r.i}|${r.p}`] || 0) / 100),
           custo_planejado: r.c,
-          observacao: '',
         }))
+
+      if (lancamentos.length === 0) {
+        alert('Digite ao menos um incremento de avanço antes de salvar.')
+        setSaving(false)
+        return
+      }
 
       const res = await fetch('/api/avanco-fisico-realizado', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mes, lancamentos })
       })
+      const out = await res.json()
+      if (!res.ok) throw new Error(out.error || 'Erro ao salvar')
 
-      if (!res.ok) throw new Error('Erro ao salvar')
+      if (out.rejeitados && out.rejeitados.length > 0) {
+        alert('Alguns itens não foram salvos por passar de 100%:\n' +
+          out.rejeitados.map(x => `${x.codigo_eap} (${x.motivo})`).join('\n'))
+      }
+
+      setIncrementos({})   // limpa os campos de incremento
+      carregarResumo()     // atualiza os acumulados
       setSaved(true)
     } catch(e) {
       alert('Erro ao salvar: ' + e.message)
@@ -389,13 +414,15 @@ export default function AvancoFisicoRealizado() {
                         </div>
                         {/* Header */}
                         <div style={{display:'grid', gridTemplateColumns:'50px 1fr 60px 80px 90px 80px', gap:6, padding:'5px 16px', fontSize:9, color:'#6d675e', textTransform:'uppercase', letterSpacing:.5, borderBottom:'1px solid #1a1a20'}}>
-                          <span>EAP</span><span>Descrição</span><span>Período</span><span>Hh Plan</span><span>% Concluído</span><span>Hh Real</span>
+                          <span>EAP</span><span>Descrição</span><span>Período</span><span>Hh Plan</span><span>+ Avanço</span><span>Hh Real</span>
                         </div>
                         {[...sub.rows].sort((a,b) => a.i.localeCompare(b.i,undefined,{numeric:true})).map((r,ri) => {
                           const key = `${r.i}|${r.p}`
-                          const pct = pcts[key] || 0
+                          const pct = pcts[key] || 0            // acumulado (soma do historico)
+                          const inc = incrementos[key] || 0     // incremento sendo digitado
                           const hhReal = r.h * (pct/100)
                           const ativo = r.a <= mes && r.b >= mes
+                          const concluido = pct >= 100
                           const ex = existentes[key]
                           const dataLanc = ex && ex.created_at ? new Date(ex.created_at).toLocaleDateString("pt-BR") : null
                           const memKey = key
@@ -415,9 +442,15 @@ export default function AvancoFisicoRealizado() {
                               <span style={{color: ativo?'#e6a338':'#6d675e', fontSize:10}}>M{String(r.a).padStart(2,'0')}–M{String(r.b).padStart(2,'0')}</span>
                               <span style={{color:'#6d675e', textAlign:'right'}}>{fmtH(r.h)}</span>
                               <div>
-                                <PctInput value={pct} onChange={v => setPct(r.i, r.p, v)} disabled={!ativo && pct===0} />
-                                {dataLanc && <div style={{fontSize:8, color:'#6d675e', marginTop:2}}>{'\u2705 ' + dataLanc}</div>}
-                                {pct > 0 && (
+                                <div style={{fontSize:10, color: concluido?'#3fae86':'#a09a90', marginBottom:3, fontWeight:600}}>
+                                  Acum: {pct.toFixed(1)}%
+                                </div>
+                                {concluido ? (
+                                  <div style={{fontSize:10, color:'#3fae86'}}>✅ concluído</div>
+                                ) : (
+                                  <PctInput value={inc} onChange={v => setPct(r.i, r.p, v)} disabled={!ativo} />
+                                )}
+                                {pct > 0 && pct < 100 && (
                                   <div style={{height:3, background:'#1e1e24', borderRadius:2, marginTop:3, overflow:'hidden'}}>
                                     <div style={{height:'100%', width:`${pct}%`, background:'#4D9B6A', borderRadius:2}} />
                                   </div>
