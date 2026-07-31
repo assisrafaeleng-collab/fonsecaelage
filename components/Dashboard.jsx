@@ -2,6 +2,7 @@
 // fmtMoeda importada de lib/constants — sem duplicata local
 import ImpactoAtraso from './ImpactoAtraso'
 import PaineisAnalise, { FisicoPorAtividade, Heatmap } from './PaineisAnalise'
+import CurvaFisicaSemanal from './CurvaFisicaSemanal'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
 import { Line } from 'react-chartjs-2'
@@ -463,6 +464,9 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
         </div>
       </div>
 
+      {/* Curva física SEMANAL (planejado vs realizado) */}
+      <CurvaFisicaSemanal />
+
       <div className="card">
         <div className="card-title">Mapa de Avanço por Pavimento</div>
         <Heatmap mes={mesLimite} />
@@ -569,4 +573,3 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
     </div>
   )
 }
-
