@@ -1,5 +1,5 @@
 // pages/avanco-fisico-realizado.js
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, Fragment } from 'react'
 import { useRouter } from 'next/router'
 
 const PAVS = ['1º','2º','3º','4º','5º','6º/Plat','Edifício']
@@ -69,6 +69,65 @@ function PctInput({ value, onChange, disabled }) {
   )
 }
 
+// Memória de cálculo: lista os incrementos de um item (data + %) com lixeira
+function MemoriaCalculo({ codigo_eap, pavimento }) {
+  const [linhas, setLinhas] = useState(null)
+  const [acumulado, setAcumulado] = useState(0)
+  const [erro, setErro] = useState(null)
+  const [removendo, setRemovendo] = useState(null)
+
+  const carregar = () => {
+    const url = `/api/avanco-fisico-historico?codigo_eap=${encodeURIComponent(codigo_eap)}&pavimento=${encodeURIComponent(pavimento)}`
+    fetch(url, { cache: 'no-store' })
+      .then(r => r.json())
+      .then(d => { setLinhas(d.data || []); setAcumulado(d.acumulado || 0) })
+      .catch(() => setErro('Erro ao carregar histórico'))
+  }
+  useEffect(() => { carregar() }, [codigo_eap, pavimento])
+
+  const excluir = async (id) => {
+    if (!confirm('Excluir este lançamento? O total do item será recalculado.')) return
+    setRemovendo(id)
+    try {
+      const res = await fetch(`/api/avanco-fisico-historico?id=${id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('erro')
+      carregar()
+    } catch { alert('Erro ao excluir lançamento') } finally { setRemovendo(null) }
+  }
+
+  if (erro) return <div style={{padding:'8px 16px', fontSize:11, color:'#d6453c'}}>{erro}</div>
+  if (linhas === null) return <div style={{padding:'8px 16px', fontSize:11, color:'#6d675e'}}>Carregando memória de cálculo...</div>
+  if (linhas.length === 0) return <div style={{padding:'8px 16px', fontSize:11, color:'#6d675e'}}>Nenhum lançamento registrado para este item.</div>
+
+  return (
+    <div style={{background:'#141418', borderTop:'1px solid #2a2a31', padding:'10px 16px 12px'}}>
+      <div style={{fontSize:10, color:'#e6a338', letterSpacing:.5, textTransform:'uppercase', fontWeight:600, marginBottom:6}}>
+        Memória de cálculo — {linhas.length} lançamento{linhas.length>1?'s':''}
+      </div>
+      <div style={{display:'grid', gridTemplateColumns:'110px 90px 70px 40px', gap:8, fontSize:9, color:'#6d675e', textTransform:'uppercase', letterSpacing:.5, marginBottom:4}}>
+        <span>Data</span><span>Semana</span><span>Avanço</span><span></span>
+      </div>
+      {linhas.map((l) => (
+        <div key={l.id} style={{display:'grid', gridTemplateColumns:'110px 90px 70px 40px', gap:8, fontSize:11, alignItems:'center', padding:'4px 0', borderBottom:'1px solid #1a1a20'}}>
+          <span style={{color:'#a09a90'}}>{new Date(l.data_lancamento).toLocaleDateString('pt-BR')}</span>
+          <span style={{color:'#6d675e', fontSize:10}}>Semana {l.semana_numero}</span>
+          <span style={{color:'#3fae86', fontWeight:600}}>+{parseFloat(l.percentual_realizado).toFixed(1)}%</span>
+          <button
+            onClick={() => excluir(l.id)}
+            disabled={removendo===l.id}
+            title="Excluir este lançamento"
+            style={{background:'transparent', border:'1px solid #3a2a2a', color:'#d6453c', borderRadius:6, padding:'2px 7px', fontSize:12, cursor:'pointer', opacity:removendo===l.id?0.5:1}}
+          >🗑</button>
+        </div>
+      ))}
+      <div style={{display:'flex', justifyContent:'flex-end', gap:8, marginTop:8, fontSize:12}}>
+        <span style={{color:'#6d675e'}}>Total acumulado:</span>
+        <span style={{color:'#e6a338', fontWeight:700}}>{acumulado.toFixed(1)}%</span>
+      </div>
+    </div>
+  )
+}
+
 export default function AvancoFisicoRealizado() {
   const router = useRouter()
   const [dados, setDados] = useState([])
@@ -82,6 +141,7 @@ export default function AvancoFisicoRealizado() {
   const [open, setOpen] = useState({})
   const [pcts, setPcts] = useState({}) // key: `${eap}|${pav}` -> pct
   const [existentes, setExistentes] = useState({}) // lançamentos já salvos
+  const [memAberta, setMemAberta] = useState(null) // key do item com memória de cálculo aberta
 
   useEffect(() => {
     fetch('/api/orcamento-itens', { cache: 'no-store' }).then(r => r.json()).then(d => { setDados(Array.isArray(d) ? d : []); setLoading(false) }).catch(() => setLoading(false))
@@ -338,10 +398,20 @@ export default function AvancoFisicoRealizado() {
                           const ativo = r.a <= mes && r.b >= mes
                           const ex = existentes[key]
                           const dataLanc = ex && ex.created_at ? new Date(ex.created_at).toLocaleDateString("pt-BR") : null
+                          const memKey = key
+                          const memAbertaAqui = memAberta === memKey
                           return (
-                            <div key={`${r.i}-${ri}`} style={{display:'grid', gridTemplateColumns:'50px 1fr 60px 80px 90px 80px', gap:6, padding:'6px 16px', fontSize:11, alignItems:'center', background:ri%2===0?'rgba(255,255,255,0.01)':'transparent', borderBottom:'1px solid #0f0f11'}}>
+                            <Fragment key={`${r.i}-${ri}`}>
+                            <div style={{display:'grid', gridTemplateColumns:'50px 1fr 60px 80px 90px 80px', gap:6, padding:'6px 16px', fontSize:11, alignItems:'center', background:ri%2===0?'rgba(255,255,255,0.01)':'transparent', borderBottom:'1px solid #0f0f11'}}>
                               <span style={{color:'#6d675e', fontFamily:'monospace', fontSize:10}}>{r.i}</span>
-                              <span style={{color: ativo?'#ece9e4':'#a09a90'}}>{r.d}</span>
+                              <span
+                                onClick={() => setMemAberta(memAbertaAqui ? null : memKey)}
+                                title="Clique para ver a memória de cálculo"
+                                style={{color: ativo?'#ece9e4':'#a09a90', cursor:'pointer', display:'flex', alignItems:'center', gap:6}}
+                              >
+                                <span style={{color:'#6d675e', fontSize:9}}>{memAbertaAqui ? '▾' : '▸'}</span>
+                                {r.d}
+                              </span>
                               <span style={{color: ativo?'#e6a338':'#6d675e', fontSize:10}}>M{String(r.a).padStart(2,'0')}–M{String(r.b).padStart(2,'0')}</span>
                               <span style={{color:'#6d675e', textAlign:'right'}}>{fmtH(r.h)}</span>
                               <div>
@@ -355,6 +425,10 @@ export default function AvancoFisicoRealizado() {
                               </div>
                               <span style={{color: hhReal>0?'#3fae86':'#444', textAlign:'right', fontWeight:hhReal>0?600:400}}>{hhReal>0?fmtH(hhReal):'—'}</span>
                             </div>
+                            {memAbertaAqui && (
+                              <MemoriaCalculo codigo_eap={r.i} pavimento={r.p} />
+                            )}
+                            </Fragment>
                           )
                         })}
                         <div style={{display:'flex', justifyContent:'flex-end', gap:20, padding:'8px 16px', borderTop:'1px solid #2a2a31', fontSize:11, color:'#6d675e'}}>
