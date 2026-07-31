@@ -80,7 +80,7 @@ export default function AvancoFisicoPlanejado() {
   const [metric, setMetric] = useState('pct') // 'pct' | 'custo' | 'hh'
 
   useEffect(() => {
-    fetch('/api/orcamento-itens', { cache: 'no-store' }).then(r => r.json()).then(d => { setDados(Array.isArray(d) ? d : []); setLoading(false) }).catch(() => setLoading(false))
+    fetch('/api/orcamento-itens?fisico=1', { cache: 'no-store' }).then(r => r.json()).then(d => { setDados(Array.isArray(d) ? d : []); setLoading(false) }).catch(() => setLoading(false))
   }, [])
 
   const totHh = useMemo(() => dados.reduce((s,r) => s+r.h, 0) || 1, [dados])
