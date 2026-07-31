@@ -159,7 +159,7 @@ function Alertas({ mes }) {
     async function load() {
       try {
         const [dadosRes, lancRes, indPlanRes, indRealRes] = await Promise.all([
-          fetch('/dados.json').then(r => r.json()),
+          fetch('/api/orcamento-itens', { cache: 'no-store' }).then(r => r.json()),
           fetch('/api/custos-diretos-realizados-lista').then(r => r.json()),
           fetch(`/api/custos-indiretos-planejados?mes=${mes}`).then(r => r.json()),
           fetch('/api/custos-indiretos-realizados-lista').then(r => r.json()),

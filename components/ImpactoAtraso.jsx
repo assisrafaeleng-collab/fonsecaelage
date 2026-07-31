@@ -35,7 +35,7 @@ export default function ImpactoAtraso({ mes }) {
       try {
         const [k, d, ind] = await Promise.all([
           fetch(`/api/dashboard-integrado?mes=${mes}`).then(r => r.json()),
-          fetch('/dados.json').then(r => r.json()),
+          fetch('/api/orcamento-itens', { cache: 'no-store' }).then(r => r.json()),
           fetch(`/api/custos-indiretos-planejados?mes=20`).then(r => r.json()),
         ])
         setKpis(k.kpis || null)
