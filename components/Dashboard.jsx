@@ -287,29 +287,6 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
           </div>
         </div>
 
-        <div className="hero-div" />
-
-        <div className="hero-side">
-          <div className="hero-label">Projeção de Custo Final</div>
-          {(() => {
-            const acima = projecaoCustoFinal > (kpis.orcamento_total || 0)
-            const diff = Math.abs(projecaoCustoFinal - (kpis.orcamento_total || 0))
-            return (
-              <>
-                <div className="hero-side-num" style={{ color: acima ? '#d6453c' : '#3f9e6c' }}>
-                  {fmtMoeda(projecaoCustoFinal)}
-                </div>
-                <div style={{
-                  font: "500 12px 'IBM Plex Sans'",
-                  color: acima ? '#d6453c' : '#3f9e6c',
-                  marginTop: 8
-                }}>
-                  {acima ? 'Acima' : 'Abaixo'} {fmtMoeda(diff)} do orçamento
-                </div>
-              </>
-            )
-          })()}
-        </div>
       </div>
 
       <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '16px' }}>
