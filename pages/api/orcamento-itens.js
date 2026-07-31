@@ -2,6 +2,9 @@
 // Substitui a leitura do public/dados.json.
 // Retorna os itens do orçamento planejado no MESMO formato compacto
 // que a página /custos-diretos-planejados espera: {g,n,p,i,d,q,c,h,a,b}
+//
+// NOVO: com ?fisico=1 exclui os itens que NAO fazem parte do avanco fisico
+// (itens "Apenas Material" e o 1.1.X). Sem o parametro, retorna tudo (financeiro).
 
 import { supabase } from '../../lib/supabase'
 
@@ -11,6 +14,7 @@ export default async function handler(req, res) {
   }
 
   const obra_id = req.query.obra_id || 'flats_pampulha'
+  const soFisico = req.query.fisico === '1' || req.query.fisico === 'true'
   res.setHeader('Cache-Control', 'no-store, max-age=0, must-revalidate')
 
   try {
@@ -21,7 +25,7 @@ export default async function handler(req, res) {
 
     if (error) throw new Error(error.message)
 
-    const itens = (data || []).map(r => ({
+    let itens = (data || []).map(r => ({
       g: r.grupo_numero,
       n: r.grupo_nome,
       p: r.pavimento,
@@ -33,6 +37,19 @@ export default async function handler(req, res) {
       a: r.mes_inicio,
       b: r.mes_fim,
     }))
+
+    // Contexto FISICO: remove itens que nao entram no avanco fisico.
+    // IMPORTANTE: usar "(apenas material)" COM PARENTESES — assim pega so os
+    // itens de material puro (Material Forma / Aco) e NAO os concretos que
+    // por acaso tem "- Apenas Material" no texto (esses tem Hh e sao fisicos).
+    if (soFisico) {
+      itens = itens.filter(x => {
+        const desc = (x.d || '').toLowerCase()
+        if (desc.includes('(apenas material)')) return false   // Material Forma / Aco puro
+        if (x.g === 1 && x.i === '1.1.6') return false          // Limpeza periodica (nao é atividade fisica)
+        return true
+      })
+    }
 
     itens.sort((a, b) => {
       if (a.g !== b.g) return a.g - b.g
