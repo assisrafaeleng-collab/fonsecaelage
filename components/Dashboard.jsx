@@ -220,50 +220,6 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
 
   return (
     <div>
-      {(() => {
-        const desvioFisico = avancoFisicoReal - avancoFisicoPlano
-        const custoAcima = saldoCustoDireto < 0
-        const prazoAtrasado = (kpis.desvio_prazo_dias || 0) > 0
-        const fisicoAtrasado = desvioFisico < 0
-        const estouro = projecaoCustoFinal - (kpis.orcamento_total || 0)
-        const temAlerta = custoAcima || prazoAtrasado || fisicoAtrasado || estouro > 0
-
-        return (
-          <div className={`alert-strip${temAlerta ? '' : ' ok'}`}>
-            <div className="alert-main">
-              <div className="alert-title">
-                {temAlerta ? 'Atenção necessária' : 'Obra dentro do previsto'}
-              </div>
-              <div className="alert-text">
-                {temAlerta ? (
-                  <>
-                    A obra está{' '}
-                    <b>{fisicoAtrasado
-                      ? `atrasada em ${fmtPerc(Math.abs(desvioFisico))}`
-                      : `adiantada em ${fmtPerc(Math.abs(desvioFisico))}`} no físico</b>
-                    {custoAcima && <> e <b>acima do custo direto</b></>}.
-                    {estouro > 0 && <> Projeção aponta estouro de {fmtMoeda(estouro)} se o ritmo atual se mantiver.</>}
-                  </>
-                ) : (
-                  <>Custo, prazo e avanço físico dentro das metas planejadas até este período.</>
-                )}
-              </div>
-            </div>
-            <div className="alert-pills">
-              <span className={`alert-pill${custoAcima ? '' : ' ok'}`}>
-                Custo {custoAcima ? 'acima' : 'ok'}
-              </span>
-              <span className={`alert-pill${prazoAtrasado ? '' : ' ok'}`}>
-                Prazo {prazoAtrasado ? 'atrasado' : 'ok'}
-              </span>
-              <span className={`alert-pill${fisicoAtrasado ? '' : ' ok'}`}>
-                Físico {desvioFisico >= 0 ? '+' : ''}{fmtPerc(desvioFisico)}
-              </span>
-            </div>
-          </div>
-        )
-      })()}
-
       <div className="hero">
         <div className="hero-block">
           <div className="hero-label">Custo Total da Obra · Planejado</div>
@@ -453,6 +409,51 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
         <div className="card-title">Físico por Atividade</div>
         <FisicoPorAtividade mes={mesLimite} />
       </div>
+
+      {(() => {
+        const desvioFisico = avancoFisicoReal - avancoFisicoPlano
+        const custoAcima = saldoCustoDireto < 0
+        const prazoAtrasado = (kpis.desvio_prazo_dias || 0) > 0
+        const fisicoAtrasado = desvioFisico < 0
+        const estouro = projecaoCustoFinal - (kpis.orcamento_total || 0)
+        const temAlerta = custoAcima || prazoAtrasado || fisicoAtrasado || estouro > 0
+
+        return (
+          <div className={`alert-strip${temAlerta ? '' : ' ok'}`}>
+            <div className="alert-main">
+              <div className="alert-title">
+                {temAlerta ? 'Atenção necessária' : 'Obra dentro do previsto'}
+              </div>
+              <div className="alert-text">
+                {temAlerta ? (
+                  <>
+                    A obra está{' '}
+                    <b>{fisicoAtrasado
+                      ? `atrasada em ${fmtPerc(Math.abs(desvioFisico))}`
+                      : `adiantada em ${fmtPerc(Math.abs(desvioFisico))}`} no físico</b>
+                    {custoAcima && <> e <b>acima do custo direto</b></>}.
+                    {estouro > 0 && <> Projeção aponta estouro de {fmtMoeda(estouro)} se o ritmo atual se mantiver.</>}
+                  </>
+                ) : (
+                  <>Custo, prazo e avanço físico dentro das metas planejadas até este período.</>
+                )}
+              </div>
+            </div>
+            <div className="alert-pills">
+              <span className={`alert-pill${custoAcima ? '' : ' ok'}`}>
+                Custo {custoAcima ? 'acima' : 'ok'}
+              </span>
+              <span className={`alert-pill${prazoAtrasado ? '' : ' ok'}`}>
+                Prazo {prazoAtrasado ? 'atrasado' : 'ok'}
+              </span>
+              <span className={`alert-pill${fisicoAtrasado ? '' : ' ok'}`}>
+                Físico {desvioFisico >= 0 ? '+' : ''}{fmtPerc(desvioFisico)}
+              </span>
+            </div>
+          </div>
+        )
+      })()}
+
 
       
 
