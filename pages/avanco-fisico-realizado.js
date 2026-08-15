@@ -9,6 +9,10 @@ const ANOS = [2026,2026,2026,2026,2026,2026,2027,2027,2027,2027,2027,2027,2027,2
 const fmtR = v => 'R$ ' + Math.round(v).toLocaleString('pt-BR')
 const fmtH = v => v.toFixed(1) + ' Hh'
 const fmtP = v => (v*100).toFixed(1) + '%'
+const getCompetenciaDateFromMes = mesNum => {
+  const data = new Date(Date.UTC(2026, 6 + (mesNum - 1), 1))
+  return data.toISOString().slice(0, 10)
+}
 
 const S = {
   page: { minHeight:'100vh', background:'#0f0f11', color:'#ece9e4', fontFamily:'"Segoe UI",system-ui,sans-serif', fontVariantNumeric:'tabular-nums' },
@@ -75,6 +79,16 @@ function MemoriaCalculo({ codigo_eap, pavimento }) {
   const [acumulado, setAcumulado] = useState(0)
   const [erro, setErro] = useState(null)
   const [removendo, setRemovendo] = useState(null)
+  const [salvando, setSalvando] = useState(null)
+  const [datasEditadas, setDatasEditadas] = useState({})
+
+  const formatDateInput = (valor) => {
+    if (!valor) return ''
+    const d = new Date(valor)
+    if (Number.isNaN(d.getTime())) return ''
+    const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+    return local.toISOString().slice(0, 10)
+  }
 
   const carregar = () => {
     const url = `/api/avanco-fisico-historico?codigo_eap=${encodeURIComponent(codigo_eap)}&pavimento=${encodeURIComponent(pavimento)}`
@@ -95,6 +109,30 @@ function MemoriaCalculo({ codigo_eap, pavimento }) {
     } catch { alert('Erro ao excluir lançamento') } finally { setRemovendo(null) }
   }
 
+  const salvarData = async (id, valor) => {
+    if (!valor) {
+      alert('Selecione uma data válida antes de salvar.')
+      return
+    }
+
+    setSalvando(id)
+    try {
+      const res = await fetch(`/api/avanco-fisico-historico?id=${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data_lancamento: valor })
+      })
+      const out = await res.json()
+      if (!res.ok) throw new Error(out.error || 'Erro ao atualizar data')
+      setDatasEditadas(prev => ({ ...prev, [id]: valor }))
+      carregar()
+    } catch (e) {
+      alert('Erro ao alterar data: ' + e.message)
+    } finally {
+      setSalvando(null)
+    }
+  }
+
   if (erro) return <div style={{padding:'8px 16px', fontSize:11, color:'#d6453c'}}>{erro}</div>
   if (linhas === null) return <div style={{padding:'8px 16px', fontSize:11, color:'#6d675e'}}>Carregando memória de cálculo...</div>
   if (linhas.length === 0) return <div style={{padding:'8px 16px', fontSize:11, color:'#6d675e'}}>Nenhum lançamento registrado para este item.</div>
@@ -104,22 +142,38 @@ function MemoriaCalculo({ codigo_eap, pavimento }) {
       <div style={{fontSize:10, color:'#e6a338', letterSpacing:.5, textTransform:'uppercase', fontWeight:600, marginBottom:6}}>
         Memória de cálculo — {linhas.length} lançamento{linhas.length>1?'s':''}
       </div>
-      <div style={{display:'grid', gridTemplateColumns:'110px 90px 70px 40px', gap:8, fontSize:9, color:'#6d675e', textTransform:'uppercase', letterSpacing:.5, marginBottom:4}}>
-        <span>Data</span><span>Semana</span><span>Avanço</span><span></span>
+      <div style={{display:'grid', gridTemplateColumns:'140px 90px 70px 78px 42px', gap:8, fontSize:9, color:'#6d675e', textTransform:'uppercase', letterSpacing:.5, marginBottom:4}}>
+        <span>Data</span><span>Semana</span><span>Avanço</span><span></span><span></span>
       </div>
-      {linhas.map((l) => (
-        <div key={l.id} style={{display:'grid', gridTemplateColumns:'110px 90px 70px 40px', gap:8, fontSize:11, alignItems:'center', padding:'4px 0', borderBottom:'1px solid #1a1a20'}}>
-          <span style={{color:'#a09a90'}}>{new Date(l.data_lancamento).toLocaleDateString('pt-BR')}</span>
-          <span style={{color:'#6d675e', fontSize:10}}>Semana {l.semana_numero}</span>
-          <span style={{color:'#3fae86', fontWeight:600}}>+{parseFloat(l.percentual_realizado).toFixed(1)}%</span>
-          <button
-            onClick={() => excluir(l.id)}
-            disabled={removendo===l.id}
-            title="Excluir este lançamento"
-            style={{background:'transparent', border:'1px solid #3a2a2a', color:'#d6453c', borderRadius:6, padding:'2px 7px', fontSize:12, cursor:'pointer', opacity:removendo===l.id?0.5:1}}
-          >🗑</button>
-        </div>
-      ))}
+      {linhas.map((l) => {
+        const valorData = datasEditadas[l.id] ?? formatDateInput(l.data_lancamento)
+        return (
+          <div key={l.id} style={{display:'grid', gridTemplateColumns:'140px 90px 70px 78px 42px', gap:8, fontSize:11, alignItems:'center', padding:'4px 0', borderBottom:'1px solid #1a1a20'}}>
+            <div style={{display:'flex', alignItems:'center', gap:6}}>
+              <input
+                type="date"
+                value={valorData}
+                onChange={e => setDatasEditadas(prev => ({ ...prev, [l.id]: e.target.value }))}
+                style={{background:'#1e1e24', border:'1px solid #2a2a31', color:'#ece9e4', borderRadius:6, padding:'4px 6px', fontSize:11, width:118, fontFamily:'inherit'}}
+              />
+            </div>
+            <span style={{color:'#6d675e', fontSize:10}}>Semana {l.semana_numero}</span>
+            <span style={{color:'#3fae86', fontWeight:600}}>+{parseFloat(l.percentual_realizado).toFixed(1)}%</span>
+            <button
+              onClick={() => salvarData(l.id, valorData)}
+              disabled={salvando===l.id}
+              title="Salvar data deste lançamento"
+              style={{background:'#e6a338', color:'#231803', border:0, borderRadius:6, padding:'3px 6px', fontSize:10, cursor:'pointer', opacity:salvando===l.id?0.6:1, fontWeight:700}}
+            >{salvando===l.id ? '...' : 'Salvar'}</button>
+            <button
+              onClick={() => excluir(l.id)}
+              disabled={removendo===l.id}
+              title="Excluir este lançamento"
+              style={{background:'transparent', border:'1px solid #3a2a2a', color:'#d6453c', borderRadius:6, padding:'2px 5px', fontSize:12, cursor:'pointer', opacity:removendo===l.id?0.5:1}}
+            >🗑</button>
+          </div>
+        )
+      })}
       <div style={{display:'flex', justifyContent:'flex-end', gap:8, marginTop:8, fontSize:12}}>
         <span style={{color:'#6d675e'}}>Total acumulado:</span>
         <span style={{color:'#e6a338', fontWeight:700}}>{acumulado.toFixed(1)}%</span>
@@ -135,6 +189,7 @@ export default function AvancoFisicoRealizado() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [mes, setMes] = useState(1)
+  const [competenciaManual, setCompetenciaManual] = useState(getCompetenciaDateFromMes(1))
   const [axis, setAxis] = useState('grupo')
   const [pavF, setPavF] = useState('__ALL__')
   const [q, setQ] = useState('')
@@ -157,6 +212,10 @@ export default function AvancoFisicoRealizado() {
   }
 
   // Buscar lançamentos existentes (datas) quando mês muda + acumulados
+  useEffect(() => {
+    setCompetenciaManual(getCompetenciaDateFromMes(mes))
+  }, [mes])
+
   useEffect(() => {
     if (!mes) return
     fetch(`/api/avanco-fisico-realizado?mes=${mes}&obra_id=flats_pampulha`)
@@ -237,7 +296,7 @@ export default function AvancoFisicoRealizado() {
   const handleSave = async () => {
     setSaving(true)
     try {
-      const competencia = `2026-${String(6+mes).padStart(2,'0')}-01`
+      const competencia = competenciaManual || getCompetenciaDateFromMes(mes)
       const lancamentos = visible
         .filter(r => (incrementos[`${r.i}|${r.p}`] || 0) > 0)
         .map(r => ({
@@ -331,6 +390,15 @@ export default function AvancoFisicoRealizado() {
                 <option key={i+1} value={i+1}>M{i+1} — {NOMES_MESES[i]}/{ANOS[i]}</option>
               ))}
             </select>
+          </div>
+          <div>
+            <label style={S.lbl}>Data da competência</label>
+            <input
+              type="date"
+              value={competenciaManual}
+              onChange={e => setCompetenciaManual(e.target.value || getCompetenciaDateFromMes(mes))}
+              style={{...S.input, minWidth:170}}
+            />
           </div>
           <div style={{flex:1, minWidth:150}}>
             <label style={S.lbl}>Buscar</label>

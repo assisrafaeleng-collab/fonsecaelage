@@ -2,6 +2,13 @@
 // Lê e exclui os incrementos do histórico de avanço físico (memória de cálculo)
 import { supabase } from '../../lib/supabase'
 
+const DATA_INICIO = new Date('2026-07-01T00:00:00Z')
+function calcSemana(dataLanc) {
+  const d = dataLanc ? new Date(dataLanc) : new Date()
+  const diffDias = Math.floor((d - DATA_INICIO) / (1000 * 60 * 60 * 24))
+  return Math.max(1, Math.floor(diffDias / 7) + 1)
+}
+
 export default async function handler(req, res) {
   const obra_id = req.query.obra_id || 'flats_pampulha'
 
@@ -33,6 +40,31 @@ export default async function handler(req, res) {
       acumulado,
       count: (data || []).length
     })
+  }
+
+  // PUT: altera a data de um lançamento específico
+  // Uso: /api/avanco-fisico-historico?id=uuid-do-lancamento
+  if (req.method === 'PUT') {
+    const { id } = req.query
+    const { data_lancamento } = req.body || {}
+
+    if (!id) return res.status(400).json({ error: 'id obrigatorio' })
+    if (!data_lancamento) return res.status(400).json({ error: 'data_lancamento obrigatoria' })
+
+    const data = new Date(data_lancamento)
+    if (Number.isNaN(data.getTime())) return res.status(400).json({ error: 'data_lancamento inválida' })
+
+    const semana = calcSemana(data)
+
+    const { error } = await supabase
+      .from('avanco_fisico_historico')
+      .update({ data_lancamento, semana_numero: semana })
+      .eq('id', id)
+      .eq('obra_id', obra_id)
+
+    if (error) return res.status(500).json({ error: error.message })
+
+    return res.status(200).json({ success: true, data_lancamento, semana_numero: semana })
   }
 
   // DELETE: exclui um lançamento específico pelo id (a lixeirinha)
