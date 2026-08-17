@@ -80,9 +80,9 @@ export default function CustosDiretosPlanejados() {
   const [mes, setMes] = useState(20)
 
   useEffect(() => {
-    fetch('/dados.json')
+    fetch('/api/orcamento-itens', { cache: 'no-store' })
       .then(r => r.json())
-      .then(d => { setDados(d); setLoading(false) })
+      .then(d => { setDados(Array.isArray(d) ? d : []); setLoading(false) })
       .catch(() => setLoading(false))
   }, [])
 

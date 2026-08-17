@@ -1,0 +1,502 @@
+Grupo;Grupo_Nome;EAP;Descricao;Pavimento;Mes_Inicio;Mes_Fim;Custo;Hh
+1;SERVIÇOS PRELIMINARES E GERAIS;1.1.X;Limpeza periódica + EPI + ferramental + consumo de água/luz;1º;1;1;33300;0
+1;SERVIÇOS PRELIMINARES E GERAIS;1.1.1;Locação convencional de obra (gabarito + pranchões);1º;1;1;5245.97;31.9
+1;SERVIÇOS PRELIMINARES E GERAIS;1.1.2;Barracão de obra em chapa compensada (escritório+almox+vestiário);1º;1;1;11025;80
+1;SERVIÇOS PRELIMINARES E GERAIS;1.1.3;Placa de obra em chapa galvanizada 4,00 × 2,00 m;1º;1;1;387;1
+1;SERVIÇOS PRELIMINARES E GERAIS;1.1.4;Ligação provisória de água, energia e esgoto;1º;1;1;3688;8
+1;SERVIÇOS PRELIMINARES E GERAIS;1.1.5;Instalações sanitárias provisórias (sanitário químico + lavatório);1º;1;1;2600;8
+2;MOVIMENTO DE TERRA E FUNDAÇÕES;2.1.1;Escavação Mecanizada - Terraplanagem;1º;1;2;8500;17
+2;MOVIMENTO DE TERRA E FUNDAÇÕES;2.1.3;Retroescavadeira - Movimentação de Terra da Helice;1º;1;2;8400;0.7
+2;MOVIMENTO DE TERRA E FUNDAÇÕES;2.1.4;Estaca hélice contínua ø40 cm  e 50 cm;1º;1;2;52351.43;223.8
+2;MOVIMENTO DE TERRA E FUNDAÇÕES;2.1.5;Concreto usinado fck 25 MPa estrutural, bombeado, slump 100±20;1º;1;2;29160;0
+2;MOVIMENTO DE TERRA E FUNDAÇÕES;2.1.6;Aço Estaca - Comprado pronto;1º;1;2;21660.12;5.5
+2;MOVIMENTO DE TERRA E FUNDAÇÕES;2.1.7;Arrasamento de estacas;1º;1;2;8320;114.4
+2;MOVIMENTO DE TERRA E FUNDAÇÕES;2.1.8;Escavação manual em material 1ª categoria (até 1,50 m);1º;1;2;14593.5;283.8
+2;MOVIMENTO DE TERRA E FUNDAÇÕES;2.1.9;Bloco de coroamento concreto armado fck 25 MPa;1º;1;2;43262.14;10
+2;MOVIMENTO DE TERRA E FUNDAÇÕES;2.1.10;Viga baldrame de concreto armado fck 25 MPa, seção 20×40 cm;1º;1;2;30443.55;8.3
+2;MOVIMENTO DE TERRA E FUNDAÇÕES;2.1.11;Lastro de concreto magro fck 10 MPa, e=5 cm;1º;1;2;7259;67.3
+2;MOVIMENTO DE TERRA E FUNDAÇÕES;2.1.12;Impermeabilização baldrame com emulsão asfáltica (2 demãos);1º;1;2;1312;21.4
+3;ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO);3.1.1;Armação aço CA-50 incl. corte, dobra, montagem e perdas;1º;2;4;7976.4;124.8
+3;ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO);3.1.2;Concreto usinado fck 25 MPa estrutural, bombeado, slump 100±20;1º;2;4;3929.24;10.4
+3;ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO);3.1.3;Lançamento, adensamento e acabamento de concreto estrutural;1º;2;4;212.41;47.7
+3;ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO);3.1.5;Forma de chapa compensada plastificada 18 mm, 4 utilizações;1º;2;4;9819.53;261.7
+3;ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO);3.1.6;Execução Escadas;1º;2;4;19513.29;179.6
+3;ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO);3.2.1;Armação aço CA-50 incl. corte, dobra, montagem e perdas;2º;3;5;50103.2;784.2
+3;ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO);3.2.2;Concreto usinado fck 25 MPa estrutural, bombeado, slump 100±20;2º;3;5;24681.27;65.4
+3;ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO);3.2.3;Lançamento, adensamento e acabamento de concreto estrutural;2º;3;5;1334.27;299.5
+3;ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO);3.2.5;Forma de chapa compensada plastificada 18 mm, 4 utilizações;2º;3;5;45765.64;1219.5
+3;ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO);3.2.6;Execução Escadas;2º;3;5;28371.51;261.1
+3;ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO);3.3.1;Armação aço CA-50 incl. corte, dobra, montagem e perdas;3º;5;7;24812.4;388.4
+3;ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO);3.3.2;Concreto usinado fck 25 MPa estrutural, bombeado, slump 100±20;3º;5;7;12222.8;32.4
+3;ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO);3.3.3;Lançamento, adensamento e acabamento de concreto estrutural;3º;5;7;660.76;148.3
+3;ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO);3.3.5;Forma de chapa compensada plastificada 18 mm, 4 utilizações;3º;5;7;29618.17;789.2
+3;ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO);3.3.6;Execução Escadas;3º;5;7;28371.51;261.1
+3;ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO);3.4.1;Armação aço CA-50 incl. corte, dobra, montagem e perdas;4º;6;8;23230;363.6
+3;ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO);3.4.2;Concreto usinado fck 25 MPa estrutural, bombeado, slump 100±20;4º;6;8;11443.3;30.3
+3;ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO);3.4.3;Lançamento, adensamento e acabamento de concreto estrutural;4º;6;8;618.62;138.9
+3;ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO);3.4.5;Forma de chapa compensada plastificada 18 mm, 4 utilizações;4º;6;8;28300.91;754.1
+3;ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO);3.4.6;Execução Escadas;4º;6;8;28371.51;261.1
+3;ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO);3.5.1;Armação aço CA-50 incl. corte, dobra, montagem e perdas;5º;8;10;24104;377.3
+3;ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO);3.5.2;Concreto usinado fck 25 MPa estrutural, bombeado, slump 100±20;5º;8;10;11873.84;31.4
+3;ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO);3.5.3;Lançamento, adensamento e acabamento de concreto estrutural;5º;8;10;641.9;144.1
+3;ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO);3.5.5;Forma de chapa compensada plastificada 18 mm, 4 utilizações;5º;8;10;27607.66;735.6
+3;ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO);3.5.6;Execução Escadas;5º;8;10;28371.51;261.1
+3;ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO);3.6.1;Armação aço CA-50 incl. corte, dobra, montagem e perdas;6º/Plat;9;11;23552;368.6
+3;ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO);3.6.2;Concreto usinado fck 25 MPa estrutural, bombeado, slump 100±20;6º/Plat;9;11;11601.92;30.7
+3;ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO);3.6.3;Lançamento, adensamento e acabamento de concreto estrutural;6º/Plat;9;11;627.2;140.8
+3;ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO);3.6.5;Forma de chapa compensada plastificada 18 mm, 4 utilizações;6º/Plat;9;11;27322.25;728
+3;ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO);3.7.1;Armação aço CA-50 incl. corte, dobra, montagem e perdas;6º/Plat;9;11;21564.8;261.2
+3;ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO);3.7.2;Concreto usinado fck 25 MPa estrutural, bombeado, slump 100±20;6º/Plat;9;11;10623.01;0
+3;ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO);3.7.3;Lançamento, adensamento e acabamento de concreto estrutural;6º/Plat;9;11;574.28;16
+3;ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO);3.7.4;Forma de chapa compensada plastificada 18 mm, 4 utilizações;6º/Plat;9;11;21604.82;456.2
+4;ALVENARIA E FECHAMENTOS;4.1.1;Alvenaria de vedação bloco cerâmico 14×19×29 cm, e=14 cm — externa/divisórias entre flats;1º;7;9;21968.5;371
+4;ALVENARIA E FECHAMENTOS;4.1.2;Execução de Verga e Contra-Verga;1º;7;9;965.7;2.5
+4;ALVENARIA E FECHAMENTOS;4.2.1;Alvenaria de vedação bloco cerâmico 14×19×29 cm, e=14 cm — externa/divisórias entre flats;2º;8;10;32886.88;555.4
+4;ALVENARIA E FECHAMENTOS;4.2.2;Execução de Verga e Contra-Verga;2º;8;10;965.7;2.5
+4;ALVENARIA E FECHAMENTOS;4.3.1;Alvenaria de vedação bloco cerâmico 14×19×29 cm, e=14 cm — externa/divisórias entre flats;3º;9;11;30830.98;520.7
+4;ALVENARIA E FECHAMENTOS;4.3.2;Execução de Verga e Contra-Verga;3º;9;11;965.7;2.5
+4;ALVENARIA E FECHAMENTOS;4.4.1;Alvenaria de vedação bloco cerâmico 14×19×29 cm, e=14 cm — externa/divisórias entre flats;4º;11;13;30830.98;520.7
+4;ALVENARIA E FECHAMENTOS;4.4.2;Execução de Verga e Contra-Verga;4º;11;13;965.7;2.5
+4;ALVENARIA E FECHAMENTOS;4.5.1;Alvenaria de vedação bloco cerâmico 14×19×29 cm, e=14 cm — externa/divisórias entre flats;5º;12;14;30587.67;516.6
+4;ALVENARIA E FECHAMENTOS;4.5.2;Execução de Verga e Contra-Verga;5º;12;14;965.7;2.5
+4;ALVENARIA E FECHAMENTOS;4.6.1;Alvenaria de vedação bloco cerâmico 14×19×29 cm, e=14 cm — externa/divisórias entre flats;6º/Plat;13;15;25284.44;427
+4;ALVENARIA E FECHAMENTOS;4.6.2;Execução de Verga e Contra-Verga;6º/Plat;13;15;965.7;2.5
+4;ALVENARIA E FECHAMENTOS;4.7.1;Alvenaria de vedação bloco cerâmico 14×19×29 cm, e=14 cm — externa/divisórias entre flats;6º/Plat;13;15;9116.71;105.5
+4;ALVENARIA E FECHAMENTOS;4.7.2;Execução de Verga e Contra-Verga;6º/Plat;13;15;965.7;2.5
+5;REBOCO / EMBOÇO;5.1.1;Chapisco para alvenaria (cimento+areia 1:3) — todas as faces;1º;11;12;361.81;97
+5;REBOCO / EMBOÇO;5.1.1;Chapisco para alvenaria (cimento+areia 1:3) — todas as faces;2º;12;13;1499.46;402
+5;REBOCO / EMBOÇO;5.1.1;Chapisco para alvenaria (cimento+areia 1:3) — todas as faces;3º;13;14;1339.07;359
+5;REBOCO / EMBOÇO;5.1.1;Chapisco para alvenaria (cimento+areia 1:3) — todas as faces;4º;14;15;1339.07;359
+5;REBOCO / EMBOÇO;5.1.1;Chapisco para alvenaria (cimento+areia 1:3) — todas as faces;5º;15;16;1178.68;316
+5;REBOCO / EMBOÇO;5.1.1;Chapisco para alvenaria (cimento+areia 1:3) — todas as faces;6º/Plat;16;17;1857.54;498
+5;REBOCO / EMBOÇO;5.1.2;Emboço;1º;11;12;3889.2;40.6
+5;REBOCO / EMBOÇO;5.1.2;Emboço;2º;12;13;9445.2;98.6
+5;REBOCO / EMBOÇO;5.1.2;Emboço;3º;13;14;9723;101.5
+5;REBOCO / EMBOÇO;5.1.2;Emboço;4º;14;15;9723;101.5
+5;REBOCO / EMBOÇO;5.1.2;Emboço;5º;15;16;8889.6;92.8
+5;REBOCO / EMBOÇO;5.1.2;Emboço;6º/Plat;16;17;8722.92;91.1
+5;REBOCO / EMBOÇO;5.1.3;Reboco externo ) e=2,0 cm — áreas externas e ÁM;Edifício;15;19;74235.66;736.7
+6;INSTALAÇÕES HIDROSSANITÁRIAS;6.1.1;Cisterna de concreto armado 10.000 L (inferior);Edifício;10;17;21000;80
+6;INSTALAÇÕES HIDROSSANITÁRIAS;6.1.2;Caixa de gordura coletiva alvenaria 60×60 cm + tampa;Edifício;10;17;2420;32
+6;INSTALAÇÕES HIDROSSANITÁRIAS;6.1.3;Caixa de inspeção alvenaria 60×60 cm + tampa concreto;Edifício;10;17;3630;48
+6;INSTALAÇÕES HIDROSSANITÁRIAS;6.1.4;Ramal de ligação à rede pública (água + esgoto);Edifício;10;17;7000;60
+6;INSTALAÇÕES HIDROSSANITÁRIAS;6.1.5;Ponto de água quente — PPR DN20/25;1º;10;11;1722;16.8
+6;INSTALAÇÕES HIDROSSANITÁRIAS;6.1.5;Ponto de água quente — PPR DN20/25;2º;11;12;1722;16.8
+6;INSTALAÇÕES HIDROSSANITÁRIAS;6.1.5;Ponto de água quente — PPR DN20/25;3º;12;13;1722;16.8
+6;INSTALAÇÕES HIDROSSANITÁRIAS;6.1.5;Ponto de água quente — PPR DN20/25;4º;13;14;1722;16.8
+6;INSTALAÇÕES HIDROSSANITÁRIAS;6.1.5;Ponto de água quente — PPR DN20/25;5º;14;15;1722;16.8
+6;INSTALAÇÕES HIDROSSANITÁRIAS;6.1.5;Ponto de água quente — PPR DN20/25;6º/Plat;15;16;1722;16.8
+6;INSTALAÇÕES HIDROSSANITÁRIAS;6.1.6;Infra para Hidraulica;1º;10;11;0;40
+6;INSTALAÇÕES HIDROSSANITÁRIAS;6.1.6;Infra para Hidraulica;2º;11;12;0;40
+6;INSTALAÇÕES HIDROSSANITÁRIAS;6.1.6;Infra para Hidraulica;3º;12;13;0;80
+6;INSTALAÇÕES HIDROSSANITÁRIAS;6.1.6;Infra para Hidraulica;4º;13;14;0;40
+6;INSTALAÇÕES HIDROSSANITÁRIAS;6.1.6;Infra para Hidraulica;5º;14;15;0;40
+6;INSTALAÇÕES HIDROSSANITÁRIAS;6.1.6;Infra para Hidraulica;6º/Plat;15;16;0;80
+6;INSTALAÇÕES HIDROSSANITÁRIAS;6.1.7;Ponto de água fria — tubulação PVC soldável DN20/25/32 + conexões;1º;10;11;3969.5;42.5
+6;INSTALAÇÕES HIDROSSANITÁRIAS;6.1.7;Ponto de água fria — tubulação PVC soldável DN20/25/32 + conexões;2º;11;12;3969.5;42.5
+6;INSTALAÇÕES HIDROSSANITÁRIAS;6.1.7;Ponto de água fria — tubulação PVC soldável DN20/25/32 + conexões;3º;12;13;3969.5;42.5
+6;INSTALAÇÕES HIDROSSANITÁRIAS;6.1.7;Ponto de água fria — tubulação PVC soldável DN20/25/32 + conexões;4º;13;14;3969.5;42.5
+6;INSTALAÇÕES HIDROSSANITÁRIAS;6.1.7;Ponto de água fria — tubulação PVC soldável DN20/25/32 + conexões;5º;14;15;3969.5;42.5
+6;INSTALAÇÕES HIDROSSANITÁRIAS;6.1.7;Ponto de água fria — tubulação PVC soldável DN20/25/32 + conexões;6º/Plat;15;16;4203;45
+6;INSTALAÇÕES HIDROSSANITÁRIAS;6.1.8;Ponto de esgoto primário — PVC série normal DN40/50/75/100 + caixas;1º;10;11;4420;44.2
+6;INSTALAÇÕES HIDROSSANITÁRIAS;6.1.8;Ponto de esgoto primário — PVC série normal DN40/50/75/100 + caixas;2º;11;12;4420;44.2
+6;INSTALAÇÕES HIDROSSANITÁRIAS;6.1.8;Ponto de esgoto primário — PVC série normal DN40/50/75/100 + caixas;3º;12;13;4420;44.2
+6;INSTALAÇÕES HIDROSSANITÁRIAS;6.1.8;Ponto de esgoto primário — PVC série normal DN40/50/75/100 + caixas;4º;13;14;4420;44.2
+6;INSTALAÇÕES HIDROSSANITÁRIAS;6.1.8;Ponto de esgoto primário — PVC série normal DN40/50/75/100 + caixas;5º;14;15;4420;44.2
+6;INSTALAÇÕES HIDROSSANITÁRIAS;6.1.8;Ponto de esgoto primário — PVC série normal DN40/50/75/100 + caixas;6º/Plat;15;16;4680;46.8
+6;INSTALAÇÕES HIDROSSANITÁRIAS;6.1.9;Ponto de águas pluviais — PVC série reforçada DN75/100/150;Edifício;10;17;3704;36
+6;INSTALAÇÕES HIDROSSANITÁRIAS;6.1.10;Coluna de prumada (esgoto) PVC DN100 — incluindo conexões;Edifício;10;17;4514;37
+6;INSTALAÇÕES HIDROSSANITÁRIAS;6.1.11;Coluna de prumada (água fria) PVC DN32 — incluindo conexões;Edifício;10;17;4037;49.5
+6;INSTALAÇÕES HIDROSSANITÁRIAS;6.1.12;Conjunto moto-bomba de recalque 5 CV, Q=20 m³/h;Edifício;10;17;14660;24
+6;INSTALAÇÕES HIDROSSANITÁRIAS;6.1.13;Hidrômetro individual + caixa de proteção;1º;10;11;1140;7.5
+6;INSTALAÇÕES HIDROSSANITÁRIAS;6.1.13;Hidrômetro individual + caixa de proteção;2º;11;12;1140;7.5
+6;INSTALAÇÕES HIDROSSANITÁRIAS;6.1.13;Hidrômetro individual + caixa de proteção;3º;12;13;1140;7.5
+6;INSTALAÇÕES HIDROSSANITÁRIAS;6.1.13;Hidrômetro individual + caixa de proteção;4º;13;14;1140;7.5
+6;INSTALAÇÕES HIDROSSANITÁRIAS;6.1.13;Hidrômetro individual + caixa de proteção;5º;14;15;1520;10
+6;INSTALAÇÕES HIDROSSANITÁRIAS;6.1.13;Hidrômetro individual + caixa de proteção;6º/Plat;15;16;1520;10
+6;INSTALAÇÕES HIDROSSANITÁRIAS;6.1.14;Reservatório superior em fibra de vidro 20.000 L com acessórios;6º/Plat;10;17;16650;24
+6;INSTALAÇÕES HIDROSSANITÁRIAS;6.1.15;Reservatório de combate a incêndio 2.000 L em fibra de vidro;2º;10;17;3330;10
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.1;Infra para Eletrica;1º;10;11;0;40
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.1;Infra para Eletrica;2º;11;12;0;40
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.1;Infra para Eletrica;3º;12;13;0;40
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.1;Infra para Eletrica;4º;13;14;0;40
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.1;Infra para Eletrica;5º;14;15;0;80
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.1;Infra para Eletrica;6º/Plat;15;16;0;80
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.2;Ponto de iluminação (eletroduto+caixa+condutor+luminária simples);1º;10;11;1540;15.4
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.2;Ponto de iluminação (eletroduto+caixa+condutor+luminária simples);2º;11;12;1540;15.4
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.2;Ponto de iluminação (eletroduto+caixa+condutor+luminária simples);3º;12;13;1540;15.4
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.2;Ponto de iluminação (eletroduto+caixa+condutor+luminária simples);4º;13;14;1540;15.4
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.2;Ponto de iluminação (eletroduto+caixa+condutor+luminária simples);5º;14;15;1540;15.4
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.2;Ponto de iluminação (eletroduto+caixa+condutor+luminária simples);6º/Plat;15;16;420;4.2
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.3;Ponto de tomada 2P+T 10A (eletroduto+caixa+condutor+tomada);1º;10;11;1600;15
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.3;Ponto de tomada 2P+T 10A (eletroduto+caixa+condutor+tomada);2º;11;12;1600;15
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.3;Ponto de tomada 2P+T 10A (eletroduto+caixa+condutor+tomada);3º;12;13;1600;15
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.3;Ponto de tomada 2P+T 10A (eletroduto+caixa+condutor+tomada);4º;13;14;1600;15
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.3;Ponto de tomada 2P+T 10A (eletroduto+caixa+condutor+tomada);5º;14;15;960;9
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.3;Ponto de tomada 2P+T 10A (eletroduto+caixa+condutor+tomada);6º/Plat;15;16;960;9
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.4;Ponto de interruptor simples/paralelo (eletroduto+caixa+condutor+interruptor);1º;10;11;440;4.4
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.4;Ponto de interruptor simples/paralelo (eletroduto+caixa+condutor+interruptor);2º;11;12;440;4.4
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.4;Ponto de interruptor simples/paralelo (eletroduto+caixa+condutor+interruptor);3º;12;13;330;3.3
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.4;Ponto de interruptor simples/paralelo (eletroduto+caixa+condutor+interruptor);4º;13;14;330;3.3
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.4;Ponto de interruptor simples/paralelo (eletroduto+caixa+condutor+interruptor);5º;14;15;330;3.3
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.4;Ponto de interruptor simples/paralelo (eletroduto+caixa+condutor+interruptor);6º/Plat;15;16;220;2.2
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.5;Quadro de distribuição (QDL) embutido, 12 a 24 disjuntores;1º;10;11;1720;18
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.5;Quadro de distribuição (QDL) embutido, 12 a 24 disjuntores;2º;11;12;1720;18
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.5;Quadro de distribuição (QDL) embutido, 12 a 24 disjuntores;3º;12;13;1720;18
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.5;Quadro de distribuição (QDL) embutido, 12 a 24 disjuntores;4º;13;14;1720;18
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.5;Quadro de distribuição (QDL) embutido, 12 a 24 disjuntores;5º;14;15;860;9
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.5;Quadro de distribuição (QDL) embutido, 12 a 24 disjuntores;6º/Plat;15;16;860;9
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.6;Disjuntor termomagnético DIN unipolar 10 a 32A;1º;10;11;945;10.5
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.6;Disjuntor termomagnético DIN unipolar 10 a 32A;2º;11;12;945;10.5
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.6;Disjuntor termomagnético DIN unipolar 10 a 32A;3º;12;13;945;10.5
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.6;Disjuntor termomagnético DIN unipolar 10 a 32A;4º;13;14;945;10.5
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.6;Disjuntor termomagnético DIN unipolar 10 a 32A;5º;14;15;945;10.5
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.6;Disjuntor termomagnético DIN unipolar 10 a 32A;6º/Plat;15;16;459;5.1
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.7;Eletroduto PVC rígido Ø 3/4" (incluindo conexões);1º;10;11;8200;123
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.7;Eletroduto PVC rígido Ø 3/4" (incluindo conexões);2º;11;12;8200;123
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.7;Eletroduto PVC rígido Ø 3/4" (incluindo conexões);3º;12;13;8200;123
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.7;Eletroduto PVC rígido Ø 3/4" (incluindo conexões);4º;13;14;8200;123
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.7;Eletroduto PVC rígido Ø 3/4" (incluindo conexões);5º;14;15;8200;123
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.7;Eletroduto PVC rígido Ø 3/4" (incluindo conexões);6º/Plat;15;16;8000;120
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.8;Cabeamento de cobre flexível #2,5 mm² 750V;1º;10;11;8160;0
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.8;Cabeamento de cobre flexível #2,5 mm² 750V;2º;11;12;8160;0
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.8;Cabeamento de cobre flexível #2,5 mm² 750V;3º;12;13;8160;0
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.8;Cabeamento de cobre flexível #2,5 mm² 750V;4º;13;14;8160;0
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.8;Cabeamento de cobre flexível #2,5 mm² 750V;5º;14;15;8160;0
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.8;Cabeamento de cobre flexível #2,5 mm² 750V;6º/Plat;15;16;6240;0
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.9;Cabeamento de cobre flexível #1,5 mm² 750V;1º;10;11;3520;0
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.9;Cabeamento de cobre flexível #1,5 mm² 750V;2º;11;12;3520;0
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.9;Cabeamento de cobre flexível #1,5 mm² 750V;3º;12;13;3520;0
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.9;Cabeamento de cobre flexível #1,5 mm² 750V;4º;13;14;3520;0
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.9;Cabeamento de cobre flexível #1,5 mm² 750V;5º;14;15;3520;0
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.9;Cabeamento de cobre flexível #1,5 mm² 750V;6º/Plat;15;16;1920;0
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.10;Padrão de entrada CEMIG trifásico (caixa + medidor + ramal);Edifício;10;17;11700;80
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.11;Ponto de telefone/dados (cabeamento estruturado Cat6);1º;10;11;120;1.2
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.11;Ponto de telefone/dados (cabeamento estruturado Cat6);2º;11;12;480;4.8
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.11;Ponto de telefone/dados (cabeamento estruturado Cat6);3º;12;13;480;4.8
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.11;Ponto de telefone/dados (cabeamento estruturado Cat6);4º;13;14;480;4.8
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.11;Ponto de telefone/dados (cabeamento estruturado Cat6);5º;14;15;480;4.8
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.11;Ponto de telefone/dados (cabeamento estruturado Cat6);6º/Plat;15;16;240;2.4
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.12;Ponto de TV/antena coletiva;1º;10;11;103;1
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.12;Ponto de TV/antena coletiva;2º;11;12;412;4
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.12;Ponto de TV/antena coletiva;3º;12;13;412;4
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.12;Ponto de TV/antena coletiva;4º;13;14;412;4
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.12;Ponto de TV/antena coletiva;5º;14;15;412;4
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.12;Ponto de TV/antena coletiva;6º/Plat;15;16;206;2
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.13;Sistema de interfone com vídeo porteiro central;1º;10;17;7650;40
+7;INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES;7.1.14;Sistema de controle de acesso facial + câmeras de segurança;1º;10;17;22700;32
+8;INSTALAÇÕES ESPECIAIS;8.1.1;Central GLP P-13 com abrigo ventilado térreo;1º;10;17;12300;32
+8;INSTALAÇÕES ESPECIAIS;8.1.2;Tubulação de gás em cobre rígido tipo L Ø 22mm;Edifício;10;17;8470;70
+8;INSTALAÇÕES ESPECIAIS;8.1.3;Medidor de gás individual;1º;10;11;363;1.8
+8;INSTALAÇÕES ESPECIAIS;8.1.3;Medidor de gás individual;2º;11;12;1452;7.2
+8;INSTALAÇÕES ESPECIAIS;8.1.3;Medidor de gás individual;3º;12;13;1452;7.2
+8;INSTALAÇÕES ESPECIAIS;8.1.3;Medidor de gás individual;4º;13;14;1452;7.2
+8;INSTALAÇÕES ESPECIAIS;8.1.3;Medidor de gás individual;5º;14;15;1452;7.2
+8;INSTALAÇÕES ESPECIAIS;8.1.3;Medidor de gás individual;6º/Plat;15;16;726;3.6
+8;INSTALAÇÕES ESPECIAIS;8.1.4;Ponto de gás (cozinha);1º;10;11;140;1.5
+8;INSTALAÇÕES ESPECIAIS;8.1.4;Ponto de gás (cozinha);2º;11;12;560;6
+8;INSTALAÇÕES ESPECIAIS;8.1.4;Ponto de gás (cozinha);3º;12;13;560;6
+8;INSTALAÇÕES ESPECIAIS;8.1.4;Ponto de gás (cozinha);4º;13;14;560;6
+8;INSTALAÇÕES ESPECIAIS;8.1.4;Ponto de gás (cozinha);5º;14;15;560;6
+8;INSTALAÇÕES ESPECIAIS;8.1.4;Ponto de gás (cozinha);6º/Plat;15;16;280;3
+8;INSTALAÇÕES ESPECIAIS;8.1.5;Hidrante de parede completo (mangotinho + abrigo + registro);1º;10;11;2330;4
+8;INSTALAÇÕES ESPECIAIS;8.1.5;Hidrante de parede completo (mangotinho + abrigo + registro);2º;11;12;2330;4
+8;INSTALAÇÕES ESPECIAIS;8.1.5;Hidrante de parede completo (mangotinho + abrigo + registro);3º;12;13;2330;4
+8;INSTALAÇÕES ESPECIAIS;8.1.5;Hidrante de parede completo (mangotinho + abrigo + registro);4º;13;14;2330;4
+8;INSTALAÇÕES ESPECIAIS;8.1.5;Hidrante de parede completo (mangotinho + abrigo + registro);5º;14;15;2330;4
+8;INSTALAÇÕES ESPECIAIS;8.1.5;Hidrante de parede completo (mangotinho + abrigo + registro);6º/Plat;15;16;2330;4
+8;INSTALAÇÕES ESPECIAIS;8.1.6;Tubulação de incêndio aço galvanizado Ø 65 mm (2½");Edifício;10;17;7200;36
+8;INSTALAÇÕES ESPECIAIS;8.1.7;Sistema SPDA — captor Franklin + malha + descidas + aterramento;Edifício;10;17;13000;60
+8;INSTALAÇÕES ESPECIAIS;8.1.8;Porta corta-fogo P-90 (escada);1º;10;11;2135;6
+8;INSTALAÇÕES ESPECIAIS;8.1.8;Porta corta-fogo P-90 (escada);2º;11;12;2135;6
+8;INSTALAÇÕES ESPECIAIS;8.1.8;Porta corta-fogo P-90 (escada);3º;12;13;2135;6
+8;INSTALAÇÕES ESPECIAIS;8.1.8;Porta corta-fogo P-90 (escada);4º;13;14;2135;6
+8;INSTALAÇÕES ESPECIAIS;8.1.8;Porta corta-fogo P-90 (escada);5º;14;15;2135;6
+8;INSTALAÇÕES ESPECIAIS;8.1.8;Porta corta-fogo P-90 (escada);6º/Plat;15;16;2135;6
+8;INSTALAÇÕES ESPECIAIS;8.1.9;Bomba de incêndio + acessórios;Edifício;10;17;10650;32
+8;INSTALAÇÕES ESPECIAIS;8.1.10;Extintor PQS 6 kg;Edifício;10;17;1544;16
+8;INSTALAÇÕES ESPECIAIS;8.1.11;Extintor CO2 6 kg;Edifício;10;17;626;4
+8;INSTALAÇÕES ESPECIAIS;8.1.12;Iluminação de emergência em bloco autônomo LED;Edifício;10;17;5490;24
+8;INSTALAÇÕES ESPECIAIS;8.1.13;Sinalização fotoluminescente (placas);Edifício;10;17;1860;32
+8;INSTALAÇÕES ESPECIAIS;8.1.14;Sistema de alarme/detecção de incêndio (central + acionadores + sirene);Edifício;10;17;16300;80
+8;INSTALAÇÕES ESPECIAIS;8.1.15;Infraestrutura split (ponto elétrico + dreno + suporte condensadora);1º;10;11;1720;18
+8;INSTALAÇÕES ESPECIAIS;8.1.15;Infraestrutura split (ponto elétrico + dreno + suporte condensadora);2º;11;12;1290;13.5
+8;INSTALAÇÕES ESPECIAIS;8.1.15;Infraestrutura split (ponto elétrico + dreno + suporte condensadora);3º;12;13;1290;13.5
+8;INSTALAÇÕES ESPECIAIS;8.1.15;Infraestrutura split (ponto elétrico + dreno + suporte condensadora);4º;13;14;1290;13.5
+8;INSTALAÇÕES ESPECIAIS;8.1.15;Infraestrutura split (ponto elétrico + dreno + suporte condensadora);5º;14;15;1290;13.5
+8;INSTALAÇÕES ESPECIAIS;8.1.15;Infraestrutura split (ponto elétrico + dreno + suporte condensadora);6º/Plat;15;16;1290;13.5
+8;INSTALAÇÕES ESPECIAIS;8.1.16;Elevador de passageiros 6 pessoas, 6 paradas (T+5);Edifício;14;18;230000;320
+9;COBERTURA E IMPERMEABILIZAÇÃO;9.1.1;Impermeabilização laje cobertura — manta asfáltica 4 mm;Edifício;11;17;15653.87;351
+9;COBERTURA E IMPERMEABILIZAÇÃO;9.1.2;Impermeabilização banheiros (Viaplus 1000 sobre emboço);1º;13;14;780.68;8.7
+9;COBERTURA E IMPERMEABILIZAÇÃO;9.1.2;Impermeabilização banheiros (Viaplus 1000 sobre emboço);2º;14;15;3643.15;40.5
+9;COBERTURA E IMPERMEABILIZAÇÃO;9.1.2;Impermeabilização banheiros (Viaplus 1000 sobre emboço);3º;15;16;3643.15;40.5
+9;COBERTURA E IMPERMEABILIZAÇÃO;9.1.2;Impermeabilização banheiros (Viaplus 1000 sobre emboço);4º;16;17;3643.15;40.5
+9;COBERTURA E IMPERMEABILIZAÇÃO;9.1.2;Impermeabilização banheiros (Viaplus 1000 sobre emboço);5º;17;18;3643.15;40.5
+9;COBERTURA E IMPERMEABILIZAÇÃO;9.1.2;Impermeabilização banheiros (Viaplus 1000 sobre emboço);6º/Plat;18;19;2654.3;29.5
+9;COBERTURA E IMPERMEABILIZAÇÃO;9.1.3;Impermeabilização cozinhas e área de serviço (Viaplus 1000);1º;13;14;260.23;2.9
+9;COBERTURA E IMPERMEABILIZAÇÃO;9.1.3;Impermeabilização cozinhas e área de serviço (Viaplus 1000);2º;14;15;1301.12;14.4
+9;COBERTURA E IMPERMEABILIZAÇÃO;9.1.3;Impermeabilização cozinhas e área de serviço (Viaplus 1000);3º;15;16;1301.12;14.4
+9;COBERTURA E IMPERMEABILIZAÇÃO;9.1.3;Impermeabilização cozinhas e área de serviço (Viaplus 1000);4º;16;17;1301.12;14.4
+9;COBERTURA E IMPERMEABILIZAÇÃO;9.1.3;Impermeabilização cozinhas e área de serviço (Viaplus 1000);5º;17;18;1301.12;14.4
+9;COBERTURA E IMPERMEABILIZAÇÃO;9.1.3;Impermeabilização cozinhas e área de serviço (Viaplus 1000);6º/Plat;18;19;416.36;4.6
+9;COBERTURA E IMPERMEABILIZAÇÃO;9.1.4;Impermeabilização reservatórios (Viaplus 5000);Edifício;11;17;6360.72;54.4
+9;COBERTURA E IMPERMEABILIZAÇÃO;9.1.5;Calha em chapa galvanizada #24, desenvolvimento 50 cm;Edifício;11;17;3500;35
+9;COBERTURA E IMPERMEABILIZAÇÃO;9.1.6;Rufo em chapa galvanizada #24, desenvolvimento 25 cm;Edifício;11;17;2777.5;38.5
+9;COBERTURA E IMPERMEABILIZAÇÃO;9.1.7;Condutor de águas pluviais — tubo PVC DN100;Edifício;11;17;4068;28.8
+10;APLICAÇÃO DE GESSO;10.1.1;Revestimento de gesso liso em parede interna seca (gesso pasta+desempeno);1º;12;13;6375;153
+10;APLICAÇÃO DE GESSO;10.1.1;Revestimento de gesso liso em parede interna seca (gesso pasta+desempeno);2º;13;14;9400;225.6
+10;APLICAÇÃO DE GESSO;10.1.1;Revestimento de gesso liso em parede interna seca (gesso pasta+desempeno);3º;14;15;8750;210
+10;APLICAÇÃO DE GESSO;10.1.1;Revestimento de gesso liso em parede interna seca (gesso pasta+desempeno);4º;15;16;8750;210
+10;APLICAÇÃO DE GESSO;10.1.1;Revestimento de gesso liso em parede interna seca (gesso pasta+desempeno);5º;16;17;8350;200.4
+10;APLICAÇÃO DE GESSO;10.1.1;Revestimento de gesso liso em parede interna seca (gesso pasta+desempeno);6º/Plat;17;18;7825;187.8
+10;APLICAÇÃO DE GESSO;10.1.2;Forro de gesso rebaixado em placas — flats e áreas comuns;1º;12;13;10575;112.8
+10;APLICAÇÃO DE GESSO;10.1.2;Forro de gesso rebaixado em placas — flats e áreas comuns;2º;13;14;7875;84
+10;APLICAÇÃO DE GESSO;10.1.2;Forro de gesso rebaixado em placas — flats e áreas comuns;3º;14;15;7575;80.8
+10;APLICAÇÃO DE GESSO;10.1.2;Forro de gesso rebaixado em placas — flats e áreas comuns;4º;15;16;7575;80.8
+10;APLICAÇÃO DE GESSO;10.1.2;Forro de gesso rebaixado em placas — flats e áreas comuns;5º;16;17;7650;81.6
+10;APLICAÇÃO DE GESSO;10.1.2;Forro de gesso rebaixado em placas — flats e áreas comuns;6º/Plat;17;18;0;0
+11;PISOS E RODAPÉS;11.1.1;Peitoris de granito Verde Ubatuba;1º;13;14;2055.8;8.4
+11;PISOS E RODAPÉS;11.1.1;Peitoris de granito Verde Ubatuba;2º;14;15;1027.9;4.2
+11;PISOS E RODAPÉS;11.1.1;Peitoris de granito Verde Ubatuba;3º;15;16;1027.9;4.2
+11;PISOS E RODAPÉS;11.1.1;Peitoris de granito Verde Ubatuba;4º;16;17;1027.9;4.2
+11;PISOS E RODAPÉS;11.1.1;Peitoris de granito Verde Ubatuba;5º;17;18;1027.9;4.2
+11;PISOS E RODAPÉS;11.1.1;Peitoris de granito Verde Ubatuba;6º/Plat;18;19;1233.48;5
+11;PISOS E RODAPÉS;11.1.2;Contrapiso autonivelante e=3 cm, todas as áreas internas;1º;13;14;2570.07;20.4
+11;PISOS E RODAPÉS;11.1.2;Contrapiso autonivelante e=3 cm, todas as áreas internas;2º;14;15;14049.72;111.7
+11;PISOS E RODAPÉS;11.1.2;Contrapiso autonivelante e=3 cm, todas as áreas internas;3º;15;16;7995.78;63.6
+11;PISOS E RODAPÉS;11.1.2;Contrapiso autonivelante e=3 cm, todas as áreas internas;4º;16;17;7995.78;63.6
+11;PISOS E RODAPÉS;11.1.2;Contrapiso autonivelante e=3 cm, todas as áreas internas;5º;17;18;8795.36;69.9
+11;PISOS E RODAPÉS;11.1.2;Contrapiso autonivelante e=3 cm, todas as áreas internas;6º/Plat;18;19;23244.87;184.8
+11;PISOS E RODAPÉS;11.1.3;Azulejo cerâmico 30×40 cm — paredes  h=2,70 m;1º;13;14;9430.2;95.4
+11;PISOS E RODAPÉS;11.1.3;Azulejo cerâmico 30×40 cm — paredes  h=2,70 m;2º;14;15;16764.8;169.6
+11;PISOS E RODAPÉS;11.1.3;Azulejo cerâmico 30×40 cm — paredes  h=2,70 m;3º;15;16;16764.8;169.6
+11;PISOS E RODAPÉS;11.1.3;Azulejo cerâmico 30×40 cm — paredes  h=2,70 m;4º;16;17;16764.8;169.6
+11;PISOS E RODAPÉS;11.1.3;Azulejo cerâmico 30×40 cm — paredes  h=2,70 m;5º;17;18;15717;159
+11;PISOS E RODAPÉS;11.1.3;Azulejo cerâmico 30×40 cm — paredes  h=2,70 m;6º/Plat;18;19;15088.32;152.6
+11;PISOS E RODAPÉS;11.1.4;Porcelanato 60×60 cm retificado, cor clara — áreas sociais/cozinhas/halls;1º;13;14;4547.25;38.2
+11;PISOS E RODAPÉS;11.1.4;Porcelanato 60×60 cm retificado, cor clara — áreas sociais/cozinhas/halls;2º;14;15;12378.62;103.9
+11;PISOS E RODAPÉS;11.1.4;Porcelanato 60×60 cm retificado, cor clara — áreas sociais/cozinhas/halls;3º;15;16;9094.5;76.3
+11;PISOS E RODAPÉS;11.1.4;Porcelanato 60×60 cm retificado, cor clara — áreas sociais/cozinhas/halls;4º;16;17;9094.5;76.3
+11;PISOS E RODAPÉS;11.1.4;Porcelanato 60×60 cm retificado, cor clara — áreas sociais/cozinhas/halls;5º;17;18;9473.44;79.5
+11;PISOS E RODAPÉS;11.1.4;Porcelanato 60×60 cm retificado, cor clara — áreas sociais/cozinhas/halls;6º/Plat;18;19;8462.94;71
+11;PISOS E RODAPÉS;11.1.5;Soleira de granito Verde Ubatuba e=2 cm;1º;13;14;616.74;3.3
+11;PISOS E RODAPÉS;11.1.5;Soleira de granito Verde Ubatuba e=2 cm;2º;14;15;1130.69;6
+11;PISOS E RODAPÉS;11.1.5;Soleira de granito Verde Ubatuba e=2 cm;3º;15;16;1130.69;6
+11;PISOS E RODAPÉS;11.1.5;Soleira de granito Verde Ubatuba e=2 cm;4º;16;17;1130.69;6
+11;PISOS E RODAPÉS;11.1.5;Soleira de granito Verde Ubatuba e=2 cm;5º;17;18;1130.69;6
+11;PISOS E RODAPÉS;11.1.5;Soleira de granito Verde Ubatuba e=2 cm;6º/Plat;18;19;1027.9;5.5
+11;PISOS E RODAPÉS;11.1.6;Piso Polido;1º;10;17;7702.8;8
+11;PISOS E RODAPÉS;11.1.7;Laminado de madeira AC4 c/ rodape de 5cm — quartos/dormitórios dos flats(Material e MO);1º;13;14;0;0
+11;PISOS E RODAPÉS;11.1.7;Laminado de madeira AC4 c/ rodape de 5cm — quartos/dormitórios dos flats(Material e MO);2º;14;15;9913.8;69.8
+11;PISOS E RODAPÉS;11.1.7;Laminado de madeira AC4 c/ rodape de 5cm — quartos/dormitórios dos flats(Material e MO);3º;15;16;9753.9;68.6
+11;PISOS E RODAPÉS;11.1.7;Laminado de madeira AC4 c/ rodape de 5cm — quartos/dormitórios dos flats(Material e MO);4º;16;17;9753.9;68.6
+11;PISOS E RODAPÉS;11.1.7;Laminado de madeira AC4 c/ rodape de 5cm — quartos/dormitórios dos flats(Material e MO);5º;17;18;8794.5;61.9
+11;PISOS E RODAPÉS;11.1.7;Laminado de madeira AC4 c/ rodape de 5cm — quartos/dormitórios dos flats(Material e MO);6º/Plat;18;19;6396;45
+11;PISOS E RODAPÉS;11.1.8;Rodapé porcelanato h=7 cm — sobre piso porcelanato;1º;13;14;915;2.1
+11;PISOS E RODAPÉS;11.1.8;Rodapé porcelanato h=7 cm — sobre piso porcelanato;2º;14;15;854;2
+11;PISOS E RODAPÉS;11.1.8;Rodapé porcelanato h=7 cm — sobre piso porcelanato;3º;15;16;854;2
+11;PISOS E RODAPÉS;11.1.8;Rodapé porcelanato h=7 cm — sobre piso porcelanato;4º;16;17;793;1.8
+11;PISOS E RODAPÉS;11.1.8;Rodapé porcelanato h=7 cm — sobre piso porcelanato;5º;17;18;793;1.8
+11;PISOS E RODAPÉS;11.1.8;Rodapé porcelanato h=7 cm — sobre piso porcelanato;6º/Plat;18;19;732;1.7
+11;PISOS E RODAPÉS;11.1.9;Piso tátil direcional/alerta — passeio público;1º;10;17;1446.84;9.6
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.1;Kit porta de madeira 80×210 cm (entrada apto) — folha+marco+alizar+ferragem+pintura;1º;14;15;0;0
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.1;Kit porta de madeira 80×210 cm (entrada apto) — folha+marco+alizar+ferragem+pintura;2º;14;16;5820;27
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.1;Kit porta de madeira 80×210 cm (entrada apto) — folha+marco+alizar+ferragem+pintura;3º;15;17;4850;22.5
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.1;Kit porta de madeira 80×210 cm (entrada apto) — folha+marco+alizar+ferragem+pintura;4º;16;18;4850;22.5
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.1;Kit porta de madeira 80×210 cm (entrada apto) — folha+marco+alizar+ferragem+pintura;5º;17;19;4850;22.5
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.1;Kit porta de madeira 80×210 cm (entrada apto) — folha+marco+alizar+ferragem+pintura;6º/Plat;18;19;4850;22.5
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.2;Kit porta de madeira 60×210 cm;1º;14;15;0;0
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.2;Kit porta de madeira 60×210 cm;2º;14;16;0;0
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.2;Kit porta de madeira 60×210 cm;3º;15;17;0;0
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.2;Kit porta de madeira 60×210 cm;4º;16;18;0;0
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.2;Kit porta de madeira 60×210 cm;5º;17;19;0;0
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.2;Kit porta de madeira 60×210 cm;6º/Plat;18;19;817;4.5
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.3;Kit porta de madeira 85×210 cm;1º;14;15;970;4.5
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.3;Kit porta de madeira 85×210 cm;2º;14;16;970;4.5
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.3;Kit porta de madeira 85×210 cm;3º;15;17;970;4.5
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.3;Kit porta de madeira 85×210 cm;4º;16;18;970;4.5
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.3;Kit porta de madeira 85×210 cm;5º;17;19;970;4.5
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.3;Kit porta de madeira 85×210 cm;6º/Plat;18;19;970;4.5
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.4;Porta 90×210 cm  - Blindex- Correr;1º;10;17;4254.72;21
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.5;Porta 100x250 cm - Blindex;2º;10;17;937.99;3.5
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.6;Porta 205x250 cm - Blindex;6º/Plat;10;17;1922.88;3.5
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.7;Porta 270x250 cm - Blindex;6º/Plat;10;17;2532.57;3.5
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.8;Porta 350x250 cm - Blindex;6º/Plat;10;17;3282.96;3.5
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.9;Porta 220x250 cm - Blindex;6º/Plat;10;17;2063.58;3.5
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.10;Porta basculante metálica (loja) — pintura esmalte  - 696x294;1º;10;17;11900.11;40
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.11;Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 100x140;1º;14;15;0;0
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.11;Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 100x140;2º;14;16;525.27;3.5
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.11;Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 100x140;3º;15;17;525.27;3.5
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.11;Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 100x140;4º;16;18;525.27;3.5
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.11;Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 100x140;5º;17;19;525.27;3.5
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.11;Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 100x140;6º/Plat;18;19;525.27;3.5
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.12;Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 100x50;1º;14;15;0;0
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.12;Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 100x50;2º;14;16;0;0
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.12;Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 100x50;3º;15;17;0;0
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.12;Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 100x50;4º;16;18;0;0
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.12;Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 100x50;5º;17;19;0;0
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.12;Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 100x50;6º/Plat;18;19;187.6;3.5
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.13;Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 150x140;1º;14;15;0;0
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.13;Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 150x140;2º;14;16;0;0
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.13;Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 150x140;3º;15;17;787.91;3.5
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.13;Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 150x140;4º;16;18;787.91;3.5
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.13;Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 150x140;5º;17;19;787.91;3.5
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.13;Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 150x140;6º/Plat;18;19;787.91;3.5
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.14;Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 165x140;1º;14;15;866.7;3.5
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.14;Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 165x140;2º;14;16;866.7;3.5
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.14;Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 165x140;3º;15;17;866.7;3.5
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.14;Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 165x140;4º;16;18;866.7;3.5
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.14;Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 165x140;5º;17;19;866.7;3.5
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.14;Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 165x140;6º/Plat;18;19;1733.4;7
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.15;Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 200x140;1º;14;15;0;0
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.15;Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 200x140;2º;14;16;0;0
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.15;Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 200x140;3º;15;17;0;0
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.15;Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 200x140;4º;16;18;1050.55;3.5
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.15;Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 200x140;5º;17;19;1050.55;3.5
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.15;Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 200x140;6º/Plat;18;19;1050.55;3.5
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.16;Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 300x140;1º;14;15;0;0
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.16;Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 300x140;2º;14;16;0;0
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.16;Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 300x140;3º;15;17;1575.82;3.5
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.16;Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 300x140;4º;16;18;1575.82;3.5
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.16;Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 300x140;5º;17;19;1575.82;3.5
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.16;Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 300x140;6º/Plat;18;19;1575.82;3.5
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.17;Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 60x80;1º;14;15;0;0
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.17;Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 60x80;2º;14;16;0;0
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.17;Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 60x80;3º;15;17;180.09;3.5
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.17;Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 60x80;4º;16;18;180.09;3.5
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.17;Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 60x80;5º;17;19;180.09;3.5
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.17;Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 60x80;6º/Plat;18;19;180.09;3.5
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.18;Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 80x80;1º;14;15;0;3.5
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.18;Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 80x80;2º;14;16;720.39;7
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.18;Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 80x80;3º;15;17;720.39;7
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.18;Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 80x80;4º;16;18;720.39;7
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.18;Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 80x80;5º;17;19;720.39;7
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.18;Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 80x80;6º/Plat;18;19;0;3.5
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.19;Vidro Fixo 632x250;Edifício;10;17;5928.09;6
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.20;Vidro Fixo 553x250;Edifício;10;17;5187.08;6
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.21;Vidro Fixo 160x250;Edifício;10;17;1500.78;6
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.22;Vidro Guarda Corpo - 6º Nivel 405cm x 50cm;Edifício;10;17;759.78;0
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.23;Box de banheiro em vidro temperado 8 mm incolor;1º;14;15;0;0
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.23;Box de banheiro em vidro temperado 8 mm incolor;2º;14;16;4127.2;40
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.23;Box de banheiro em vidro temperado 8 mm incolor;3º;15;17;4127.2;40
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.23;Box de banheiro em vidro temperado 8 mm incolor;4º;16;18;4127.2;40
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.23;Box de banheiro em vidro temperado 8 mm incolor;5º;17;19;4127.2;40
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.23;Box de banheiro em vidro temperado 8 mm incolor;6º/Plat;18;19;1928.5279999999998;20
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.24;Guarda-corpo em ferro circular h=1,10m (sacadas/escadas);1º;14;15;2850;20
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.24;Guarda-corpo em ferro circular h=1,10m (sacadas/escadas);2º;14;16;2850;20
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.24;Guarda-corpo em ferro circular h=1,10m (sacadas/escadas);3º;15;17;2850;20
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.24;Guarda-corpo em ferro circular h=1,10m (sacadas/escadas);4º;16;18;2850;20
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.24;Guarda-corpo em ferro circular h=1,10m (sacadas/escadas);5º;17;19;2850;20
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.24;Guarda-corpo em ferro circular h=1,10m (sacadas/escadas);6º/Plat;18;19;11400;80
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.25;Escada marinheiro;Edifício;10;17;216;6
+12;ESQUADRIAS (PORTAS, JANELAS, VIDROS);12.1.26;Alçapão metálico de acesso à cobertura;Edifício;10;17;216;6
+13;PINTURA;13.1.1;Massa corrida PVA sobre gesso (2 demãos);1º;13;15;3552.5;116
+13;PINTURA;13.1.1;Massa corrida PVA sobre gesso (2 demãos);2º;14;16;2817.5;92
+13;PINTURA;13.1.1;Massa corrida PVA sobre gesso (2 demãos);3º;15;17;2450;80
+13;PINTURA;13.1.1;Massa corrida PVA sobre gesso (2 demãos);4º;16;18;2450;80
+13;PINTURA;13.1.1;Massa corrida PVA sobre gesso (2 demãos);5º;17;19;2205;72
+13;PINTURA;13.1.1;Massa corrida PVA sobre gesso (2 demãos);6º/Plat;18;20;0;0
+13;PINTURA;13.1.2;Pintura látex PVA (selador + 2 demãos), cor branca/clara — interna;1º;13;15;10200;110
+13;PINTURA;13.1.2;Pintura látex PVA (selador + 2 demãos), cor branca/clara — interna;2º;14;16;12520.5;135
+13;PINTURA;13.1.2;Pintura látex PVA (selador + 2 demãos), cor branca/clara — interna;3º;15;17;11475;123.8
+13;PINTURA;13.1.2;Pintura látex PVA (selador + 2 demãos), cor branca/clara — interna;4º;16;18;11475;123.8
+13;PINTURA;13.1.2;Pintura látex PVA (selador + 2 demãos), cor branca/clara — interna;5º;17;19;10837.5;116.9
+13;PINTURA;13.1.2;Pintura látex PVA (selador + 2 demãos), cor branca/clara — interna;6º/Plat;18;20;7981.5;86.1
+13;PINTURA;13.1.3;Pintura esmalte sintético — portas metálicas e basculantes;Edifício;10;17;3776;32.5
+13;PINTURA;13.1.4;Textura rolada acrílica + selador — fachadas (3 faces não-frontais);Edifício;18;20;53469.16;624.6
+13;PINTURA;13.1.5;Pintura esmalte sintético — corrimão;Edifício;10;17;1170;4.1
+14;LOUÇAS, METAIS E BANCADAS;14.1.1;Bacia sanitária branca com caixa acoplada — padrão R8 (linha econômica);1º;14;15;2080;10
+14;LOUÇAS, METAIS E BANCADAS;14.1.1;Bacia sanitária branca com caixa acoplada — padrão R8 (linha econômica);2º;15;16;2600;12.5
+14;LOUÇAS, METAIS E BANCADAS;14.1.1;Bacia sanitária branca com caixa acoplada — padrão R8 (linha econômica);3º;16;17;2600;12.5
+14;LOUÇAS, METAIS E BANCADAS;14.1.1;Bacia sanitária branca com caixa acoplada — padrão R8 (linha econômica);4º;17;18;2600;12.5
+14;LOUÇAS, METAIS E BANCADAS;14.1.1;Bacia sanitária branca com caixa acoplada — padrão R8 (linha econômica);5º;18;19;2600;12.5
+14;LOUÇAS, METAIS E BANCADAS;14.1.1;Bacia sanitária branca com caixa acoplada — padrão R8 (linha econômica);6º/Plat;19;20;1040;5
+14;LOUÇAS, METAIS E BANCADAS;14.1.2;Lavatório com coluna ou cuba de embutir — padrão R8;1º;14;15;2512;8.8
+14;LOUÇAS, METAIS E BANCADAS;14.1.2;Lavatório com coluna ou cuba de embutir — padrão R8;2º;15;16;3140;11
+14;LOUÇAS, METAIS E BANCADAS;14.1.2;Lavatório com coluna ou cuba de embutir — padrão R8;3º;16;17;3140;11
+14;LOUÇAS, METAIS E BANCADAS;14.1.2;Lavatório com coluna ou cuba de embutir — padrão R8;4º;17;18;3140;11
+14;LOUÇAS, METAIS E BANCADAS;14.1.2;Lavatório com coluna ou cuba de embutir — padrão R8;5º;18;19;3140;11
+14;LOUÇAS, METAIS E BANCADAS;14.1.2;Lavatório com coluna ou cuba de embutir — padrão R8;6º/Plat;19;20;1256;4.4
+14;LOUÇAS, METAIS E BANCADAS;14.1.3;Tanque de PVC 40 cm (área de serviço);1º;14;15;0;0
+14;LOUÇAS, METAIS E BANCADAS;14.1.3;Tanque de PVC 40 cm (área de serviço);2º;15;16;932;7.2
+14;LOUÇAS, METAIS E BANCADAS;14.1.3;Tanque de PVC 40 cm (área de serviço);3º;16;17;932;7.2
+14;LOUÇAS, METAIS E BANCADAS;14.1.3;Tanque de PVC 40 cm (área de serviço);4º;17;18;932;7.2
+14;LOUÇAS, METAIS E BANCADAS;14.1.3;Tanque de PVC 40 cm (área de serviço);5º;18;19;932;7.2
+14;LOUÇAS, METAIS E BANCADAS;14.1.3;Tanque de PVC 40 cm (área de serviço);6º/Plat;19;20;466;3.6
+14;LOUÇAS, METAIS E BANCADAS;14.1.4;Cuba inox 40×34×17 cm para bancada — cozinhas;1º;14;15;2190;5
+14;LOUÇAS, METAIS E BANCADAS;14.1.4;Cuba inox 40×34×17 cm para bancada — cozinhas;2º;15;16;4380;10
+14;LOUÇAS, METAIS E BANCADAS;14.1.4;Cuba inox 40×34×17 cm para bancada — cozinhas;3º;16;17;4380;10
+14;LOUÇAS, METAIS E BANCADAS;14.1.4;Cuba inox 40×34×17 cm para bancada — cozinhas;4º;17;18;4380;10
+14;LOUÇAS, METAIS E BANCADAS;14.1.4;Cuba inox 40×34×17 cm para bancada — cozinhas;5º;18;19;4380;10
+14;LOUÇAS, METAIS E BANCADAS;14.1.4;Cuba inox 40×34×17 cm para bancada — cozinhas;6º/Plat;19;20;2190;5
+14;LOUÇAS, METAIS E BANCADAS;14.1.5;Torneira de lavatório padrão R8;1º;14;15;424;3.2
+14;LOUÇAS, METAIS E BANCADAS;14.1.5;Torneira de lavatório padrão R8;2º;15;16;530;4
+14;LOUÇAS, METAIS E BANCADAS;14.1.5;Torneira de lavatório padrão R8;3º;16;17;530;4
+14;LOUÇAS, METAIS E BANCADAS;14.1.5;Torneira de lavatório padrão R8;4º;17;18;530;4
+14;LOUÇAS, METAIS E BANCADAS;14.1.5;Torneira de lavatório padrão R8;5º;18;19;530;4
+14;LOUÇAS, METAIS E BANCADAS;14.1.5;Torneira de lavatório padrão R8;6º/Plat;19;20;212;1.6
+14;LOUÇAS, METAIS E BANCADAS;14.1.6;Torneira de cozinha padrão R8;1º;14;15;246;1.6
+14;LOUÇAS, METAIS E BANCADAS;14.1.6;Torneira de cozinha padrão R8;2º;15;16;492;3.2
+14;LOUÇAS, METAIS E BANCADAS;14.1.6;Torneira de cozinha padrão R8;3º;16;17;492;3.2
+14;LOUÇAS, METAIS E BANCADAS;14.1.6;Torneira de cozinha padrão R8;4º;17;18;492;3.2
+14;LOUÇAS, METAIS E BANCADAS;14.1.6;Torneira de cozinha padrão R8;5º;18;19;492;3.2
+14;LOUÇAS, METAIS E BANCADAS;14.1.6;Torneira de cozinha padrão R8;6º/Plat;19;20;246;1.6
+14;LOUÇAS, METAIS E BANCADAS;14.1.7;Torneira de tanque padrão R8;1º;14;15;0;0
+14;LOUÇAS, METAIS E BANCADAS;14.1.7;Torneira de tanque padrão R8;2º;15;16;280;3.2
+14;LOUÇAS, METAIS E BANCADAS;14.1.7;Torneira de tanque padrão R8;3º;16;17;280;3.2
+14;LOUÇAS, METAIS E BANCADAS;14.1.7;Torneira de tanque padrão R8;4º;17;18;280;3.2
+14;LOUÇAS, METAIS E BANCADAS;14.1.7;Torneira de tanque padrão R8;5º;18;19;280;3.2
+14;LOUÇAS, METAIS E BANCADAS;14.1.7;Torneira de tanque padrão R8;6º/Plat;19;20;140;1.6
+14;LOUÇAS, METAIS E BANCADAS;14.1.8;Registro de gaveta + chuveiro padrão R8 (conjunto chuveiro);1º;14;15;0;0
+14;LOUÇAS, METAIS E BANCADAS;14.1.8;Registro de gaveta + chuveiro padrão R8 (conjunto chuveiro);2º;15;16;932;6
+14;LOUÇAS, METAIS E BANCADAS;14.1.8;Registro de gaveta + chuveiro padrão R8 (conjunto chuveiro);3º;16;17;932;6
+14;LOUÇAS, METAIS E BANCADAS;14.1.8;Registro de gaveta + chuveiro padrão R8 (conjunto chuveiro);4º;17;18;932;6
+14;LOUÇAS, METAIS E BANCADAS;14.1.8;Registro de gaveta + chuveiro padrão R8 (conjunto chuveiro);5º;18;19;932;6
+14;LOUÇAS, METAIS E BANCADAS;14.1.8;Registro de gaveta + chuveiro padrão R8 (conjunto chuveiro);6º/Plat;19;20;466;3
+14;LOUÇAS, METAIS E BANCADAS;14.1.9;Sifão PVC + ligação flexível (kit);1º;14;15;305;4
+14;LOUÇAS, METAIS E BANCADAS;14.1.9;Sifão PVC + ligação flexível (kit);2º;15;16;549;7.2
+14;LOUÇAS, METAIS E BANCADAS;14.1.9;Sifão PVC + ligação flexível (kit);3º;16;17;549;7.2
+14;LOUÇAS, METAIS E BANCADAS;14.1.9;Sifão PVC + ligação flexível (kit);4º;17;18;549;7.2
+14;LOUÇAS, METAIS E BANCADAS;14.1.9;Sifão PVC + ligação flexível (kit);5º;18;19;549;7.2
+14;LOUÇAS, METAIS E BANCADAS;14.1.9;Sifão PVC + ligação flexível (kit);6º/Plat;19;20;244;3.2
+14;LOUÇAS, METAIS E BANCADAS;14.1.10;Acessórios para BWC padrão R8 (papeleira+saboneteira+cabide+toalheiro);1º;14;15;406;2.4
+14;LOUÇAS, METAIS E BANCADAS;14.1.10;Acessórios para BWC padrão R8 (papeleira+saboneteira+cabide+toalheiro);2º;15;16;1015;6
+14;LOUÇAS, METAIS E BANCADAS;14.1.10;Acessórios para BWC padrão R8 (papeleira+saboneteira+cabide+toalheiro);3º;16;17;1015;6
+14;LOUÇAS, METAIS E BANCADAS;14.1.10;Acessórios para BWC padrão R8 (papeleira+saboneteira+cabide+toalheiro);4º;17;18;1015;6
+14;LOUÇAS, METAIS E BANCADAS;14.1.10;Acessórios para BWC padrão R8 (papeleira+saboneteira+cabide+toalheiro);5º;18;19;1015;6
+14;LOUÇAS, METAIS E BANCADAS;14.1.10;Acessórios para BWC padrão R8 (papeleira+saboneteira+cabide+toalheiro);6º/Plat;19;20;406;2.4
+14;LOUÇAS, METAIS E BANCADAS;14.1.11;Bancada de granito Verde Ubatuba — banheiros (lavatório embutido);1º;14;15;0;0
+14;LOUÇAS, METAIS E BANCADAS;14.1.11;Bancada de granito Verde Ubatuba — banheiros (lavatório embutido);2º;15;16;1076;10
+14;LOUÇAS, METAIS E BANCADAS;14.1.11;Bancada de granito Verde Ubatuba — banheiros (lavatório embutido);3º;16;17;1076;10
+14;LOUÇAS, METAIS E BANCADAS;14.1.11;Bancada de granito Verde Ubatuba — banheiros (lavatório embutido);4º;17;18;1076;10
+14;LOUÇAS, METAIS E BANCADAS;14.1.11;Bancada de granito Verde Ubatuba — banheiros (lavatório embutido);5º;18;19;1614;15
+14;LOUÇAS, METAIS E BANCADAS;14.1.11;Bancada de granito Verde Ubatuba — banheiros (lavatório embutido);6º/Plat;19;20;1076;10
+14;LOUÇAS, METAIS E BANCADAS;14.1.12;Bancada de granito Verde Ubatuba — cozinhas;1º;14;15;1076;10
+14;LOUÇAS, METAIS E BANCADAS;14.1.12;Bancada de granito Verde Ubatuba — cozinhas;2º;15;16;3228;30
+14;LOUÇAS, METAIS E BANCADAS;14.1.12;Bancada de granito Verde Ubatuba — cozinhas;3º;16;17;3228;30
+14;LOUÇAS, METAIS E BANCADAS;14.1.12;Bancada de granito Verde Ubatuba — cozinhas;4º;17;18;3228;30
+14;LOUÇAS, METAIS E BANCADAS;14.1.12;Bancada de granito Verde Ubatuba — cozinhas;5º;18;19;3228;30
+14;LOUÇAS, METAIS E BANCADAS;14.1.12;Bancada de granito Verde Ubatuba — cozinhas;6º/Plat;19;20;1614;15
+15;URBANIZAÇÃO, PAISAGISMO E SERVIÇOS EXTERNOS;15.1.1;Drenagem externa — canaleta pré-moldada + caixa de areia;1º;18;20;6000;37.5
+15;URBANIZAÇÃO, PAISAGISMO E SERVIÇOS EXTERNOS;15.1.2;Iluminação externa LED 20W em luminárias padrão;1º;18;20;2220;15
+16;SERVIÇOS FINAIS;16.1.1;Revestimento de fachada em ACM (placas alumínio composto 4 mm) — fachada frontal;Edifício;18;20;27900;132
+16;SERVIÇOS FINAIS;16.1.2;Brise Metalico;Edifício;18;20;9600;66
+16;SERVIÇOS FINAIS;16.1.3;Limpeza geral final de obra;Edifício;20;20;8933.45;61.2
+16;SERVIÇOS FINAIS;19.1.3;Passeio Externo;Edifício;18;20;5940;0
+16;SERVIÇOS FINAIS;19.1.4;Grama;Edifício;18;20;1174.5;0
+2;MOVIMENTO DE TERRA E FUNDAÇÕES;2.1.2;Caminhão de Terra;1º;1;2;6500;0
+17;LOCAÇÃO DE EQUIPAMENTOS;17.1.1;Locação Caçamba;Edifício;1;20;17640;0
+17;LOCAÇÃO DE EQUIPAMENTOS;17.1.2;Locação Guincho;Edifício;3;18;17640;0
+17;LOCAÇÃO DE EQUIPAMENTOS;17.1.3;Locação Travamento e Escoraramtento;Edifício;3;15;120000.06;0
+17;LOCAÇÃO DE EQUIPAMENTOS;17.1.4;Locação de Martelete;Edifício;3;14;3000;0
+17;LOCAÇÃO DE EQUIPAMENTOS;17.1.5;Locação Betoneira;Edifício;1;20;7200;0
+17;LOCAÇÃO DE EQUIPAMENTOS;17.1.6;Locação Gerador;Edifício;1;1;400;0
+17;LOCAÇÃO DE EQUIPAMENTOS;17.1.7;Locação Serra Circular;Edifício;1;16;800;0
+17;LOCAÇÃO DE EQUIPAMENTOS;17.1.8;Locação Vibrador;Edifício;3;14;1200;0
+17;LOCAÇÃO DE EQUIPAMENTOS;17.1.9;Locação Balancinho;Edifício;18;20;9600;0
+17;LOCAÇÃO DE EQUIPAMENTOS;17.1.10;Locação Bandeja;Edifício;3;18;41887;0
+17;LOCAÇÃO DE EQUIPAMENTOS;17.1.11;Locação Carro;Edifício;1;20;46000;0
+17;LOCAÇÃO DE EQUIPAMENTOS;17.1.12;Combustivel Carro;Edifício;1;20;18000;0
+17;LOCAÇÃO DE EQUIPAMENTOS;17.1.13;Material Misselania;Edifício;1;20;18000;0
+17;LOCAÇÃO DE EQUIPAMENTOS;17.1.14;Custo de Visitas;Edifício;1;20;10000;0
+18;FUNCIONÁRIOS DIRETO;18.1.1;Mão de Obra Direta;Edifício;1;20;356776;0

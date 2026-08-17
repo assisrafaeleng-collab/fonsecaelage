@@ -3,19 +3,32 @@ import { supabase } from '../../lib/supabase'
 
 // Mapeamento exato: codigo_eap -> categoria do planejado
 const EAP_CATEGORIA = {
-  '18.1.1':  'Administração local da obra (engenheiro)',
-  '18.1.2':  'Serviços Sondagem',
-  '18.1.4':  'Projeto Estrutural',
-  '18.1.11': 'Custo de ITBI',
-  '18.1.12': 'Custo de Registro Lote',
-  '18.1.13': 'Custo de Escritura',
-  '18.1.15': 'Alvará Tráfego de Terra e Entulho',
-  '18.1.17': 'Laudo Cautelares',
-  '18.1.19': 'Serviços Advocaticios',
-  '18.1.21': 'IPTU Terreno',
-  '18.1.22': 'Art e Taxas',
-  '18.1.20': 'Valor do Terreno',
-  '18.1.23': 'Administração local da obra (engenheiro)',
+  '19.1.1': 'AVCB (Auto de Vistoria CBMMG) — taxa e vistoria',
+  '19.1.2': 'Serviços Sondagem',
+  '19.1.3': 'Projeto Arquitetonico',
+  '19.1.4': 'Projeto Estrutural',
+  '19.1.5': 'Projeto Eletrico',
+  '19.1.6': 'Projeto Padrão',
+  '19.1.7': 'Projeto Hidrossanitario',
+  '19.1.8': 'Projeto SPDA',
+  '19.1.9': 'Projeto Combate de Incendio',
+  '19.1.10': 'Registro de Incorporação+Averbação da Construção',
+  '19.1.11': 'Custo de ITBI',
+  '19.1.12': 'Custo de Registro Lote',
+  '19.1.13': 'Custo de Escritura',
+  '19.1.14': 'Taxa de Aprovação Prefeitura - Projeto',
+  '19.1.15': 'Alvará Tráfego de Terra e Entulho',
+  '19.1.16': 'Taxa Aprovação Corpo de Bombeiro',
+  '19.1.17': 'Laudo Cautelares',
+  '19.1.18': 'Serviços Contabeis',
+  '19.1.19': 'Serviços Advocaticios',
+  '19.1.20': 'Valor do Terreno',
+  '19.1.21': 'IPTU Terreno',
+  '19.1.22': 'Art e Taxas',
+  '19.1.23': 'Administração local da obra (engenheiro)',
+  '19.1.24': 'Taxa ADM (12% custo direto)',
+  '19.1.25': 'Restaurante',
+  '19.1.26': 'Padaria',
 }
 
 export default async function handler(req, res) {
@@ -23,7 +36,7 @@ export default async function handler(req, res) {
   const obra_id = 'flats_pampulha'
   try {
     const [lancRes, planRes] = await Promise.all([
-      supabase.from('custos_lancamentos').select('*').eq('obra_id', obra_id).like('codigo_eap', '18.%').eq('status', 'Normal').order('data_emissao', { ascending: false }),
+      supabase.from('custos_lancamentos').select('*').eq('obra_id', obra_id).like('codigo_eap', '19.%').eq('status', 'Normal').order('data_emissao', { ascending: false }),
       supabase.from('custos_indiretos_planejados').select('categoria, valor_total, mes_desembolso').eq('obra_id', obra_id)
     ])
     if (lancRes.error) throw new Error(lancRes.error.message)

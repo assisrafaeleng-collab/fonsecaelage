@@ -1,26 +1,33 @@
+// pages/api/orcamento-detalhado.js
+// Reescrita: lê 100% do Supabase (não usa mais public/dados.json)
+
 import { supabase } from '../../lib/supabase'
-import path from 'path'
-import fsNode from 'fs'
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' })
+
   const obra_id = req.query.obra_id || 'flats_pampulha'
   const mesLimite = parseInt(req.query.mes) || 20
 
-  try {
-    // Ler dados.json para custos diretos
-    const jsonPath = path.join(process.cwd(), 'public', 'dados.json')
-    const dados = JSON.parse(fsNode.readFileSync(jsonPath, 'utf8'))
+  res.setHeader('Cache-Control', 'no-store, max-age=0, must-revalidate')
 
-    // Calcular custos diretos do periodo
+  try {
+    const { data: itens, error: errItens } = await supabase
+      .from('orcamento_planejado')
+      .select('preco_total, mes_inicio, mes_fim')
+      .eq('obra_id', obra_id)
+
+    if (errItens) throw new Error(errItens.message)
+
     let custos_diretos = 0
-    dados.forEach(d => {
-      const a = d.a || 1
-      const b = d.b || 1
-      const c = d.c || 0
+    ;(itens || []).forEach(r => {
+      const a = r.mes_inicio || 1
+      const b = r.mes_fim || 1
+      const c = parseFloat(r.preco_total) || 0
       const numMeses = Math.max(b - a + 1, 1)
       const custoMensal = c / numMeses
-      if (mesLimite === 20) {
+
+      if (mesLimite >= 20) {
         custos_diretos += c
       } else {
         for (let m = a; m <= b; m++) {
@@ -29,7 +36,6 @@ export default async function handler(req, res) {
       }
     })
 
-    // Buscar indiretos do banco
     const { data: indiretos, error } = await supabase
       .from('custos_indiretos_planejados')
       .select('categoria, valor_total, mes_desembolso')
@@ -43,7 +49,12 @@ export default async function handler(req, res) {
       if (mes === 0) valor = parseFloat(item.valor_total || 0) * (mesLimite / 20)
       else if (mes <= mesLimite) valor = parseFloat(item.valor_total || 0)
       custos_indiretos += valor
-      return { nome: item.categoria, valor, valor_total: parseFloat(item.valor_total || 0), mes_desembolso: mes }
+      return {
+        nome: item.categoria,
+        valor,
+        valor_total: parseFloat(item.valor_total || 0),
+        mes_desembolso: mes
+      }
     })
 
     const total = custos_diretos + custos_indiretos

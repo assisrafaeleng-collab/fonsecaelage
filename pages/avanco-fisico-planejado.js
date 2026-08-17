@@ -80,7 +80,7 @@ export default function AvancoFisicoPlanejado() {
   const [metric, setMetric] = useState('pct') // 'pct' | 'custo' | 'hh'
 
   useEffect(() => {
-    fetch('/dados.json').then(r => r.json()).then(d => { setDados(d); setLoading(false) }).catch(() => setLoading(false))
+    fetch('/api/orcamento-itens?fisico=1', { cache: 'no-store' }).then(r => r.json()).then(d => { setDados(Array.isArray(d) ? d : []); setLoading(false) }).catch(() => setLoading(false))
   }, [])
 
   const totHh = useMemo(() => dados.reduce((s,r) => s+r.h, 0) || 1, [dados])
@@ -152,7 +152,19 @@ export default function AvancoFisicoPlanejado() {
     return gs.size
   }, [visible, mes])
 
-  const pctAvanco = totalGeral > 0 ? (totalPlanPeriodo/totalGeral*100) : 0
+  const hhPeriodo = useMemo(() => {
+    return dados.filter(r => r.a <= mes && (pavF==='__ALL__' || r.p===pavF) && r.g !== 17 && r.g !== 18).reduce((s,r) => {
+      const numMeses = Math.max(r.b - r.a + 1, 1)
+      const mesesAtivos = Math.min(mes, r.b) - r.a + 1
+      return s + (r.h * Math.max(0, mesesAtivos) / numMeses)
+    }, 0)
+  }, [dados, mes, pavF])
+
+  const hhTotalFisico = useMemo(() => {
+    return dados.filter(r => (pavF==='__ALL__' || r.p===pavF) && r.g !== 17 && r.g !== 18).reduce((s,r) => s + r.h, 0)
+  }, [dados, pavF])
+
+  const pctAvanco = hhTotalFisico > 0 ? Math.min(100, (hhPeriodo/hhTotalFisico*100)) : 0
 
   const toggle = key => setOpen(o => ({...o, [key]: !o[key]}))
 

@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:'IBM Plex Sans',system-ui,sans-serif;background:#131316;-webkit-font-smoothing:antialiased}
+a{color:var(--accent,#e0a93b);text-decoration:none}
+a:hover{opacity:.8}
+::selection{background:rgba(224,169,59,.28)}
+::-webkit-scrollbar{height:8px;width:8px}
+::-webkit-scrollbar-thumb{background:rgba(128,128,128,.35);border-radius:8px}
+</style>
+</helmet>
+<div ref="{{ rootRef }}" data-screen-label="Dashboard Integrado" style="min-height:100vh;background:var(--bg,#131316);color:var(--text,#eeeef2);transition:background .25s,color .25s">
+<div style="max-width:1240px;margin:0 auto;padding:28px 32px 64px">
+
+  <!-- HEADER -->
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:24px;flex-wrap:wrap;padding-bottom:18px;border-bottom:1px solid var(--border,rgba(255,255,255,.09))">
+    <div>
+      <div style="font:500 11px/1 'IBM Plex Mono';letter-spacing:.14em;text-transform:uppercase;color:var(--text2,#9a9aa6)">Av. Coronel José Dias Bicalho, 635 · São José · Belo Horizonte</div>
+      <div style="font:600 30px/1.1 'IBM Plex Sans';margin-top:8px;letter-spacing:-.01em">Flats Pampulha</div>
+      <div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:10px;font:500 12px/1 'IBM Plex Mono';color:var(--text2,#9a9aa6)">
+        <span>Orçamento <span style="color:var(--text,#eeeef2)">R$ 5.908.814</span></span>
+        <span style="color:var(--text3,#63636e)">·</span>
+        <span>Prazo <span style="color:var(--text,#eeeef2)">20 meses</span></span>
+        <span style="color:var(--text3,#63636e)">·</span>
+        <span>Jul/2026 → Fev/2028</span>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:12px">
+      <div style="display:inline-flex;background:var(--panel2,#232329);border-radius:10px;padding:3px;gap:2px">
+        <button onClick="{{ setDark }}" style="{{ darkBtn }}">Escuro</button>
+        <button onClick="{{ setLight }}" style="{{ lightBtn }}">Claro</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;background:var(--panel,#1b1b20);border:1px solid var(--border2,rgba(255,255,255,.14));border-radius:9px;padding:8px 12px;cursor:pointer">
+        <div>
+          <div style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.1em;text-transform:uppercase;color:var(--text3,#63636e);margin-bottom:3px">Período</div>
+          <div style="font:600 12px/1 'IBM Plex Mono';color:var(--text,#eeeef2)">abr. de 2027 · M10 de 20</div>
+        </div>
+        <span style="color:var(--text2,#9a9aa6);font-size:10px">▾</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- NAV -->
+  <div style="display:flex;gap:24px;margin-top:16px;border-bottom:1px solid var(--border,rgba(255,255,255,.09))">
+    <div style="padding:10px 0;font:600 13px 'IBM Plex Sans';color:var(--text,#eeeef2);border-bottom:2px solid var(--accent,#e0a93b);margin-bottom:-1px">Visão Geral</div>
+    <div style="padding:10px 0;font:500 13px 'IBM Plex Sans';color:var(--text2,#9a9aa6);cursor:pointer">Lançamentos de Custos</div>
+    <div style="padding:10px 0;font:500 13px 'IBM Plex Sans';color:var(--text2,#9a9aa6);cursor:pointer">Histórico</div>
+  </div>
+
+  <!-- HEALTH BANNER -->
+  <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:24px;background:var(--panel,#1b1b20);border:1px solid var(--border,rgba(255,255,255,.09));border-left:3px solid #d6453c;border-radius:14px;padding:16px 20px">
+    <div style="flex:1;min-width:240px">
+      <div style="font:600 11px/1 'IBM Plex Mono';letter-spacing:.1em;text-transform:uppercase;color:#d6453c;margin-bottom:6px">Atenção necessária</div>
+      <div style="font:500 14px/1.5">A obra está <b>atrasada em 4,7%</b> no físico e <b>acima do custo direto</b>. Projeção aponta estouro de R$ 803 mil se o ritmo atual se mantiver.</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <span style="font:600 11px 'IBM Plex Mono';padding:6px 11px;border-radius:8px;background:rgba(214,69,60,.14);color:#d6453c">● Custo acima</span>
+      <span style="font:600 11px 'IBM Plex Mono';padding:6px 11px;border-radius:8px;background:rgba(214,69,60,.14);color:#d6453c">● Prazo atrasado</span>
+      <span style="font:600 11px 'IBM Plex Mono';padding:6px 11px;border-radius:8px;background:rgba(214,69,60,.14);color:#d6453c">● Físico −4,7%</span>
+    </div>
+  </div>
+
+  <!-- HERO: ORÇAMENTO TOTAL -->
+  <div style="background:var(--panel,#1b1b20);border:1px solid var(--border,rgba(255,255,255,.09));border-radius:16px;padding:24px 28px;margin-top:14px;display:flex;align-items:center;gap:40px;flex-wrap:wrap">
+    <div style="flex:1;min-width:260px">
+      <div style="font:500 10px/1 'IBM Plex Mono';letter-spacing:.12em;text-transform:uppercase;color:var(--text2,#9a9aa6);margin-bottom:14px">Custo Total da Obra · Planejado</div>
+      <div style="display:flex;align-items:baseline;gap:20px;flex-wrap:wrap">
+        <div>
+          <div style="font:500 10px 'IBM Plex Mono';letter-spacing:.08em;color:var(--text3,#63636e);margin-bottom:5px">DIRETO</div>
+          <div style="font:600 26px/1 'IBM Plex Mono'">R$ 3.424.958</div>
+        </div>
+        <div style="font:300 22px 'IBM Plex Mono';color:var(--text3,#63636e);align-self:flex-end;padding-bottom:2px">+</div>
+        <div>
+          <div style="font:500 10px 'IBM Plex Mono';letter-spacing:.08em;color:var(--text3,#63636e);margin-bottom:5px">INDIRETO</div>
+          <div style="font:600 26px/1 'IBM Plex Mono'">R$ 2.483.856</div>
+        </div>
+        <div style="font:300 22px 'IBM Plex Mono';color:var(--text3,#63636e);align-self:flex-end;padding-bottom:2px">=</div>
+        <div>
+          <div style="font:500 10px 'IBM Plex Mono';letter-spacing:.08em;color:var(--accent,#e0a93b);margin-bottom:5px">TOTAL</div>
+          <div style="font:700 30px/1 'IBM Plex Mono';color:var(--accent,#e0a93b)">R$ 5.908.814</div>
+        </div>
+      </div>
+    </div>
+    <div style="width:1px;align-self:stretch;background:var(--border,rgba(255,255,255,.09))"></div>
+    <div style="min-width:220px">
+      <div style="font:500 10px/1 'IBM Plex Mono';letter-spacing:.12em;text-transform:uppercase;color:var(--text2,#9a9aa6);margin-bottom:14px">Projeção de Custo Final</div>
+      <div style="font:700 30px/1 'IBM Plex Mono';color:#d6453c">R$ 6.712.199</div>
+      <div style="font:500 12px 'IBM Plex Sans';color:#d6453c;margin-top:8px">▲ R$ 803.385 acima do orçamento</div>
+    </div>
+  </div>
+
+  <!-- KPI GRID -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(212px,1fr));gap:14px;margin-top:14px">
+
+    <!-- Direto Plan -->
+    <div style="background:var(--panel,#1b1b20);border:1px solid var(--border,rgba(255,255,255,.09));border-radius:14px;padding:18px 20px">
+      <div style="font:500 10px/1.2 'IBM Plex Mono';letter-spacing:.1em;text-transform:uppercase;color:var(--text2,#9a9aa6)">Custo Direto · Planejado</div>
+      <div style="font:600 23px/1.1 'IBM Plex Mono';margin:12px 0 5px">R$ 1.712.479</div>
+      <div style="font:500 11px 'IBM Plex Sans';color:var(--text2,#9a9aa6)">Acumulado até M10</div>
+    </div>
+    <!-- Direto Real -->
+    <div style="background:var(--panel,#1b1b20);border:1px solid var(--border,rgba(255,255,255,.09));border-radius:14px;padding:18px 20px">
+      <div style="font:500 10px/1.2 'IBM Plex Mono';letter-spacing:.1em;text-transform:uppercase;color:var(--text2,#9a9aa6)">Custo Direto · Realizado</div>
+      <div style="font:600 23px/1.1 'IBM Plex Mono';margin:12px 0 5px">R$ 1.802.300</div>
+      <div style="font:500 11px 'IBM Plex Sans';color:var(--text2,#9a9aa6)">105,2% do planejado</div>
+    </div>
+    <!-- Saldo Direto -->
+    <div style="background:var(--panel,#1b1b20);border:1px solid var(--border,rgba(255,255,255,.09));border-radius:14px;padding:18px 20px">
+      <div style="font:500 10px/1.2 'IBM Plex Mono';letter-spacing:.1em;text-transform:uppercase;color:var(--text2,#9a9aa6)">Saldo Custo Direto</div>
+      <div style="font:600 23px/1.1 'IBM Plex Mono';margin:12px 0 5px;color:#d6453c">−R$ 89.821</div>
+      <div style="font:600 11px 'IBM Plex Sans';color:#d6453c">▲ Acima do previsto</div>
+    </div>
+    <!-- Físico Plan -->
+    <div style="background:var(--panel,#1b1b20);border:1px solid var(--border,rgba(255,255,255,.09));border-radius:14px;padding:18px 20px">
+      <div style="font:500 10px/1.2 'IBM Plex Mono';letter-spacing:.1em;text-transform:uppercase;color:var(--text2,#9a9aa6)">Avanço Físico · Planejado</div>
+      <div style="font:600 23px/1.1 'IBM Plex Mono';margin:12px 0 5px">47,5%</div>
+      <div style="font:500 11px 'IBM Plex Sans';color:var(--text2,#9a9aa6)">Conforme cronograma</div>
+    </div>
+    <!-- Desvio Físico -->
+    <div style="background:var(--panel,#1b1b20);border:1px solid var(--border,rgba(255,255,255,.09));border-radius:14px;padding:18px 20px">
+      <div style="font:500 10px/1.2 'IBM Plex Mono';letter-spacing:.1em;text-transform:uppercase;color:var(--text2,#9a9aa6)">Desvio Físico</div>
+      <div style="font:600 23px/1.1 'IBM Plex Mono';margin:12px 0 5px;color:#d6453c">−4,7%</div>
+      <div style="font:600 11px 'IBM Plex Sans';color:#d6453c">▼ Atrasado</div>
+    </div>
+
+    <!-- Indireto Plan -->
+    <div style="background:var(--panel,#1b1b20);border:1px solid var(--border,rgba(255,255,255,.09));border-radius:14px;padding:18px 20px">
+      <div style="font:500 10px/1.2 'IBM Plex Mono';letter-spacing:.1em;text-transform:uppercase;color:var(--text2,#9a9aa6)">Custo Indireto · Planejado</div>
+      <div style="font:600 23px/1.1 'IBM Plex Mono';margin:12px 0 5px">R$ 1.241.928</div>
+      <div style="font:500 11px 'IBM Plex Sans';color:var(--text2,#9a9aa6)">Acumulado até M10</div>
+    </div>
+    <!-- Indireto Real -->
+    <div style="background:var(--panel,#1b1b20);border:1px solid var(--border,rgba(255,255,255,.09));border-radius:14px;padding:18px 20px">
+      <div style="font:500 10px/1.2 'IBM Plex Mono';letter-spacing:.1em;text-transform:uppercase;color:var(--text2,#9a9aa6)">Custo Indireto · Realizado</div>
+      <div style="font:600 23px/1.1 'IBM Plex Mono';margin:12px 0 5px">R$ 1.198.500</div>
+      <div style="font:500 11px 'IBM Plex Sans';color:var(--text2,#9a9aa6)">96,5% do planejado</div>
+    </div>
+    <!-- Saldo Indireto -->
+    <div style="background:var(--panel,#1b1b20);border:1px solid var(--border,rgba(255,255,255,.09));border-radius:14px;padding:18px 20px">
+      <div style="font:500 10px/1.2 'IBM Plex Mono';letter-spacing:.1em;text-transform:uppercase;color:var(--text2,#9a9aa6)">Saldo Custo Indireto</div>
+      <div style="font:600 23px/1.1 'IBM Plex Mono';margin:12px 0 5px;color:#3f9e6c">+R$ 43.428</div>
+      <div style="font:600 11px 'IBM Plex Sans';color:#3f9e6c">✓ Economia</div>
+    </div>
+    <!-- Físico Realizado -->
+    <div style="background:var(--panel,#1b1b20);border:1px solid var(--border,rgba(255,255,255,.09));border-radius:14px;padding:18px 20px">
+      <div style="font:500 10px/1.2 'IBM Plex Mono';letter-spacing:.1em;text-transform:uppercase;color:var(--text2,#9a9aa6)">Avanço Físico · Realizado</div>
+      <div style="font:600 23px/1.1 'IBM Plex Mono';margin:12px 0 5px;color:#4a8fe0">42,8%</div>
+      <div style="font:500 11px 'IBM Plex Sans';color:var(--text2,#9a9aa6)">Executado até agora</div>
+    </div>
+    <!-- Previsão conclusão -->
+    <div style="background:var(--panel,#1b1b20);border:1px solid var(--border,rgba(255,255,255,.09));border-radius:14px;padding:18px 20px">
+      <div style="font:500 10px/1.2 'IBM Plex Mono';letter-spacing:.1em;text-transform:uppercase;color:var(--text2,#9a9aa6)">Previsão de Conclusão</div>
+      <div style="font:600 23px/1.1 'IBM Plex Mono';margin:12px 0 5px">mai. 2028</div>
+      <div style="font:600 11px 'IBM Plex Sans';color:#d6453c">▲ 58 dias de atraso</div>
+    </div>
+  </div>
+
+  <!-- CURVA S -->
+  <div style="background:var(--panel,#1b1b20);border:1px solid var(--border,rgba(255,255,255,.09));border-radius:16px;padding:22px 24px;margin-top:14px">
+    <div style="display:flex;align-items:center;gap:9px;margin-bottom:6px">
+      <span style="width:6px;height:6px;border-radius:50%;background:var(--accent,#e0a93b)"></span>
+      <span style="font:600 11px/1 'IBM Plex Mono';letter-spacing:.12em;text-transform:uppercase;color:var(--text2,#9a9aa6)">Curva S · Acompanhamento Físico-Financeiro</span>
+    </div>
+    <div style="display:flex;gap:20px;flex-wrap:wrap;margin:12px 0 4px">
+      <span style="display:flex;align-items:center;gap:7px;font:500 11px 'IBM Plex Sans';color:var(--text2,#9a9aa6)"><span style="width:16px;height:0;border-top:2px solid var(--accent,#e0a93b)"></span>Financeiro realizado</span>
+      <span style="display:flex;align-items:center;gap:7px;font:500 11px 'IBM Plex Sans';color:var(--text2,#9a9aa6)"><span style="width:16px;height:0;border-top:2px dashed #9a8a5f"></span>Financeiro planejado</span>
+      <span style="display:flex;align-items:center;gap:7px;font:500 11px 'IBM Plex Sans';color:var(--text2,#9a9aa6)"><span style="width:16px;height:0;border-top:2px solid #4a8fe0"></span>Físico realizado</span>
+      <span style="display:flex;align-items:center;gap:7px;font:500 11px 'IBM Plex Sans';color:var(--text2,#9a9aa6)"><span style="width:16px;height:0;border-top:2px dashed #6f86c9"></span>Físico planejado</span>
+    </div>
+    <div style="height:380px;position:relative;margin-top:8px"><canvas ref="{{ canvasRef }}"></canvas></div>
+  </div>
+
+  <!-- EVM -->
+  <div style="background:var(--panel,#1b1b20);border:1px solid var(--border,rgba(255,255,255,.09));border-radius:16px;padding:22px 24px;margin-top:14px">
+    <div style="display:flex;align-items:center;gap:9px;margin-bottom:18px">
+      <span style="width:6px;height:6px;border-radius:50%;background:var(--accent,#e0a93b)"></span>
+      <span style="font:600 11px/1 'IBM Plex Mono';letter-spacing:.12em;text-transform:uppercase;color:var(--text2,#9a9aa6)">Análise EVM · Valor Agregado</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:12px">
+      <div style="background:var(--panel2,#232329);border-radius:12px;padding:16px 18px">
+        <div style="font:500 10px 'IBM Plex Mono';letter-spacing:.08em;color:var(--text2,#9a9aa6)">BCWS · Planejado</div>
+        <div style="font:600 20px/1.1 'IBM Plex Mono';margin:9px 0 4px">R$ 1.626.855</div>
+        <div style="font:500 10px 'IBM Plex Sans';color:var(--text3,#63636e)">Valor que deveria ter sido agregado</div>
+      </div>
+      <div style="background:var(--panel2,#232329);border-radius:12px;padding:16px 18px">
+        <div style="font:500 10px 'IBM Plex Mono';letter-spacing:.08em;color:var(--text2,#9a9aa6)">BCWP · Valor Agregado</div>
+        <div style="font:600 20px/1.1 'IBM Plex Mono';margin:9px 0 4px">R$ 1.465.882</div>
+        <div style="font:500 10px 'IBM Plex Sans';color:var(--text3,#63636e)">% físico realizado × orçamento</div>
+      </div>
+      <div style="background:var(--panel2,#232329);border-radius:12px;padding:16px 18px">
+        <div style="font:500 10px 'IBM Plex Mono';letter-spacing:.08em;color:var(--text2,#9a9aa6)">ACWP · Custo Real</div>
+        <div style="font:600 20px/1.1 'IBM Plex Mono';margin:9px 0 4px">R$ 1.802.300</div>
+        <div style="font:500 10px 'IBM Plex Sans';color:var(--text3,#63636e)">Custo direto efetivamente gasto</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">
+      <div style="background:var(--panel2,#232329);border-radius:12px;padding:16px 18px;border-top:2px solid #d6453c">
+        <div style="font:500 10px 'IBM Plex Mono';letter-spacing:.08em;color:var(--text2,#9a9aa6)">CPI · Custo</div>
+        <div style="font:600 26px/1.1 'IBM Plex Mono';margin:8px 0 4px;color:#d6453c">0,81</div>
+        <div style="font:600 10px 'IBM Plex Sans';color:#d6453c">▲ Acima do orçamento</div>
+      </div>
+      <div style="background:var(--panel2,#232329);border-radius:12px;padding:16px 18px;border-top:2px solid #d6453c">
+        <div style="font:500 10px 'IBM Plex Mono';letter-spacing:.08em;color:var(--text2,#9a9aa6)">SPI · Prazo</div>
+        <div style="font:600 26px/1.1 'IBM Plex Mono';margin:8px 0 4px;color:#d6453c">0,90</div>
+        <div style="font:600 10px 'IBM Plex Sans';color:#d6453c">▼ Atrasado</div>
+      </div>
+      <div style="background:var(--panel2,#232329);border-radius:12px;padding:16px 18px">
+        <div style="font:500 10px 'IBM Plex Mono';letter-spacing:.08em;color:var(--text2,#9a9aa6)">CV · Variância de Custo</div>
+        <div style="font:600 19px/1.1 'IBM Plex Mono';margin:9px 0 4px;color:#d6453c">−R$ 336.418</div>
+        <div style="font:500 10px 'IBM Plex Sans';color:var(--text3,#63636e)">BCWP − ACWP</div>
+      </div>
+      <div style="background:var(--panel2,#232329);border-radius:12px;padding:16px 18px">
+        <div style="font:500 10px 'IBM Plex Mono';letter-spacing:.08em;color:var(--text2,#9a9aa6)">SV · Variância de Prazo</div>
+        <div style="font:600 19px/1.1 'IBM Plex Mono';margin:9px 0 4px;color:#d6453c">−R$ 160.973</div>
+        <div style="font:500 10px 'IBM Plex Sans';color:var(--text3,#63636e)">BCWP − BCWS</div>
+      </div>
+      <div style="background:var(--panel2,#232329);border-radius:12px;padding:16px 18px">
+        <div style="font:500 10px 'IBM Plex Mono';letter-spacing:.08em;color:var(--text2,#9a9aa6)">EAC · Projeção Direto</div>
+        <div style="font:600 19px/1.1 'IBM Plex Mono';margin:9px 0 4px;color:#d6453c">R$ 4.228.343</div>
+        <div style="font:500 10px 'IBM Plex Sans';color:var(--text3,#63636e)">Orçamento ÷ CPI</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HEATMAP + ATIVIDADES -->
+  <div style="display:grid;grid-template-columns:1.15fr 1fr;gap:14px;margin-top:14px">
+
+    <!-- Heatmap -->
+    <div style="background:var(--panel,#1b1b20);border:1px solid var(--border,rgba(255,255,255,.09));border-radius:16px;padding:22px 24px;min-width:0">
+      <div style="display:flex;align-items:center;gap:9px;margin-bottom:16px">
+        <span style="width:6px;height:6px;border-radius:50%;background:var(--accent,#e0a93b)"></span>
+        <span style="font:600 11px/1 'IBM Plex Mono';letter-spacing:.12em;text-transform:uppercase;color:var(--text2,#9a9aa6)">Mapa de Avanço por Pavimento</span>
+      </div>
+      <div style="overflow-x:auto">
+        <div style="display:grid;grid-template-columns:96px repeat(5,1fr);gap:5px;min-width:440px">
+          <div></div>
+          <div style="font:500 9px/1.2 'IBM Plex Mono';color:var(--text3,#63636e);text-align:center;padding-bottom:4px">Estrut.</div>
+          <div style="font:500 9px/1.2 'IBM Plex Mono';color:var(--text3,#63636e);text-align:center;padding-bottom:4px">Alven.</div>
+          <div style="font:500 9px/1.2 'IBM Plex Mono';color:var(--text3,#63636e);text-align:center;padding-bottom:4px">Instal.</div>
+          <div style="font:500 9px/1.2 'IBM Plex Mono';color:var(--text3,#63636e);text-align:center;padding-bottom:4px">Revest.</div>
+          <div style="font:500 9px/1.2 'IBM Plex Mono';color:var(--text3,#63636e);text-align:center;padding-bottom:4px">Acab.</div>
+          <sc-for list="{{ heat }}" as="row" hint-placeholder-count="11">
+            <div style="font:500 11px 'IBM Plex Sans';color:var(--text2,#9a9aa6);display:flex;align-items:center">{{ row.floor }}</div>
+            <sc-for list="{{ row.cells }}" as="c" hint-placeholder-count="5">
+              <div style="height:30px;border-radius:5px;display:flex;align-items:center;justify-content:center;font:600 10px 'IBM Plex Mono';background:{{ c.bg }};color:{{ c.tc }}">{{ c.label }}</div>
+            </sc-for>
+          </sc-for>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:14px;font:500 10px 'IBM Plex Mono';color:var(--text3,#63636e)">
+        <span>0%</span>
+        <span style="flex:1;max-width:140px;height:8px;border-radius:4px;background:linear-gradient(90deg,var(--track,#2a2a31),rgba(63,158,108,.55),#3f9e6c)"></span>
+        <span>100%</span>
+      </div>
+    </div>
+
+    <!-- Atividades -->
+    <div style="background:var(--panel,#1b1b20);border:1px solid var(--border,rgba(255,255,255,.09));border-radius:16px;padding:22px 24px;min-width:0">
+      <div style="display:flex;align-items:center;gap:9px;margin-bottom:18px">
+        <span style="width:6px;height:6px;border-radius:50%;background:var(--accent,#e0a93b)"></span>
+        <span style="font:600 11px/1 'IBM Plex Mono';letter-spacing:.12em;text-transform:uppercase;color:var(--text2,#9a9aa6)">Físico por Atividade · Plan × Real</span>
+      </div>
+      <sc-for list="{{ acts }}" as="a" hint-placeholder-count="7">
+        <div style="margin-bottom:15px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+            <span style="font:600 12px 'IBM Plex Sans'">{{ a.nome }}</span>
+            <span style="font:500 11px 'IBM Plex Mono';color:var(--text2,#9a9aa6)">R {{ a.realStr }} · P {{ a.planStr }} <span style="font-weight:600;color:{{ a.barColor }}">{{ a.deltaStr }}</span></span>
+          </div>
+          <div style="position:relative;height:9px;background:var(--track,#2a2a31);border-radius:5px;overflow:hidden">
+            <div style="position:absolute;left:0;top:0;height:100%;border-radius:5px;background:rgba(111,134,201,.4);width:{{ a.planW }}"></div>
+            <div style="position:absolute;left:0;top:0;height:100%;border-radius:5px;background:{{ a.barColor }};width:{{ a.realW }}"></div>
+          </div>
+        </div>
+      </sc-for>
+      <div style="display:flex;gap:16px;margin-top:16px;font:500 10px 'IBM Plex Sans';color:var(--text3,#63636e)">
+        <span style="display:flex;align-items:center;gap:6px"><span style="width:11px;height:9px;border-radius:2px;background:rgba(111,134,201,.4)"></span>Planejado</span>
+        <span style="display:flex;align-items:center;gap:6px"><span style="width:11px;height:9px;border-radius:2px;background:#3f9e6c"></span>Realizado (no ritmo)</span>
+        <span style="display:flex;align-items:center;gap:6px"><span style="width:11px;height:9px;border-radius:2px;background:#d6453c"></span>Atrasado</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280,&quot;height&quot;:1720},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;dark&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;light&quot;],&quot;tsType&quot;:&quot;'dark'|'light'&quot;,&quot;section&quot;:&quot;Aparência&quot;},&quot;accent&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#3f9e6c&quot;,&quot;options&quot;:[&quot;#e0a93b&quot;,&quot;#4a8fe0&quot;,&quot;#3f9e6c&quot;,&quot;#c96a8b&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Aparência&quot;}}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { theme: props.theme || 'dark', accent: props.accent || '#e0a93b' };
+    this.rootRef = React.createRef();
+    this.canvasRef = React.createRef();
+    this.chart = null;
+  }
+
+  palettes() {
+    return {
+      dark: { bg:'#131316', panel:'#1b1b20', panel2:'#232329', border:'rgba(255,255,255,0.09)', border2:'rgba(255,255,255,0.14)', text:'#eeeef2', text2:'#9a9aa6', text3:'#63636e', grid:'rgba(255,255,255,0.06)', track:'#2a2a31' },
+      light: { bg:'#f4f4f1', panel:'#ffffff', panel2:'#f1f1ed', border:'rgba(20,20,25,0.09)', border2:'rgba(20,20,25,0.16)', text:'#1a1a1f', text2:'#5b5b66', text3:'#8c8c96', grid:'rgba(20,20,30,0.07)', track:'#e8e8e3' }
+    };
+  }
+  colors() { return this.palettes()[this.state.theme]; }
+
+  applyVars() {
+    const r = this.rootRef.current;
+    if (!r) return;
+    const c = this.colors();
+    Object.entries(c).forEach(([k, v]) => r.style.setProperty('--' + k, v));
+    r.style.setProperty('--accent', this.state.accent);
+    r.style.setProperty('color-scheme', this.state.theme);
+    if (typeof document !== 'undefined') document.body.style.background = c.bg;
+  }
+
+  chartData() {
+    const labels = ['jul/26','ago/26','set/26','out/26','nov/26','dez/26','jan/27','fev/27','mar/27','abr/27','mai/27','jun/27','jul/27','ago/27','set/27','out/27','nov/27','dez/27','jan/28','fev/28'];
+    const fisPlan = [1.5,4,8,13,19,26,33,40,44,47.5,53,60,67,74,81,87,92,96,98.5,100];
+    const fisReal = [1.2,3.2,6.5,11,16.5,23,29.5,35.5,39.5,42.8,null,null,null,null,null,null,null,null,null,null];
+    const finPlan = [90,230,430,720,1080,1500,1950,2380,2700,2954,3350,3800,4250,4680,5080,5420,5680,5850,5900,5909];
+    const finReal = [100,250,470,780,1170,1620,2090,2530,2810,3001,null,null,null,null,null,null,null,null,null,null];
+    return { labels, fisPlan, fisReal, finPlan, finReal };
+  }
+
+  buildChart() {
+    const canvas = this.canvasRef.current;
+    if (!canvas || !window.Chart) return;
+    const c = this.colors();
+    const accent = this.state.accent;
+    const { labels, fisPlan, fisReal, finPlan, finReal } = this.chartData();
+    const ctx = canvas.getContext('2d');
+    const grad = ctx.createLinearGradient(0, 0, 0, 360);
+    grad.addColorStop(0, this.hexA(accent, 0.20));
+    grad.addColorStop(1, this.hexA(accent, 0));
+
+    this.chart = new window.Chart(canvas, {
+      type: 'line',
+      data: { labels, datasets: [
+        { label: 'Financeiro planejado', data: finPlan, yAxisID: 'yFin', borderColor: '#9a8a5f', borderDash: [5,4], borderWidth: 1.5, pointRadius: 0, tension: 0.35 },
+        { label: 'Financeiro realizado', data: finReal, yAxisID: 'yFin', borderColor: accent, backgroundColor: grad, borderWidth: 2.5, fill: true, tension: 0.35, pointRadius: (x) => x.dataIndex === 9 ? 4 : 0, pointBackgroundColor: accent, pointBorderColor: c.panel, pointBorderWidth: 2 },
+        { label: 'Físico planejado', data: fisPlan, yAxisID: 'yFis', borderColor: '#6f86c9', borderDash: [5,4], borderWidth: 1.5, pointRadius: 0, tension: 0.35 },
+        { label: 'Físico realizado', data: fisReal, yAxisID: 'yFis', borderColor: '#4a8fe0', borderWidth: 2.5, tension: 0.35, pointRadius: (x) => x.dataIndex === 9 ? 4 : 0, pointBackgroundColor: '#4a8fe0', pointBorderColor: c.panel, pointBorderWidth: 2 }
+      ]},
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: this.state.theme === 'dark' ? 'rgba(20,20,24,0.96)' : 'rgba(255,255,255,0.98)',
+            titleColor: c.text, bodyColor: c.text2, borderColor: c.border2, borderWidth: 1, padding: 12, cornerRadius: 8, usePointStyle: true,
+            callbacks: { label: (x) => { const v = x.parsed.y; if (v == null) return null; return x.dataset.yAxisID === 'yFin' ? `${x.dataset.label}: R$ ${v.toFixed(0)}k` : `${x.dataset.label}: ${v.toFixed(1)}%`; } }
+          }
+        },
+        scales: {
+          yFin: { position: 'left', title: { display: true, text: 'Financeiro (R$ mil)', color: c.text3, font: { size: 10, family: "'IBM Plex Mono'" } }, ticks: { color: c.text2, font: { size: 10, family: "'IBM Plex Mono'" }, callback: (v) => `${v}k` }, grid: { color: c.grid } },
+          yFis: { position: 'right', min: 0, max: 100, title: { display: true, text: 'Físico (%)', color: c.text3, font: { size: 10, family: "'IBM Plex Mono'" } }, ticks: { color: c.text2, font: { size: 10, family: "'IBM Plex Mono'" }, callback: (v) => `${v}%` }, grid: { drawOnChartArea: false } },
+          x: { ticks: { color: c.text2, font: { size: 9, family: "'IBM Plex Mono'" }, maxRotation: 45, minRotation: 45 }, grid: { color: c.grid } }
+        }
+      }
+    });
+  }
+
+  hexA(hex, a) {
+    const h = hex.replace('#', '');
+    const n = h.length === 3 ? h.split('').map(x => x + x).join('') : h;
+    const r = parseInt(n.slice(0,2),16), g = parseInt(n.slice(2,4),16), b = parseInt(n.slice(4,6),16);
+    return `rgba(${r},${g},${b},${a})`;
+  }
+
+  tryChart() {
+    if (window.Chart) { this.buildChart(); }
+    else { this._t = setTimeout(() => this.tryChart(), 120); }
+  }
+
+  rebuild() {
+    if (this.chart) { this.chart.destroy(); this.chart = null; }
+    if (window.Chart) this.buildChart();
+  }
+
+  componentDidMount() { this.applyVars(); this.tryChart(); }
+
+  componentDidUpdate(prevProps, prevState) {
+    // React rewrites the root's literal style attribute on every render, wiping
+    // the CSS custom properties. Re-apply them unconditionally after each render.
+    this.applyVars();
+    if (this.props.theme && this.props.theme !== prevProps.theme && this.props.theme !== this.state.theme) {
+      this.setState({ theme: this.props.theme }); return;
+    }
+    if (this.props.accent && this.props.accent !== prevProps.accent && this.props.accent !== this.state.accent) {
+      this.setState({ accent: this.props.accent }); return;
+    }
+    if (prevState.theme !== this.state.theme || prevState.accent !== this.state.accent) {
+      this.rebuild();
+    }
+  }
+
+  componentWillUnmount() { if (this._t) clearTimeout(this._t); if (this.chart) this.chart.destroy(); }
+
+  renderVals() {
+    const active = { padding: '6px 15px', borderRadius: '7px', border: 'none', cursor: 'pointer', font: "600 12px 'IBM Plex Sans'", background: 'var(--text)', color: 'var(--bg)' };
+    const inactive = { padding: '6px 15px', borderRadius: '7px', border: 'none', cursor: 'pointer', font: "600 12px 'IBM Plex Sans'", background: 'transparent', color: 'var(--text2)' };
+    const isDark = this.state.theme === 'dark';
+
+    const heatColor = (v) => v <= 0 ? 'var(--track,#2a2a31)' : `rgba(63,158,108,${(0.16 + 0.80 * v / 100).toFixed(3)})`;
+    const heatText = (v) => v >= 55 ? '#f5fbf7' : (v <= 0 ? 'var(--text3,#63636e)' : 'var(--text2,#9a9aa6)');
+    const cols = 5;
+    const rawHeat = [
+      ['Cobertura', 20, 0, 0, 0, 0],
+      ['8º pav', 55, 20, 5, 0, 0],
+      ['7º pav', 75, 40, 15, 0, 0],
+      ['6º pav', 90, 55, 30, 5, 0],
+      ['5º pav', 100, 70, 45, 15, 0],
+      ['4º pav', 100, 85, 60, 30, 10],
+      ['3º pav', 100, 95, 75, 50, 25],
+      ['2º pav', 100, 100, 85, 65, 40],
+      ['1º pav', 100, 100, 95, 80, 55],
+      ['Térreo', 100, 100, 100, 90, 70],
+      ['Subsolo', 100, 100, 100, 95, 80]
+    ];
+    const heat = rawHeat.map(r => ({
+      floor: r[0],
+      cells: Array.from({ length: cols }, (_, i) => {
+        const v = r[i + 1];
+        return { v, label: v > 0 ? v + '%' : '—', bg: heatColor(v), tc: heatText(v) };
+      })
+    }));
+
+    const rawA = [['Fundação',100,100],['Estrutura',85,78],['Alvenaria',60,52],['Instalações',40,30],['Revestimento',25,18],['Esquadrias',15,8],['Acabamento',5,2]];
+    const acts = rawA.map(a => {
+      const d = a[2] - a[1];
+      return { nome: a[0], planStr: a[1] + '%', realStr: a[2] + '%', planW: a[1] + '%', realW: a[2] + '%', delta: d, deltaStr: (d >= 0 ? '+' : '') + d + '%', barColor: d >= 0 ? '#3f9e6c' : '#d6453c' };
+    });
+
+    return {
+      rootRef: this.rootRef,
+      canvasRef: this.canvasRef,
+      setDark: () => this.setState({ theme: 'dark' }),
+      setLight: () => this.setState({ theme: 'light' }),
+      darkBtn: isDark ? active : inactive,
+      lightBtn: isDark ? inactive : active,
+      heat,
+      acts
+    };
+  }
+}
+</script>
+</body>
+</html>

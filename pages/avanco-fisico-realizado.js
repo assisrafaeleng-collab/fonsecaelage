@@ -1,5 +1,5 @@
 // pages/avanco-fisico-realizado.js
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, Fragment } from 'react'
 import { useRouter } from 'next/router'
 
 const PAVS = ['1º','2º','3º','4º','5º','6º/Plat','Edifício']
@@ -9,6 +9,10 @@ const ANOS = [2026,2026,2026,2026,2026,2026,2027,2027,2027,2027,2027,2027,2027,2
 const fmtR = v => 'R$ ' + Math.round(v).toLocaleString('pt-BR')
 const fmtH = v => v.toFixed(1) + ' Hh'
 const fmtP = v => (v*100).toFixed(1) + '%'
+const getCompetenciaDateFromMes = mesNum => {
+  const data = new Date(Date.UTC(2026, 6 + (mesNum - 1), 1))
+  return data.toISOString().slice(0, 10)
+}
 
 const S = {
   page: { minHeight:'100vh', background:'#0f0f11', color:'#ece9e4', fontFamily:'"Segoe UI",system-ui,sans-serif', fontVariantNumeric:'tabular-nums' },
@@ -69,6 +73,115 @@ function PctInput({ value, onChange, disabled }) {
   )
 }
 
+// Memória de cálculo: lista os incrementos de um item (data + %) com lixeira
+function MemoriaCalculo({ codigo_eap, pavimento }) {
+  const [linhas, setLinhas] = useState(null)
+  const [acumulado, setAcumulado] = useState(0)
+  const [erro, setErro] = useState(null)
+  const [removendo, setRemovendo] = useState(null)
+  const [salvando, setSalvando] = useState(null)
+  const [datasEditadas, setDatasEditadas] = useState({})
+
+  const formatDateInput = (valor) => {
+    if (!valor) return ''
+    const d = new Date(valor)
+    if (Number.isNaN(d.getTime())) return ''
+    const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+    return local.toISOString().slice(0, 10)
+  }
+
+  const carregar = () => {
+    const url = `/api/avanco-fisico-historico?codigo_eap=${encodeURIComponent(codigo_eap)}&pavimento=${encodeURIComponent(pavimento)}`
+    fetch(url, { cache: 'no-store' })
+      .then(r => r.json())
+      .then(d => { setLinhas(d.data || []); setAcumulado(d.acumulado || 0) })
+      .catch(() => setErro('Erro ao carregar histórico'))
+  }
+  useEffect(() => { carregar() }, [codigo_eap, pavimento])
+
+  const excluir = async (id) => {
+    if (!confirm('Excluir este lançamento? O total do item será recalculado.')) return
+    setRemovendo(id)
+    try {
+      const res = await fetch(`/api/avanco-fisico-historico?id=${id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('erro')
+      carregar()
+    } catch { alert('Erro ao excluir lançamento') } finally { setRemovendo(null) }
+  }
+
+  const salvarData = async (id, valor) => {
+    if (!valor) {
+      alert('Selecione uma data válida antes de salvar.')
+      return
+    }
+
+    setSalvando(id)
+    try {
+      const res = await fetch(`/api/avanco-fisico-historico?id=${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data_lancamento: valor })
+      })
+      const out = await res.json()
+      if (!res.ok) throw new Error(out.error || 'Erro ao atualizar data')
+      setDatasEditadas(prev => ({ ...prev, [id]: valor }))
+      carregar()
+    } catch (e) {
+      alert('Erro ao alterar data: ' + e.message)
+    } finally {
+      setSalvando(null)
+    }
+  }
+
+  if (erro) return <div style={{padding:'8px 16px', fontSize:11, color:'#d6453c'}}>{erro}</div>
+  if (linhas === null) return <div style={{padding:'8px 16px', fontSize:11, color:'#6d675e'}}>Carregando memória de cálculo...</div>
+  if (linhas.length === 0) return <div style={{padding:'8px 16px', fontSize:11, color:'#6d675e'}}>Nenhum lançamento registrado para este item.</div>
+
+  return (
+    <div style={{background:'#141418', borderTop:'1px solid #2a2a31', padding:'10px 16px 12px'}}>
+      <div style={{fontSize:10, color:'#e6a338', letterSpacing:.5, textTransform:'uppercase', fontWeight:600, marginBottom:6}}>
+        Memória de cálculo — {linhas.length} lançamento{linhas.length>1?'s':''}
+      </div>
+      <div style={{display:'grid', gridTemplateColumns:'140px 90px 70px 78px 42px', gap:8, fontSize:9, color:'#6d675e', textTransform:'uppercase', letterSpacing:.5, marginBottom:4}}>
+        <span>Data</span><span>Semana</span><span>Avanço</span><span></span><span></span>
+      </div>
+      {linhas.map((l) => {
+        const valorData = datasEditadas[l.id] ?? formatDateInput(l.data_lancamento)
+        return (
+          <div key={l.id} style={{display:'grid', gridTemplateColumns:'140px 90px 70px 78px 42px', gap:8, fontSize:11, alignItems:'center', padding:'4px 0', borderBottom:'1px solid #1a1a20'}}>
+            <div style={{display:'flex', alignItems:'center', gap:6}}>
+              <input
+                type="date"
+                value={valorData}
+                onChange={e => setDatasEditadas(prev => ({ ...prev, [l.id]: e.target.value }))}
+                style={{background:'#1e1e24', border:'1px solid #2a2a31', color:'#ece9e4', borderRadius:6, padding:'4px 6px', fontSize:11, width:118, fontFamily:'inherit'}}
+              />
+            </div>
+            <span style={{color:'#6d675e', fontSize:10}}>Semana {l.semana_numero}</span>
+            <span style={{color:'#3fae86', fontWeight:600}}>+{parseFloat(l.percentual_realizado).toFixed(1)}%</span>
+            <button
+              onClick={() => salvarData(l.id, valorData)}
+              disabled={salvando===l.id}
+              title="Salvar data deste lançamento"
+              style={{background:'#e6a338', color:'#231803', border:0, borderRadius:6, padding:'3px 6px', fontSize:10, cursor:'pointer', opacity:salvando===l.id?0.6:1, fontWeight:700}}
+            >{salvando===l.id ? '...' : 'Salvar'}</button>
+            <button
+              onClick={() => excluir(l.id)}
+              disabled={removendo===l.id}
+              title="Excluir este lançamento"
+              style={{background:'transparent', border:'1px solid #3a2a2a', color:'#d6453c', borderRadius:6, padding:'2px 5px', fontSize:12, cursor:'pointer', opacity:removendo===l.id?0.5:1}}
+            >🗑</button>
+          </div>
+        )
+      })}
+      <div style={{display:'flex', justifyContent:'flex-end', gap:8, marginTop:8, fontSize:12}}>
+        <span style={{color:'#6d675e'}}>Total acumulado:</span>
+        <span style={{color:'#e6a338', fontWeight:700}}>{acumulado.toFixed(1)}%</span>
+      </div>
+    </div>
+  )
+}
+
 export default function AvancoFisicoRealizado() {
   const router = useRouter()
   const [dados, setDados] = useState([])
@@ -76,34 +189,47 @@ export default function AvancoFisicoRealizado() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [mes, setMes] = useState(1)
+  const [competenciaManual, setCompetenciaManual] = useState(getCompetenciaDateFromMes(1))
   const [axis, setAxis] = useState('grupo')
   const [pavF, setPavF] = useState('__ALL__')
   const [q, setQ] = useState('')
   const [open, setOpen] = useState({})
-  const [pcts, setPcts] = useState({}) // key: `${eap}|${pav}` -> pct
+  const [pcts, setPcts] = useState({}) // key: `${eap}|${pav}` -> ACUMULADO (soma do historico)
+  const [incrementos, setIncrementos] = useState({}) // key -> incremento sendo digitado agora
   const [existentes, setExistentes] = useState({}) // lançamentos já salvos
+  const [memAberta, setMemAberta] = useState(null) // key do item com memória de cálculo aberta
 
   useEffect(() => {
-    fetch('/dados.json').then(r => r.json()).then(d => { setDados(d); setLoading(false) }).catch(() => setLoading(false))
+    fetch('/api/orcamento-itens?fisico=1', { cache: 'no-store' }).then(r => r.json()).then(d => { setDados(Array.isArray(d) ? d : []); setLoading(false) }).catch(() => setLoading(false))
   }, [])
 
-  // Buscar lançamentos existentes quando mês muda
+  // Carrega os acumulados (soma do historico) de todos os itens
+  const carregarResumo = () => {
+    fetch('/api/avanco-fisico-resumo?obra_id=flats_pampulha', { cache: 'no-store' })
+      .then(r => r.json())
+      .then(d => setPcts(d.acumulados || {}))
+      .catch(() => {})
+  }
+
+  // Buscar lançamentos existentes (datas) quando mês muda + acumulados
+  useEffect(() => {
+    setCompetenciaManual(getCompetenciaDateFromMes(mes))
+  }, [mes])
+
   useEffect(() => {
     if (!mes) return
     fetch(`/api/avanco-fisico-realizado?mes=${mes}&obra_id=flats_pampulha`)
       .then(r => r.json())
       .then(d => {
         const map = {}
-        const pctsMap = {}
         ;(d.data || d || []).forEach(item => {
           const key = `${item.codigo_eap}|${item.pavimento}`
           map[key] = item
-          pctsMap[key] = parseFloat(item.percentual_realizado || 0)
         })
         setExistentes(map)
-        setPcts(pctsMap)
       })
       .catch(() => {})
+    carregarResumo()
   }, [mes])
 
   const totHh = useMemo(() => dados.reduce((s,r) => s+r.h, 0) || 1, [dados])
@@ -157,16 +283,22 @@ export default function AvancoFisicoRealizado() {
   }, [visible, pcts])
 
   const setPct = (eap, pav, val) => {
-    setPcts(p => ({...p, [`${eap}|${pav}`]: val}))
+    const key = `${eap}|${pav}`
+    const acum = pcts[key] || 0
+    if (acum + val > 100) {
+      alert(`Esse incremento passaria de 100%.\nAcumulado atual: ${acum.toFixed(1)}% + ${val}% = ${(acum+val).toFixed(1)}%.\nAjuste o valor.`)
+      return
+    }
+    setIncrementos(p => ({...p, [key]: val}))
     setSaved(false)
   }
 
   const handleSave = async () => {
     setSaving(true)
     try {
-      const competencia = `2026-${String(6+mes).padStart(2,'0')}-01`
+      const competencia = competenciaManual || getCompetenciaDateFromMes(mes)
       const lancamentos = visible
-        .filter(r => (pcts[`${r.i}|${r.p}`] || 0) >= 0)
+        .filter(r => (incrementos[`${r.i}|${r.p}`] || 0) > 0)
         .map(r => ({
           obra_id: 'flats_pampulha',
           competencia,
@@ -175,20 +307,32 @@ export default function AvancoFisicoRealizado() {
           atividade_nome: r.d,
           pavimento: r.p,
           grupo_num: r.g,
-          percentual_realizado: pcts[`${r.i}|${r.p}`] || 0,
+          incremento: incrementos[`${r.i}|${r.p}`] || 0,
           hh_planejado: r.h,
-          hh_realizado: r.h * ((pcts[`${r.i}|${r.p}`] || 0) / 100),
           custo_planejado: r.c,
-          observacao: '',
         }))
+
+      if (lancamentos.length === 0) {
+        alert('Digite ao menos um incremento de avanço antes de salvar.')
+        setSaving(false)
+        return
+      }
 
       const res = await fetch('/api/avanco-fisico-realizado', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mes, lancamentos })
       })
+      const out = await res.json()
+      if (!res.ok) throw new Error(out.error || 'Erro ao salvar')
 
-      if (!res.ok) throw new Error('Erro ao salvar')
+      if (out.rejeitados && out.rejeitados.length > 0) {
+        alert('Alguns itens não foram salvos por passar de 100%:\n' +
+          out.rejeitados.map(x => `${x.codigo_eap} (${x.motivo})`).join('\n'))
+      }
+
+      setIncrementos({})   // limpa os campos de incremento
+      carregarResumo()     // atualiza os acumulados
       setSaved(true)
     } catch(e) {
       alert('Erro ao salvar: ' + e.message)
@@ -246,6 +390,15 @@ export default function AvancoFisicoRealizado() {
                 <option key={i+1} value={i+1}>M{i+1} — {NOMES_MESES[i]}/{ANOS[i]}</option>
               ))}
             </select>
+          </div>
+          <div>
+            <label style={S.lbl}>Data da competência</label>
+            <input
+              type="date"
+              value={competenciaManual}
+              onChange={e => setCompetenciaManual(e.target.value || getCompetenciaDateFromMes(mes))}
+              style={{...S.input, minWidth:170}}
+            />
           </div>
           <div style={{flex:1, minWidth:150}}>
             <label style={S.lbl}>Buscar</label>
@@ -329,25 +482,43 @@ export default function AvancoFisicoRealizado() {
                         </div>
                         {/* Header */}
                         <div style={{display:'grid', gridTemplateColumns:'50px 1fr 60px 80px 90px 80px', gap:6, padding:'5px 16px', fontSize:9, color:'#6d675e', textTransform:'uppercase', letterSpacing:.5, borderBottom:'1px solid #1a1a20'}}>
-                          <span>EAP</span><span>Descrição</span><span>Período</span><span>Hh Plan</span><span>% Concluído</span><span>Hh Real</span>
+                          <span>EAP</span><span>Descrição</span><span>Período</span><span>Hh Plan</span><span>+ Avanço</span><span>Hh Real</span>
                         </div>
                         {[...sub.rows].sort((a,b) => a.i.localeCompare(b.i,undefined,{numeric:true})).map((r,ri) => {
                           const key = `${r.i}|${r.p}`
-                          const pct = pcts[key] || 0
+                          const pct = pcts[key] || 0            // acumulado (soma do historico)
+                          const inc = incrementos[key] || 0     // incremento sendo digitado
                           const hhReal = r.h * (pct/100)
                           const ativo = r.a <= mes && r.b >= mes
+                          const concluido = pct >= 100
                           const ex = existentes[key]
                           const dataLanc = ex && ex.created_at ? new Date(ex.created_at).toLocaleDateString("pt-BR") : null
+                          const memKey = key
+                          const memAbertaAqui = memAberta === memKey
                           return (
-                            <div key={`${r.i}-${ri}`} style={{display:'grid', gridTemplateColumns:'50px 1fr 60px 80px 90px 80px', gap:6, padding:'6px 16px', fontSize:11, alignItems:'center', background:ri%2===0?'rgba(255,255,255,0.01)':'transparent', borderBottom:'1px solid #0f0f11'}}>
+                            <Fragment key={`${r.i}-${ri}`}>
+                            <div style={{display:'grid', gridTemplateColumns:'50px 1fr 60px 80px 90px 80px', gap:6, padding:'6px 16px', fontSize:11, alignItems:'center', background:ri%2===0?'rgba(255,255,255,0.01)':'transparent', borderBottom:'1px solid #0f0f11'}}>
                               <span style={{color:'#6d675e', fontFamily:'monospace', fontSize:10}}>{r.i}</span>
-                              <span style={{color: ativo?'#ece9e4':'#a09a90'}}>{r.d}</span>
+                              <span
+                                onClick={() => setMemAberta(memAbertaAqui ? null : memKey)}
+                                title="Clique para ver a memória de cálculo"
+                                style={{color: ativo?'#ece9e4':'#a09a90', cursor:'pointer', display:'flex', alignItems:'center', gap:6}}
+                              >
+                                <span style={{color:'#6d675e', fontSize:9}}>{memAbertaAqui ? '▾' : '▸'}</span>
+                                {r.d}
+                              </span>
                               <span style={{color: ativo?'#e6a338':'#6d675e', fontSize:10}}>M{String(r.a).padStart(2,'0')}–M{String(r.b).padStart(2,'0')}</span>
                               <span style={{color:'#6d675e', textAlign:'right'}}>{fmtH(r.h)}</span>
                               <div>
-                                <PctInput value={pct} onChange={v => setPct(r.i, r.p, v)} disabled={!ativo && pct===0} />
-                                {dataLanc && <div style={{fontSize:8, color:'#6d675e', marginTop:2}}>{'\u2705 ' + dataLanc}</div>}
-                                {pct > 0 && (
+                                <div style={{fontSize:10, color: concluido?'#3fae86':'#a09a90', marginBottom:3, fontWeight:600}}>
+                                  Acum: {pct.toFixed(1)}%
+                                </div>
+                                {concluido ? (
+                                  <div style={{fontSize:10, color:'#3fae86'}}>✅ concluído</div>
+                                ) : (
+                                  <PctInput value={inc} onChange={v => setPct(r.i, r.p, v)} disabled={!ativo} />
+                                )}
+                                {pct > 0 && pct < 100 && (
                                   <div style={{height:3, background:'#1e1e24', borderRadius:2, marginTop:3, overflow:'hidden'}}>
                                     <div style={{height:'100%', width:`${pct}%`, background:'#4D9B6A', borderRadius:2}} />
                                   </div>
@@ -355,6 +526,10 @@ export default function AvancoFisicoRealizado() {
                               </div>
                               <span style={{color: hhReal>0?'#3fae86':'#444', textAlign:'right', fontWeight:hhReal>0?600:400}}>{hhReal>0?fmtH(hhReal):'—'}</span>
                             </div>
+                            {memAbertaAqui && (
+                              <MemoriaCalculo codigo_eap={r.i} pavimento={r.p} />
+                            )}
+                            </Fragment>
                           )
                         })}
                         <div style={{display:'flex', justifyContent:'flex-end', gap:20, padding:'8px 16px', borderTop:'1px solid #2a2a31', fontSize:11, color:'#6d675e'}}>

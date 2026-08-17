@@ -148,7 +148,7 @@ export default function Home() {
             <div className="obra-eye">Av. Coronel José Dias Bicalho, 635 · São José · Belo Horizonte</div>
             <div className="obra-nome">Flats Pampulha</div>
             <div className="obra-info">
-              Orçamento: R\$ 5.904.213,83 · Prazo: 20 meses · Jul/2026 a Fev/2028 ·
+              Orçamento: R$ 6.042.209,73 · Prazo: 20 meses · Jul/2026 a Fev/2028 ·
               {mesAtual === 20 ? ' Período completo' : ` Até M${mesAtual}`}
             </div>
           </div>

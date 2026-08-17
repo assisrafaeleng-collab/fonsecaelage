@@ -49,7 +49,8 @@ export default function CustosIndiretosplanejados() {
       acumulado: c.valor_acumulado,
       totalProjeto: c.valor_total_projeto,
       valorNoMes: c.valor_no_mes,
-      mes_desembolso: c.mes_desembolso
+      mes_desembolso: c.mes_desembolso,
+      cod_eap: c.cod_eap
     };
   });
 
@@ -244,7 +245,16 @@ export default function CustosIndiretosplanejados() {
                 {filtradas.map(function(c, i) {
                   return (
                     <tr key={i}>
-                      <td className="cat-name">{c.categoria}</td>
+                      <td className="cat-name">
+                        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
+                          {c.cod_eap ? (
+                            <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#6d675e', marginRight: '8px', minWidth: '52px' }}>
+                              {c.cod_eap}
+                            </span>
+                          ) : null}
+                          <span>{c.categoria}</span>
+                        </div>
+                      </td>
                       <td className="num val-projeto">{fmt(c.totalProjeto)}</td>
                       <td className="num val-mes">{c.valorNoMes > 0 ? fmt(c.valorNoMes) : '\u2014'}</td>
                       <td className="num val-acum">{fmt(c.acumulado)}</td>
