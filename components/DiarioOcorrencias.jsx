@@ -2,7 +2,7 @@
 // Card colapsável no final do dashboard: lista as ocorrências mais recentes
 // da obra e permite registrar uma nova (protegido pela mesma senha do app).
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 const SENHA_CORRETA = 'fonseca2025'
 
@@ -99,10 +99,31 @@ function ModalSenha({ onConfirmar, onClose }) {
   )
 }
 
-function FormOcorrencia({ onSaved, onCancelar }) {
-  const [form, setForm] = useState(blank())
+function FormOcorrencia({ onSaved, onCancelar, initialData = null }) {
+  const [form, setForm] = useState(() => {
+    if (initialData) {
+      return {
+        ...blank(),
+        ...initialData,
+        dias_atraso_estimado: initialData.dias_atraso_estimado ?? '',
+      }
+    }
+    return blank()
+  })
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
+
+  useEffect(() => {
+    if (initialData) {
+      setForm({
+        ...blank(),
+        ...initialData,
+        dias_atraso_estimado: initialData.dias_atraso_estimado ?? '',
+      })
+    } else {
+      setForm(blank())
+    }
+  }, [initialData])
 
   const setField = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
@@ -115,10 +136,23 @@ function FormOcorrencia({ onSaved, onCancelar }) {
     setSaving(true)
     setErr('')
 
-    const res = await fetch('/api/ocorrencias', {
-      method: 'POST',
+    const payload = {
+      data_ocorrencia: form.data_ocorrencia,
+      categoria: form.categoria,
+      impacto: form.impacto,
+      codigo_eap: form.codigo_eap,
+      grupo: form.grupo,
+      dias_atraso_estimado: form.dias_atraso_estimado,
+      descricao: form.descricao,
+    }
+
+    const url = initialData?.id ? `/api/ocorrencias/${initialData.id}` : '/api/ocorrencias'
+    const method = initialData?.id ? 'PATCH' : 'POST'
+
+    const res = await fetch(url, {
+      method,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
+      body: JSON.stringify(payload),
     })
 
     if (!res.ok) {
@@ -212,7 +246,7 @@ function FormOcorrencia({ onSaved, onCancelar }) {
 
       <div className="btn-row" style={{ marginTop: 14 }}>
         <button className="btn-primary" onClick={handleSubmit} disabled={saving}>
-          {saving ? 'Salvando…' : '✓ Salvar ocorrência'}
+          {saving ? 'Salvando…' : initialData?.id ? '✓ Salvar alterações' : '✓ Salvar ocorrência'}
         </button>
         <button className="btn-secondary" onClick={onCancelar} disabled={saving}>
           Cancelar
@@ -229,6 +263,10 @@ export default function DiarioOcorrencias() {
   const [erroLista, setErroLista] = useState(null)
   const [mostrarForm, setMostrarForm] = useState(false)
   const [mostrarSenha, setMostrarSenha] = useState(false)
+  const [pendingAction, setPendingAction] = useState(null)
+  const [ocorrenciaEditando, setOcorrenciaEditando] = useState(null)
+  const [ocorrenciaExcluir, setOcorrenciaExcluir] = useState(null)
+  const [excluindo, setExcluindo] = useState(false)
 
   function carregarOcorrencias() {
     setCarregando(true)
@@ -251,23 +289,75 @@ export default function DiarioOcorrencias() {
     }
   }
 
-  function handleNovaOcorrencia() {
+  function exigirAutenticacao(action) {
     const autenticado = typeof window !== 'undefined' && sessionStorage.getItem('autenticado') === 'true'
     if (autenticado) {
-      setMostrarForm(true)
-    } else {
-      setMostrarSenha(true)
+      action()
+      return
     }
+
+    setPendingAction(() => action)
+    setMostrarSenha(true)
+  }
+
+  function handleNovaOcorrencia() {
+    exigirAutenticacao(() => {
+      setOcorrenciaEditando(null)
+      setMostrarForm(true)
+    })
+  }
+
+  function handleEditarOcorrencia(ocorrencia) {
+    exigirAutenticacao(() => {
+      setOcorrenciaEditando(ocorrencia)
+      setMostrarForm(true)
+    })
+  }
+
+  function handleExcluirOcorrencia(ocorrencia) {
+    exigirAutenticacao(() => {
+      setOcorrenciaExcluir(ocorrencia)
+    })
   }
 
   function handleSenhaConfirmada() {
     sessionStorage.setItem('autenticado', 'true')
     setMostrarSenha(false)
-    setMostrarForm(true)
+    if (pendingAction) {
+      const action = pendingAction
+      setPendingAction(null)
+      action()
+    }
+  }
+
+  async function confirmarExclusao() {
+    if (!ocorrenciaExcluir) return
+
+    setExcluindo(true)
+    try {
+      const res = await fetch(`/api/ocorrencias/${ocorrenciaExcluir.id}`, {
+        method: 'DELETE',
+      })
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.error || 'Erro ao excluir ocorrência.')
+      }
+
+      setOcorrenciaExcluir(null)
+      setMostrarForm(false)
+      setOcorrenciaEditando(null)
+      carregarOcorrencias()
+    } catch (error) {
+      setErroLista(error.message)
+    } finally {
+      setExcluindo(false)
+    }
   }
 
   function handleSalvo() {
     setMostrarForm(false)
+    setOcorrenciaEditando(null)
     carregarOcorrencias()
   }
 
@@ -276,8 +366,48 @@ export default function DiarioOcorrencias() {
       {mostrarSenha && (
         <ModalSenha
           onConfirmar={handleSenhaConfirmada}
-          onClose={() => setMostrarSenha(false)}
+          onClose={() => {
+            setMostrarSenha(false)
+            setPendingAction(null)
+          }}
         />
+      )}
+
+      {ocorrenciaExcluir && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
+        }}>
+          <div style={{
+            background: '#1b1b20', border: '1px solid rgba(255,255,255,0.14)', borderRadius: 12,
+            padding: 24, width: 360, boxShadow: '0 8px 32px rgba(0,0,0,0.5)'
+          }}>
+            <div style={{ fontSize: 18, fontWeight: 700, color: '#eeeef2', marginBottom: 10 }}>
+              Excluir ocorrência?
+            </div>
+            <div style={{ color: '#b7b7c2', fontSize: 14, marginBottom: 18, whiteSpace: 'pre-wrap' }}>
+              {ocorrenciaExcluir.descricao || 'Deseja remover esta ocorrência do diário?'}
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                className="btn-primary"
+                onClick={confirmarExclusao}
+                disabled={excluindo}
+                style={{ flex: 1 }}
+              >
+                {excluindo ? 'Excluindo…' : 'Excluir'}
+              </button>
+              <button
+                className="btn-secondary"
+                onClick={() => setOcorrenciaExcluir(null)}
+                disabled={excluindo}
+                style={{ flex: 1 }}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <div
@@ -301,8 +431,12 @@ export default function DiarioOcorrencias() {
 
           {mostrarForm && (
             <FormOcorrencia
+              initialData={ocorrenciaEditando}
               onSaved={handleSalvo}
-              onCancelar={() => setMostrarForm(false)}
+              onCancelar={() => {
+                setMostrarForm(false)
+                setOcorrenciaEditando(null)
+              }}
             />
           )}
 
@@ -325,6 +459,7 @@ export default function DiarioOcorrencias() {
                   <th style={{ width: '12%' }}>EAP / Grupo</th>
                   <th style={{ width: '11%' }}>Atraso est.</th>
                   <th>Descrição</th>
+                  <th style={{ width: '12%' }}>Ações</th>
                 </tr>
               </thead>
               <tbody>
@@ -336,6 +471,26 @@ export default function DiarioOcorrencias() {
                     <td>{[o.codigo_eap, o.grupo].filter(Boolean).join(' · ') || '—'}</td>
                     <td>{o.dias_atraso_estimado ? `${o.dias_atraso_estimado} dia(s)` : '—'}</td>
                     <td style={{ whiteSpace: 'pre-wrap' }}>{o.descricao}</td>
+                    <td>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        <button
+                          type="button"
+                          className="btn-secondary"
+                          onClick={() => handleEditarOcorrencia(o)}
+                          style={{ padding: '6px 10px', fontSize: 12 }}
+                        >
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-secondary"
+                          onClick={() => handleExcluirOcorrencia(o)}
+                          style={{ padding: '6px 10px', fontSize: 12, color: '#f7b0a7', borderColor: 'rgba(247,176,167,0.45)' }}
+                        >
+                          Excluir
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
