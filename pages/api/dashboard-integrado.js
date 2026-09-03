@@ -16,7 +16,7 @@ export default async function handler(req, res) {
       supabase.from('cronograma_horas_planejado').select('grupo_nome, horas_totais').eq('obra_id', obra_id),
       supabase.from('avanco_fisico_realizado').select('mes_numero, competencia, atividade_nome, percentual_realizado, hh_planejado, hh_realizado').eq('obra_id', obra_id).lte('mes_numero', mesLimite).order('mes_numero'),
       supabase.from('custos_indiretos_planejados').select('valor_total').eq('obra_id', obra_id),
-      supabase.from('orcamento_planejado').select('preco_total').eq('obra_id', obra_id),
+      supabase.from('orcamento_planejado').select('preco_total, grupo_numero, cod_eap, mes_inicio, mes_fim').eq('obra_id', obra_id),
     ])
 
     if (finPlanejadaRes.error) throw new Error(finPlanejadaRes.error.message)
@@ -52,6 +52,10 @@ export default async function handler(req, res) {
     const custosAgrupados = {}
     const custosDiretosAgrupados = {}
     const custosIndiretosAgrupados = {}
+    // Custo realmente lançado por item da EAP (acumulado até o mês limite).
+    // Usado para dar avanço físico aos itens sem Hh (ex.: locação de equipamentos, grupo 17),
+    // já que para eles o valor efetivamente gasto é o melhor proxy de "quanto já foi executado".
+    const custoRealizadoPorEap = {}
 
     custosRealizados
       .filter(c => c.status === 'Normal' && normalizaCompetencia(c.competencia) <= dataLimiteStr)
@@ -68,6 +72,10 @@ export default async function handler(req, res) {
         } else {
           if (!custosIndiretosAgrupados[comp]) custosIndiretosAgrupados[comp] = 0
           custosIndiretosAgrupados[comp] += valor
+        }
+        if (eap) {
+          if (!custoRealizadoPorEap[eap]) custoRealizadoPorEap[eap] = 0
+          custoRealizadoPorEap[eap] += valor
         }
       })
 
@@ -117,14 +125,26 @@ export default async function handler(req, res) {
       item.percentual_acumulado = maxAcumulado
     })
 
+    const itensOrcamentoDireto = diretosPlanoRes.data || []
     const totalIndiretos = (indiretosPlanoRes.data || []).reduce((sum, i) => sum + parseFloat(i.valor_total || 0), 0)
-    const totalDiretos = (diretosPlanoRes.data || []).reduce((sum, i) => sum + parseFloat(i.preco_total || 0), 0)
+    const totalDiretos = itensOrcamentoDireto.reduce((sum, i) => sum + parseFloat(i.preco_total || 0), 0)
     const orcamentoTotal = totalDiretos + totalIndiretos
+
+    // Itens sem Hh: nunca aparecem na tela de avanço físico (que é 100% guiada por Hh),
+    // então ficavam travados em 0% de avanço para sempre, puxando o desvio físico pra baixo.
+    // Grupo 17 = Locação de Equipamentos | Grupo 18 = Funcionários Direto
+    const itensGrupo17 = itensOrcamentoDireto.filter(i => Number(i.grupo_numero) === 17)
+    const itensGrupo18 = itensOrcamentoDireto.filter(i => Number(i.grupo_numero) === 18)
+    const custoGrupo17 = itensGrupo17.reduce((s, i) => s + parseFloat(i.preco_total || 0), 0)
+    const custoGrupo18 = itensGrupo18.reduce((s, i) => s + parseFloat(i.preco_total || 0), 0)
+    // Fatia do orçamento direto que continua avaliada pelo método antigo (Hh)
+    const totalDiretosHH = totalDiretos - custoGrupo17 - custoGrupo18
 
     const acwp = finRealizada.length > 0 ? finRealizada[finRealizada.length - 1].valor_acumulado : 0
     const custoDiretoReal = finRealizada.length > 0 ? finRealizada[finRealizada.length - 1].valor_direto : 0
     const custoIndiretoReal = finRealizada.length > 0 ? finRealizada[finRealizada.length - 1].valor_indireto : 0
-    const avancoFisicoReal = fisRealizada.length > 0 ? fisRealizada[fisRealizada.length - 1].percentual_acumulado * 100 : 0
+    // % de avanço baseado só em Hh (mão de obra) — mantido para referência/gráfico histórico
+    const avancoFisicoRealHH = fisRealizada.length > 0 ? fisRealizada[fisRealizada.length - 1].percentual_acumulado * 100 : 0
 
     const mesRefBCWS = fisRealizada.length > 0
       ? Math.min(fisRealizada[fisRealizada.length - 1].mes_numero, mesLimite)
@@ -134,7 +154,33 @@ export default async function handler(req, res) {
 
     const bcws = fisPlanMesAtual ? fisPlanMesAtual.percentual_acumulado * totalDiretos : 0
     const avancoFisicoPlano = fisPlanMesAtual ? fisPlanMesAtual.percentual_acumulado * 100 : 0
-    const bcwp = (avancoFisicoReal / 100) * totalDiretos
+
+    // --- Avanço físico para os itens sem Hh (grupos 17 e 18) ---
+    // Grupo 17 (Locação de Equipamentos): o uso varia de equipamento pra equipamento,
+    // então em vez de supor uma curva de uso constante, usamos o valor já lançado/pago
+    // de cada item (capado no seu próprio custo planejado) como earned value.
+    const bcwpEquipamentos = itensGrupo17.reduce((soma, item) => {
+      const realizado = custoRealizadoPorEap[item.cod_eap] || 0
+      const planejado = parseFloat(item.preco_total || 0)
+      return soma + Math.min(realizado, planejado)
+    }, 0)
+
+    // Grupo 18 (Funcionários Direto): custo contínuo (folha), sem entregável discreto —
+    // avanço linear pela quantidade de meses da obra já decorridos dentro do período do item.
+    const bcwpFuncionarioDireto = itensGrupo18.reduce((soma, item) => {
+      const inicio = item.mes_inicio || 1
+      const fim = item.mes_fim || mesLimite
+      const duracao = Math.max(fim - inicio + 1, 1)
+      const decorridos = Math.min(Math.max(mesRefBCWS - inicio + 1, 0), duracao)
+      const fracaoTempo = decorridos / duracao
+      return soma + fracaoTempo * parseFloat(item.preco_total || 0)
+    }, 0)
+
+    const bcwpHH = (avancoFisicoRealHH / 100) * totalDiretosHH
+    const bcwp = bcwpHH + bcwpEquipamentos + bcwpFuncionarioDireto
+    // % de avanço físico final: agora cobre 100% do custo direto planejado,
+    // não só a fatia com Hh — isso é o que corrige o desvio físico artificial.
+    const avancoFisicoReal = totalDiretos > 0 ? (bcwp / totalDiretos) * 100 : 0
 
     // ACWP para EVM: apenas custos DIRETOS realizados (codigo_eap que nao comeca com 19.)
     const todoslancamentos = custosRes.data || []
