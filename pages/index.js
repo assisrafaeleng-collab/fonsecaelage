@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import Dashboard from '../components/Dashboard'
+import { normalizeCompetencia } from '../lib/competencia'
 
 const SENHA_CORRETA = 'fonseca2025'
 
@@ -98,19 +99,13 @@ export default function Home() {
           return
         }
 
-        const MESES_PT = { janeiro:1,fevereiro:2,marco:3,abril:4,maio:5,junho:6,julho:7,agosto:8,setembro:9,outubro:10,novembro:11,dezembro:12 }
-        function toDate(comp) {
-          if (!comp) return null
-          if (comp.match(/^\d{4}-\d{2}/)) return new Date(comp.slice(0, 7) + '-01')
-          const m = comp.match(/^([a-záéíóúãõç]+)\/(\d{4})$/i)
-          if (m) {
-            const mes = MESES_PT[m[1].toLowerCase()]
-            if (mes) return new Date(`${m[2]}-${String(mes).padStart(2,'0')}-01`)
-          }
-          return null
-        }
-
-        const datas = competencias.map(c => ({ comp: c, date: toDate(c) })).filter(x => x.date)
+        const datas = competencias
+          .map(c => {
+            const comp = normalizeCompetencia(c)
+            const date = comp ? new Date(`${comp}-01`) : null
+            return { comp, date }
+          })
+          .filter(x => x.date && !Number.isNaN(x.date.getTime()))
         if (!datas.length) { setMesAtual(20); return }
 
         const maisRecente = datas.sort((a, b) => b.date - a.date)[0].date

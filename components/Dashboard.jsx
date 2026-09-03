@@ -1,8 +1,6 @@
 // components/Dashboard.jsx
 // fmtMoeda importada de lib/constants — sem duplicata local
-import ImpactoAtraso from './ImpactoAtraso'
-import PaineisAnalise, { FisicoPorAtividade, Heatmap } from './PaineisAnalise'
-import CurvaFisicaSemanal from './CurvaFisicaSemanal'
+import { FisicoPorAtividade, Heatmap } from './PaineisAnalise'
 import DiarioOcorrencias from './DiarioOcorrencias'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
@@ -92,7 +90,6 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
   const [dadosOrcamento, setDadosOrcamento] = useState(null)
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState(null)
-  const [evmAberto, setEvmAberto] = useState(false)
 
   function navRestrita(destino) {
     if (onNavRestrita) {
@@ -265,14 +262,14 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
         <div className="kpi" style={{ cursor: 'pointer' }} onClick={() => router.push(`/avanco-fisico-planejado?mes=${mesLimite}`)}>
           <div className="kpi-label">Avanço Físico Planejado</div>
           <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2' }}>{fmtPerc(avancoFisicoPlano)}</div>
-          <div className="kpi-sub">Conforme cronograma</div>
+          <div className="kpi-sub">Base: projeto acumulado</div>
         </div>
         <div className="kpi">
-          <div className="kpi-label">Desvio Físico</div>
+          <div className="kpi-label">Desvio Físico do Projeto</div>
           <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2', color: avancoFisicoReal >= avancoFisicoPlano ? '#3f9e6c' : '#d6453c' }}>
             {avancoFisicoReal >= avancoFisicoPlano ? '+' : ''}{fmtPerc(avancoFisicoReal - avancoFisicoPlano)}
           </div>
-          <div className="kpi-sub">{avancoFisicoReal >= avancoFisicoPlano ? 'Adiantado' : 'Atrasado'}</div>
+          <div className="kpi-sub">{avancoFisicoReal >= avancoFisicoPlano ? 'Adiantado' : 'Atrasado'} · p.p. do projeto</div>
         </div>
       </div>
 
@@ -300,87 +297,6 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
         <div style={{ visibility: 'hidden' }}></div>
       </div>
 
-      {/* ================================================================
-          BLOCO EVM — Earned Value Management
-      ================================================================ */}
-      <div className="card">
-        <div className="card-title" onClick={() => setEvmAberto(o => !o)} style={{cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center', userSelect:'none'}}>
-          <span>Análise EVM — Valor Agregado</span>
-          <span style={{fontSize:12, color:'#6d675e'}}>{evmAberto ? '▲' : '▼'}</span>
-        </div>
-        {evmAberto && (<>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '16px' }}>
-          <div className="kpi evm-card">
-            <div className="kpi-label">BCWS — Planejado</div>
-            <div className="kpi-value" style={{ fontSize: '18px' }}>{fmtMoeda(kpis.bcws)}</div>
-            <div className="kpi-sub">Valor que deveria ter sido agregado</div>
-            <div className="evm-tooltip"><b>Budgeted Cost of Work Scheduled</b><br/>Quanto valor deveria ter sido agregado até este momento conforme o cronograma planejado.</div>
-          </div>
-          <div className="kpi evm-card">
-            <div className="kpi-label">BCWP — Valor Agregado Real</div>
-            <div className="kpi-value" style={{ fontSize: '18px' }}>{fmtMoeda(kpis.bcwp)}</div>
-            <div className="kpi-sub">% físico realizado × orçamento total</div>
-            <div className="evm-tooltip"><b>Budgeted Cost of Work Performed</b><br/>Valor real que foi agregado à obra com base no avanço físico executado.</div>
-          </div>
-          <div className="kpi evm-card">
-            <div className="kpi-label">ACWP — Custo Real</div>
-            <div className="kpi-value" style={{ fontSize: '18px' }}>{fmtMoeda(kpis.acwp_producao)}</div>
-            <div className="kpi-sub">Custo direto realizado (sem terreno)</div>
-            <div className="evm-tooltip"><b>Actual Cost of Work Performed</b><br/>Quanto foi efetivamente gasto até agora.</div>
-          </div>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '16px' }}>
-          <div className="kpi evm-card">
-            <div className="kpi-label">CPI — Eficiência de Custo</div>
-            <div className="kpi-value" style={{ fontSize: '22px', color: kpis.cpi >= 1 ? '#3f9e6c' : '#d6453c' }}>{kpis.cpi?.toFixed(2)}</div>
-            <div className="kpi-sub">{kpis.cpi >= 1 ? 'Abaixo do orçamento' : 'Acima do orçamento'}</div>
-            <div className="evm-tooltip"><b>Cost Performance Index</b><br/>CPI = BCWP ÷ ACWP. Acima de 1,0: economia real.</div>
-          </div>
-          <div className="kpi evm-card">
-            <div className="kpi-label">SPI — Eficiência de Prazo</div>
-            <div className="kpi-value" style={{ fontSize: '22px', color: kpis.spi >= 1 ? '#3f9e6c' : '#d6453c' }}>{kpis.spi?.toFixed(2)}</div>
-            <div className="kpi-sub">{kpis.spi >= 1 ? 'Adiantado' : 'Atrasado'}</div>
-            <div className="evm-tooltip"><b>Schedule Performance Index</b><br/>SPI = BCWP ÷ BCWS. Acima de 1,0: obra adiantada.</div>
-          </div>
-          <div className="kpi evm-card">
-            <div className="kpi-label">CV — Variância de Custo</div>
-            <div className="kpi-value" style={{ fontSize: '18px', color: kpis.cv >= 0 ? '#3f9e6c' : '#d6453c' }}>{kpis.cv >= 0 ? '+' : ''}{fmtMoeda(kpis.cv)}</div>
-            <div className="kpi-sub">BCWP − ACWP {kpis.cv >= 0 ? '(economia real)' : '(acima do produzido)'}</div>
-            <div className="evm-tooltip"><b>Cost Variance</b><br/>CV = BCWP − ACWP. Positivo: economia real.</div>
-          </div>
-          <div className="kpi evm-card">
-            <div className="kpi-label">SV — Variância de Prazo</div>
-            <div className="kpi-value" style={{ fontSize: '18px', color: kpis.sv >= 0 ? '#3f9e6c' : '#d6453c' }}>{kpis.sv >= 0 ? '+' : ''}{fmtMoeda(kpis.sv)}</div>
-            <div className="kpi-sub">BCWP − BCWS {kpis.sv >= 0 ? '(adiantado em valor)' : '(atrasado em valor)'}</div>
-            <div className="evm-tooltip"><b>Schedule Variance</b><br/>SV = BCWP − BCWS. Positivo: adiantado em valor agregado.</div>
-          </div>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
-          <div className="kpi evm-card">
-            <div className="kpi-label">EAC Direto — Projeção Custo de Produção</div>
-            <div className="kpi-value" style={{ fontSize: '18px', color: kpis.eac <= kpis.orcamento_total ? '#3f9e6c' : '#d6453c' }}>{fmtMoeda(kpis.eac)}</div>
-            <div className="kpi-sub">Só custo direto · usa CPI · não inclui indiretos</div>
-            <div className="evm-tooltip"><b>Estimate at Completion</b><br/>EAC = Orçamento ÷ CPI. Projeção honesta do custo final.</div>
-          </div>
-          <div className="kpi evm-card">
-            <div className="kpi-label">Saldo Real Projetado</div>
-            <div className="kpi-value" style={{ fontSize: '18px', color: kpis.saldo_real >= 0 ? '#3f9e6c' : '#d6453c' }}>{kpis.saldo_real >= 0 ? '+' : ''}{fmtMoeda(kpis.saldo_real)}</div>
-            <div className="kpi-sub">{kpis.saldo_real >= 0 ? 'Economia projetada real' : 'Estouro projetado'}</div>
-            <div className="evm-tooltip"><b>Saldo Real Projetado</b><br/>Orçamento Total − EAC.</div>
-          </div>
-          <div className="kpi evm-card">
-            <div className="kpi-label">Saldo Aparente</div>
-            <div className="kpi-value" style={{ fontSize: '18px', color: '#e0a93b' }}>{fmtMoeda(kpis.saldo_orcamento)}</div>
-            <div className="kpi-sub">Pode incluir serviços não executados</div>
-            <div className="evm-tooltip"><b>Saldo Aparente</b><br/>Orçamento − Custo Realizado. Pode ser enganoso.</div>
-          </div>
-        </div>
-      </>)}
-      </div>
-
       <div className="card">
         <div className="card-title">Curva S — Acompanhamento Físico-Financeiro</div>
         <div style={{ display:'flex', gap:'20px', flexWrap:'wrap', margin:'10px 0 6px' }}>
@@ -398,157 +314,19 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
         </div>
       </div>
 
-      {/* Curva física SEMANAL (planejado vs realizado) */}
-      <CurvaFisicaSemanal />
-
       <div className="card">
         <div className="card-title">Mapa de Avanço por Pavimento</div>
         <Heatmap mes={mesLimite} />
       </div>
 
       <div className="card">
-        <div className="card-title">Físico por Atividade</div>
+        <div className="card-title">Físico por Atividade — Desvio Relativo da Atividade</div>
+        <div style={{ fontSize: '11px', color: '#a09a90', margin: '8px 0 12px', lineHeight: 1.5 }}>
+          Esta métrica mede o desvio da própria meta de cada atividade. Ela não é somável ao desvio absoluto do projeto.
+        </div>
         <FisicoPorAtividade mes={mesLimite} />
       </div>
 
-      {(() => {
-        const desvioFisico = avancoFisicoReal - avancoFisicoPlano
-        const custoAcima = saldoCustoDireto < 0
-        const prazoAtrasado = (kpis.desvio_prazo_dias || 0) > 0
-        const fisicoAtrasado = desvioFisico < 0
-        const estouro = projecaoCustoFinal - (kpis.orcamento_total || 0)
-        const temAlerta = custoAcima || prazoAtrasado || fisicoAtrasado || estouro > 0
-
-        return (
-          <div className={`alert-strip${temAlerta ? '' : ' ok'}`}>
-            <div className="alert-main">
-              <div className="alert-title">
-                {temAlerta ? 'Atenção necessária' : 'Obra dentro do previsto'}
-              </div>
-              <div className="alert-text">
-                {temAlerta ? (
-                  <>
-                    A obra está{' '}
-                    <b>{fisicoAtrasado
-                      ? `atrasada em ${fmtPerc(Math.abs(desvioFisico))}`
-                      : `adiantada em ${fmtPerc(Math.abs(desvioFisico))}`} no físico</b>
-                    {custoAcima && <> e <b>acima do custo direto</b></>}.
-                    {estouro > 0 && <> Projeção aponta estouro de {fmtMoeda(estouro)} se o ritmo atual se mantiver.</>}
-                  </>
-                ) : (
-                  <>Custo, prazo e avanço físico dentro das metas planejadas até este período.</>
-                )}
-              </div>
-            </div>
-            <div className="alert-pills">
-              <span className={`alert-pill${custoAcima ? '' : ' ok'}`}>
-                Custo {custoAcima ? 'acima' : 'ok'}
-              </span>
-              <span className={`alert-pill${prazoAtrasado ? '' : ' ok'}`}>
-                Prazo {prazoAtrasado ? 'atrasado' : 'ok'}
-              </span>
-              <span className={`alert-pill${fisicoAtrasado ? '' : ' ok'}`}>
-                Físico {desvioFisico >= 0 ? '+' : ''}{fmtPerc(desvioFisico)}
-              </span>
-            </div>
-          </div>
-        )
-      })()}
-
-
-      
-
-     <div className="card">
-        <div className="card-title">Projeção Financeira e Prazo</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '24px' }}>
-          <div className="proj-tooltip-wrap">
-            <div style={{ fontSize: '11px', color: 'var(--text2)', marginBottom: '8px' }}>Projeção de Custo Final <span style={{color:'#e6a338', cursor:'help'}}>ⓘ</span></div>
-            <div className="proj-tooltip-box" style={{
-              position:'absolute', top:'calc(100% + 8px)', left:0, minWidth:280,
-              background:'#0f0f11', border:'1px solid #3a3a44', borderRadius:8,
-              padding:'12px 14px', fontSize:11, color:'#eeeef2', lineHeight:1.6,
-              zIndex:1000, boxShadow:'0 8px 20px rgba(0,0,0,0.6)'
-            }}>
-              <div style={{fontWeight:700, color:'#e6a338', marginBottom:8, fontSize:10, textTransform:'uppercase', letterSpacing:.5}}>Como é calculado</div>
-              <div style={{marginBottom:6}}>Projeção da <b>obra completa</b> se a eficiência atual (CPI) se mantiver:</div>
-              <div style={{display:'flex', justifyContent:'space-between', gap:12}}>
-                <span style={{color:'#a09a90'}}>EAC Direto (Custo Direto ÷ CPI)</span>
-                <span style={{fontWeight:600}}>{fmtMoeda(kpis.eac || 0)}</span>
-              </div>
-              <div style={{display:'flex', justifyContent:'space-between', gap:12}}>
-                <span style={{color:'#a09a90'}}>+ Indiretos + custo do atraso</span>
-                <span style={{fontWeight:600}}>{fmtMoeda((kpis.eac_total || 0) - (kpis.eac || 0))}</span>
-              </div>
-              <div style={{borderTop:'1px solid #3a3a44', marginTop:6, paddingTop:6, display:'flex', justifyContent:'space-between'}}>
-                <span style={{color:'#eeeef2', fontWeight:600}}>= Custo Final Projetado</span>
-                <span style={{fontWeight:700, color: projecaoCustoFinal > kpis.orcamento_total ? '#d6453c' : '#3f9e6c'}}>{fmtMoeda(projecaoCustoFinal)}</span>
-              </div>
-              <div style={{marginTop:8, fontSize:10, color:'#6d675e', fontStyle:'italic'}}>vs Orçamento original: {fmtMoeda(kpis.orcamento_total)}</div>
-            </div>
-            <div style={{ fontSize: '22px', fontWeight: '700', marginBottom: '4px' }}>{fmtMoeda(projecaoCustoFinal)}</div>
-            <div className="kpi-sub">
-              {projecaoCustoFinal > kpis.orcamento_total
-                ? <span style={{ color: '#d6453c' }}>{fmtMoeda(projecaoCustoFinal - kpis.orcamento_total)} acima</span>
-                : <span style={{ color: '#3f9e6c' }}>{fmtMoeda(kpis.orcamento_total - projecaoCustoFinal)} abaixo</span>
-              }
-            </div>
-          </div>
-          <div className="proj-tooltip-wrap">
-            <div style={{ fontSize: '11px', color: 'var(--text2)', marginBottom: '8px' }}>Desvio Financeiro Acumulado <span style={{color:'#e6a338', cursor:'help'}}>ⓘ</span></div>
-            <div className="proj-tooltip-box" style={{
-              position:'absolute', top:'calc(100% + 8px)', left:0, minWidth:280,
-              background:'#0f0f11', border:'1px solid #3a3a44', borderRadius:8,
-              padding:'12px 14px', fontSize:11, color:'#eeeef2', lineHeight:1.6,
-              zIndex:1000, boxShadow:'0 8px 20px rgba(0,0,0,0.6)'
-            }}>
-              <div style={{fontWeight:700, color:'#e6a338', marginBottom:8, fontSize:10, textTransform:'uppercase', letterSpacing:.5}}>Como é calculado</div>
-              <div style={{marginBottom:6}}>Diferença entre gasto previsto e gasto real até este mês:</div>
-              <div style={{display:'flex', justifyContent:'space-between', gap:12}}>
-                <span style={{color:'#a09a90'}}>Custo Direto Planejado</span>
-                <span style={{fontWeight:600}}>{fmtMoeda(custoDiretoPlano)}</span>
-              </div>
-              <div style={{display:'flex', justifyContent:'space-between', gap:12}}>
-                <span style={{color:'#a09a90'}}>− Custo Direto Realizado</span>
-                <span style={{fontWeight:600}}>{fmtMoeda(kpis.acwp_producao || 0)}</span>
-              </div>
-              <div style={{borderTop:'1px solid #3a3a44', marginTop:6, paddingTop:6, display:'flex', justifyContent:'space-between'}}>
-                <span style={{color:'#eeeef2', fontWeight:600}}>= Desvio</span>
-                <span style={{fontWeight:700, color: kpis.desvio_financeiro <= 0 ? '#3f9e6c' : '#d6453c'}}>{fmtMoeda(desvioFinanceiroValor)}</span>
-              </div>
-              <div style={{marginTop:8, fontSize:10, color:'#6d675e', fontStyle:'italic'}}>
-                Ingênuo: pode incluir atividades não executadas. Para eficiência real, veja CV no EVM.
-              </div>
-            </div>
-            <div style={{ fontSize: '22px', fontWeight: '700', marginBottom: '4px', color: kpis.desvio_financeiro <= 0 ? '#3f9e6c' : '#d6453c' }}>
-              {fmtMoeda(desvioFinanceiroValor)}
-            </div>
-            <div className="kpi-sub">{kpis.desvio_financeiro <= 0 ? 'Economia' : 'Acima do planejado'} ({fmtPerc(Math.abs(kpis.desvio_financeiro_perc))})</div>
-          </div>
-          <div>
-            <div style={{ fontSize: '11px', color: 'var(--text2)', marginBottom: '8px' }}>Previsão de Conclusão</div>
-            <div style={{ fontSize: '22px', fontWeight: '700', marginBottom: '4px' }}>
-              {kpis.projecao_data_conclusao
-                ? new Date(kpis.projecao_data_conclusao + 'T12:00:00').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
-                : '-'}
-            </div>
-            <div className="kpi-sub">
-              {kpis.desvio_prazo_dias > 0
-                ? <span style={{ color: '#d6453c' }}>{kpis.desvio_prazo_dias} dias de atraso</span>
-                : kpis.desvio_prazo_dias < 0
-                  ? <span style={{ color: '#3f9e6c' }}>{Math.abs(kpis.desvio_prazo_dias)} dias adiantado</span>
-                  : <span style={{ color: '#3f9e6c' }}>No prazo</span>
-              }
-            </div>
-          </div>
-          <div>
-            <div style={{ fontSize: '11px', color: 'var(--text2)', marginBottom: '8px' }}>Velocidade Atual</div>
-            <div style={{ fontSize: '22px', fontWeight: '700', marginBottom: '4px' }}>{fmtPerc(kpis.velocidade_atual)}/mês</div>
-            <div className="kpi-sub">{kpis.meses_restantes} meses para conclusão</div>
-          </div>
-        </div>
-      </div>
-<ImpactoAtraso mes={mesLimite} />
-      <PaineisAnalise mes={mesLimite} />
       <DiarioOcorrencias />
     </div>
   )

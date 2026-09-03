@@ -1,5 +1,11 @@
 import { supabase } from '../../lib/supabase'
 
+const toPercent = (value) => {
+  const n = Number(value ?? 0)
+  if (!Number.isFinite(n)) return 0
+  return n > 1 ? n : n * 100
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' })
@@ -52,8 +58,8 @@ export default async function handler(req, res) {
     // Montar comparativo
     const atividades = Object.keys(planejadoPorAtividade).map(nome => ({
       nome,
-      planejado: Math.min(planejadoPorAtividade[nome].soma * 100, 100),
-      realizado: (realizadoPorAtividade[nome] || 0) * 100,
+      planejado: Math.min(toPercent(planejadoPorAtividade[nome].soma), 100),
+      realizado: Math.min(toPercent(realizadoPorAtividade[nome] || 0), 100),
       valor_orcado: planejadoPorAtividade[nome].valor_orcado
     }))
 

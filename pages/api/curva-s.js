@@ -16,19 +16,63 @@ export default async function handler(req, res) {
   try {
     const obra_id = req.query.obra_id || 'flats_pampulha';
 
-    // Buscar curva S completa da view
-    const { data, error } = await supabase
-      .from('v_curva_s_completa')
-      .select('*')
-      .eq('obra_id', obra_id)
-      .order('mes');
+    const [{ data: orcamentoData, error: orcamentoError }, { data: realizadoData, error: realizadoError }] = await Promise.all([
+      supabase.from('orcamento_planejado').select('hh, mes_inicio, mes_fim').eq('obra_id', obra_id),
+      supabase.from('avanco_fisico_realizado').select('mes_numero, hh_realizado, codigo_eap, atividade_nome, pavimento').eq('obra_id', obra_id)
+    ]);
 
-    if (error) throw error;
+    if (orcamentoError) throw orcamentoError;
+    if (realizadoError) throw realizadoError;
 
-    // Formatar dados para o gráfico
-    const labels = data.map(d => d.competencia);
-    const planejado = data.map(d => parseFloat(d.planejado_acumulado) || 0);
-    const realizado = data.map(d => parseFloat(d.realizado_acumulado) || 0);
+    const itens = orcamentoData || [];
+    const totalHh = itens.reduce((sum, item) => sum + (parseFloat(item.hh || 0) || 0), 0);
+
+    const ultimoRealizadoPorItem = new Map();
+    (realizadoData || []).forEach(item => {
+      const key = item.codigo_eap || `${item.atividade_nome || 'atividade'}|${item.pavimento || ''}`;
+      const novo = {
+        ...item,
+        hh_realizado: parseFloat(item.hh_realizado || 0),
+        mes_numero: parseInt(item.mes_numero || 0)
+      };
+      const atual = ultimoRealizadoPorItem.get(key);
+      if (!atual || novo.mes_numero > atual.mes_numero || (novo.mes_numero === atual.mes_numero && novo.hh_realizado > atual.hh_realizado)) {
+        ultimoRealizadoPorItem.set(key, novo);
+      }
+    });
+
+    const labels = [];
+    const planejado = [];
+    const realizado = [];
+
+    for (let mes = 1; mes <= 20; mes++) {
+      const mesLabel = `M${mes}`;
+      labels.push(mesLabel);
+
+      const planejadoAcum = itens.reduce((sum, item) => {
+        const hh = parseFloat(item.hh || 0) || 0;
+        if (hh <= 0) return sum;
+        const mesInicio = parseInt(item.mes_inicio || 1);
+        const mesFim = parseInt(item.mes_fim || mesInicio);
+        const totalMeses = Math.max(1, mesFim - mesInicio + 1);
+        const mesesAtivos = Math.max(0, Math.min(mes, mesFim) - mesInicio + 1);
+        return sum + hh * (mesesAtivos / totalMeses);
+      }, 0);
+
+      const realizadoAcum = Array.from(ultimoRealizadoPorItem.values()).reduce((sum, item) => {
+        return (parseInt(item.mes_numero || 0) <= mes) ? sum + (parseFloat(item.hh_realizado || 0) || 0) : sum;
+      }, 0);
+
+      planejado.push(totalHh > 0 ? (planejadoAcum / totalHh) * 100 : 0);
+      realizado.push(totalHh > 0 ? (realizadoAcum / totalHh) * 100 : 0);
+    }
+
+    const raw = labels.map((label, index) => ({
+      mes: index + 1,
+      competencia: label,
+      planejado_acumulado: planejado[index],
+      realizado_acumulado: realizado[index]
+    }));
 
     res.status(200).json({
       labels,
@@ -52,7 +96,7 @@ export default async function handler(req, res) {
           fill: true
         }
       ],
-      raw: data
+      raw
     });
 
   } catch (error) {

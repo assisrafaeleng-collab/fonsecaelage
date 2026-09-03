@@ -108,28 +108,32 @@ function buildHeatmapGrid(dados, avanco, mes) {
 }
 
 function buildAtividades(grid) {
-  return grid.grupos.map(g => {
-    const cells = PAVS
-      .map(pav => grid.cells[`${g}|${pav}`])
-      .filter(Boolean)
-    const launchedCells = cells.filter(cell => cell.launched)
-    const baseCells = launchedCells.length > 0 ? launchedCells : cells
-    const realizado = baseCells.length > 0
-      ? baseCells.reduce((sum, cell) => sum + cell.real, 0) / baseCells.length
-      : 0
-    const planejado = baseCells.length > 0
-      ? baseCells.reduce((sum, cell) => sum + cell.plan, 0) / baseCells.length
-      : null
-    const delta = planejado == null ? null : realizado - planejado
+  return grid.grupos
+    .map(g => {
+      const cells = PAVS
+        .map(pav => grid.cells[`${g}|${pav}`])
+        .filter(Boolean)
 
-    return {
-      grupo: g,
-      nome: GRUPOS_NOMES[g] || `Grupo ${g}`,
-      realizado,
-      planejado,
-      delta
-    }
-  })
+      const launchedCells = cells.filter(cell => cell.launched)
+      const baseCells = launchedCells.length > 0 ? launchedCells : cells
+      const realizado = baseCells.length > 0
+        ? baseCells.reduce((sum, cell) => sum + cell.real, 0) / baseCells.length
+        : 0
+      const planejado = baseCells.length > 0
+        ? baseCells.reduce((sum, cell) => sum + cell.plan, 0) / baseCells.length
+        : null
+      const delta = planejado == null ? null : realizado - planejado
+
+      return {
+        grupo: g,
+        nome: GRUPOS_NOMES[g] || `Grupo ${g}`,
+        realizado,
+        planejado,
+        delta,
+        ativaNoPeriodo: cells.some(cell => (cell.plan || 0) > 0 || (cell.real || 0) > 0 || cell.launched)
+      }
+    })
+    .filter(item => item.ativaNoPeriodo && ((item.planejado != null && item.planejado > 0) || item.realizado > 0.1 || (item.delta != null && Math.abs(item.delta) > 0.1)))
 }
 
 function Secao({ titulo, badge, badgeColor, children, defaultOpen=false }) {
@@ -531,68 +535,7 @@ export function FisicoPorAtividade({ mes }) {
   )
 }
 
-// ─── SEMÁFORO EVM ─────────────────────────────────────────────
-function SemaforoEVM({ mes }) {
-  const [kpis, setKpis] = useState(null)
-
-  useEffect(() => {
-    fetch(`/api/dashboard-integrado?mes=${mes}`)
-      .then(r => r.json())
-      .then(d => setKpis(d.kpis || null))
-      .catch(() => {})
-  }, [mes])
-
-  if (!kpis) return <div style={{color:'#6d675e', fontSize:12}}>Carregando indicadores...</div>
-
-  const cor = v => v >= 1 ? '#3f9e6c' : v >= 0.9 ? '#e0a93b' : '#d6453c'
-  const status = v => v >= 1 ? 'Bom' : v >= 0.9 ? 'Atenção' : 'Crítico'
-
-  const indicadores = [
-    { nome:'CPI — Eficiência de Custo', valor: kpis.cpi, desc: kpis.cpi >= 1 ? 'Gastando menos que o previsto' : 'Gastando mais que o previsto' },
-    { nome:'SPI — Eficiência de Prazo', valor: kpis.spi, desc: kpis.spi >= 1 ? 'Adiantado no cronograma' : 'Atrasado no cronograma' },
-  ]
-
-  return (
-    <div>
-      <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:14}}>
-        {indicadores.map((ind, i) => (
-          <div key={i} style={{background:'#1a1a20', borderRadius:10, padding:'14px 16px', borderLeft:`3px solid ${cor(ind.valor)}`}}>
-            <div style={{fontSize:10, color:'#6d675e', textTransform:'uppercase', marginBottom:4}}>{ind.nome}</div>
-            <div style={{fontSize:24, fontWeight:700, color:cor(ind.valor)}}>{status(ind.valor)} {(ind.valor || 0).toFixed(2)}</div>
-            <div style={{fontSize:11, color:'#a09a90', marginTop:4}}>{ind.desc}</div>
-          </div>
-        ))}
-      </div>
-      <div style={{background:'#1a1a20', borderRadius:10, padding:'14px 16px'}}>
-        <div style={{fontSize:10, color:'#6d675e', textTransform:'uppercase', marginBottom:8}}>Projeção no ritmo atual (EAC)</div>
-        <div style={{display:'flex', gap:24, flexWrap:'wrap'}}>
-          <div>
-            <div style={{fontSize:18, fontWeight:700, color:'#eeeef2'}}>{fmtR(kpis.eac)}</div>
-            <div style={{fontSize:10, color:'#6d675e'}}>custo final projetado</div>
-          </div>
-          <div>
-            <div style={{fontSize:18, fontWeight:700, color: kpis.eac > kpis.orcamento_total ? '#d6453c' : '#3f9e6c'}}>
-              {kpis.eac > kpis.orcamento_total ? '+' : ''}{fmtR(kpis.eac - kpis.orcamento_total)}
-            </div>
-            <div style={{fontSize:10, color:'#6d675e'}}>vs orçamento ({fmtR(kpis.orcamento_total)})</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 // ─── COMPONENTE PRINCIPAL ─────────────────────────────────────
 export default function PaineisAnalise({ mes }) {
-  const [numAlertas, setNumAlertas] = useState(null)
-
-  return (
-    <div style={{marginTop:16}}>
-      <Secao titulo="Alertas de Desvio" defaultOpen={false}>
-        <Alertas mes={mes} />
-      </Secao>
-      
-    
-    </div>
-  )
+  return null
 }

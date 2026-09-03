@@ -1,4 +1,5 @@
 import { supabase } from '../../lib/supabase'
+import { normalizeCompetencia } from '../../lib/competencia'
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -13,14 +14,19 @@ export default async function handler(req, res) {
     if (resumo === 'competencias') {
       const { data, error } = await supabase
         .from('custos_lancamentos')
-        .select('competencia')
+        .select('competencia, data_emissao')
         .eq('obra_id', obra_id)
         .eq('status', 'Normal')
-        .order('competencia')
+        .order('data_emissao', { ascending: true })
 
       if (error) throw new Error(error.message)
 
-      const unicas = [...new Set(data.map(d => d.competencia))].sort()
+      const unicas = [...new Set(
+        data
+          .map(d => normalizeCompetencia(d.competencia, d.data_emissao))
+          .filter(Boolean)
+      )].sort((a, b) => a.localeCompare(b))
+
       return res.status(200).json(unicas)
     }
 
@@ -28,19 +34,23 @@ export default async function handler(req, res) {
     if (resumo === 'grupo') {
       const query = supabase
         .from('custos_lancamentos')
-        .select('competencia, grupo_custo, valor, status')
+        .select('competencia, data_emissao, grupo_custo, valor, status')
         .eq('obra_id', obra_id)
 
-      if (competencia) query.eq('competencia', competencia)
+      if (competencia) {
+        const normalizedCompetencia = normalizeCompetencia(competencia)
+        query.or(`competencia.eq.${competencia},competencia.eq.${normalizedCompetencia}`)
+      }
 
       const { data, error } = await query
       if (error) throw new Error(error.message)
 
       const agrupado = {}
       data.filter(d => d.status === 'Normal').forEach(d => {
-        const key = `${d.competencia}_${d.grupo_custo}`
+        const normalizedCompetencia = normalizeCompetencia(d.competencia, d.data_emissao) || d.competencia
+        const key = `${normalizedCompetencia}_${d.grupo_custo}`
         if (!agrupado[key]) {
-          agrupado[key] = { competencia: d.competencia, grupo_custo: d.grupo_custo, total_normal: 0 }
+          agrupado[key] = { competencia: normalizedCompetencia, grupo_custo: d.grupo_custo, total_normal: 0 }
         }
         agrupado[key].total_normal += parseFloat(d.valor || 0)
       })

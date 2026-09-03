@@ -1,4 +1,5 @@
 import { supabase } from '../../lib/supabase'
+import { normalizeCompetencia } from '../../lib/competencia'
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -9,14 +10,14 @@ export default async function handler(req, res) {
   const mesLimite = parseInt(req.query.mes) || 20  // 20 meses
 
   try {
-    const [finPlanejadaRes, fisPlanejadaRes, custosRes, horasRes, avancoRealRes, indiretosPlanoRes, diretosPlanoRes] = await Promise.all([
+    const [finPlanejadaRes, fisPlanejadaRes, custosRes, horasRes, avancoRealRes, indiretosPlanoRes, diretosPlanoRes, orcamentoPlanejadoRes] = await Promise.all([
       supabase.from('v_curva_s_financeira_planejada').select('*').eq('obra_id', obra_id).order('mes_numero'),
       supabase.from('v_curva_s_fisica_planejada').select('*').eq('obra_id', obra_id).order('mes_numero'),
-      supabase.from('custos_lancamentos').select('competencia, valor, status, grupo_custo, codigo_eap').eq('obra_id', obra_id).order('competencia'),
+      supabase.from('custos_lancamentos').select('competencia, data_emissao, valor, status, grupo_custo, codigo_eap').eq('obra_id', obra_id).order('data_emissao'),
       supabase.from('cronograma_horas_planejado').select('grupo_nome, horas_totais').eq('obra_id', obra_id),
-      supabase.from('avanco_fisico_realizado').select('mes_numero, competencia, atividade_nome, percentual_realizado, hh_planejado, hh_realizado').eq('obra_id', obra_id).lte('mes_numero', mesLimite).order('mes_numero'),
+      supabase.from('avanco_fisico_realizado').select('mes_numero, competencia, atividade_nome, percentual_realizado, hh_planejado, hh_realizado, codigo_eap, pavimento').eq('obra_id', obra_id).lte('mes_numero', mesLimite).order('mes_numero'),
       supabase.from('custos_indiretos_planejados').select('valor_total').eq('obra_id', obra_id),
-      supabase.from('orcamento_planejado').select('preco_total, grupo_numero, cod_eap, mes_inicio, mes_fim').eq('obra_id', obra_id),
+      supabase.from('orcamento_planejado').select('preco_total, grupo_numero, cod_eap, hh, mes_inicio, mes_fim').eq('obra_id', obra_id),
     ])
 
     if (finPlanejadaRes.error) throw new Error(finPlanejadaRes.error.message)
@@ -37,18 +38,6 @@ export default async function handler(req, res) {
     dataLimite.setMonth(dataLimite.getMonth() + (mesLimite - 1))
     const dataLimiteStr = dataLimite.toISOString().slice(0, 10)
 
-    const MESES_PT = { janeiro:1,fevereiro:2,marco:3,abril:4,maio:5,junho:6,julho:7,agosto:8,setembro:9,outubro:10,novembro:11,dezembro:12 }
-    function normalizaCompetencia(comp) {
-      if (!comp) return null
-      if (comp.match(/^\d{4}-\d{2}/)) return comp.slice(0, 7) + '-01'
-      const m = comp.match(/^([a-záéíóúãõç]+)\/(\d{4})$/i)
-      if (m) {
-        const mes = MESES_PT[m[1].toLowerCase()]
-        if (mes) return `${m[2]}-${String(mes).padStart(2,'0')}-01`
-      }
-      return comp
-    }
-
     const custosAgrupados = {}
     const custosDiretosAgrupados = {}
     const custosIndiretosAgrupados = {}
@@ -58,9 +47,14 @@ export default async function handler(req, res) {
     const custoRealizadoPorEap = {}
 
     custosRealizados
-      .filter(c => c.status === 'Normal' && normalizaCompetencia(c.competencia) <= dataLimiteStr)
+      .filter(c => c.status === 'Normal')
       .forEach(c => {
-        const comp = normalizaCompetencia(c.competencia)
+        const comp = normalizeCompetencia(c.competencia, c.data_emissao)
+        if (!comp) return
+
+        const compDate = `${comp}-01`
+        if (compDate > dataLimiteStr) return
+
         const eap = c.codigo_eap || ''
         const isIndireto = eap.startsWith('19.')
         const valor = parseFloat(c.valor)
@@ -109,13 +103,43 @@ export default async function handler(req, res) {
       avancoRealPorMes[item.mes_numero].itens.push(item)
     })
 
-    const totalHhPlanejado = horasData.reduce((s,h) => s + parseFloat(h.horas_totais||0), 0) || 29155.7
+    const orcamentoPlanejado = orcamentoPlanejadoRes.data || []
+    const totalProjectHh = orcamentoPlanejado.reduce((sum, item) => sum + (parseFloat(item.hh || 0) || 0), 0)
+
+    const ultimoRealizadoPorItem = new Map()
+    avancoRealData.forEach(item => {
+      const key = item.codigo_eap || `${item.atividade_nome || 'atividade'}|${item.pavimento || ''}`
+      const atual = ultimoRealizadoPorItem.get(key)
+      const novo = {
+        ...item,
+        hh_realizado: parseFloat(item.hh_realizado || 0),
+        hh_planejado: parseFloat(item.hh_planejado || 0),
+        mes_numero: parseInt(item.mes_numero || 0)
+      }
+      if (!atual || novo.mes_numero > atual.mes_numero || (novo.mes_numero === atual.mes_numero && novo.hh_realizado > atual.hh_realizado)) {
+        ultimoRealizadoPorItem.set(key, novo)
+      }
+    })
+
+    const hhRealizadoAcumulado = Array.from(ultimoRealizadoPorItem.values())
+      .reduce((sum, item) => sum + (item.hh_realizado || 0), 0)
+
+    const hhPlanejadoAcumulado = orcamentoPlanejado.reduce((sum, item) => {
+      const hh = parseFloat(item.hh || 0) || 0
+      if (hh <= 0) return sum
+      const mesInicio = parseInt(item.mes_inicio || 1)
+      const mesFim = parseInt(item.mes_fim || mesInicio)
+      const totalMeses = Math.max(1, mesFim - mesInicio + 1)
+      const mesesAtivos = Math.max(0, Math.min(mesLimite, mesFim) - mesInicio + 1)
+      return sum + hh * (mesesAtivos / totalMeses)
+    }, 0)
+
     const fisRealizada = Object.entries(avancoRealPorMes).map(([mes, val]) => {
-      const hhReal = val.itens.reduce((s,i) => s + parseFloat(i.hh_realizado||0), 0)
+      const hhReal = val.itens.reduce((s, i) => s + parseFloat(i.hh_realizado || 0), 0)
       return {
         mes_numero: parseInt(mes),
         competencia: val.competencia,
-        percentual_acumulado: Math.min(hhReal / totalHhPlanejado, 1)
+        percentual_acumulado: totalProjectHh > 0 ? Math.min(hhReal / totalProjectHh, 1) : 0
       }
     }).sort((a, b) => a.mes_numero - b.mes_numero)
 
@@ -130,20 +154,29 @@ export default async function handler(req, res) {
     const totalDiretos = itensOrcamentoDireto.reduce((sum, i) => sum + parseFloat(i.preco_total || 0), 0)
     const orcamentoTotal = totalDiretos + totalIndiretos
 
+    const toPercent = (value) => {
+      const n = Number(value ?? 0)
+      if (!Number.isFinite(n)) return 0
+      return n > 1 ? n : n * 100
+    }
+
+    const toFraction = (value) => {
+      const n = Number(value ?? 0)
+      if (!Number.isFinite(n)) return 0
+      return n > 1 ? n / 100 : n
+    }
+
     // Itens sem Hh: nunca aparecem na tela de avanço físico (que é 100% guiada por Hh),
     // então ficavam travados em 0% de avanço para sempre, puxando o desvio físico pra baixo.
-    // Grupo 17 = Locação de Equipamentos | Grupo 18 = Funcionários Direto
     const itensGrupo17 = itensOrcamentoDireto.filter(i => Number(i.grupo_numero) === 17)
     const itensGrupo18 = itensOrcamentoDireto.filter(i => Number(i.grupo_numero) === 18)
     const custoGrupo17 = itensGrupo17.reduce((s, i) => s + parseFloat(i.preco_total || 0), 0)
     const custoGrupo18 = itensGrupo18.reduce((s, i) => s + parseFloat(i.preco_total || 0), 0)
-    // Fatia do orçamento direto que continua avaliada pelo método antigo (Hh)
     const totalDiretosHH = totalDiretos - custoGrupo17 - custoGrupo18
 
     const acwp = finRealizada.length > 0 ? finRealizada[finRealizada.length - 1].valor_acumulado : 0
     const custoDiretoReal = finRealizada.length > 0 ? finRealizada[finRealizada.length - 1].valor_direto : 0
     const custoIndiretoReal = finRealizada.length > 0 ? finRealizada[finRealizada.length - 1].valor_indireto : 0
-    // % de avanço baseado só em Hh (mão de obra) — mantido para referência/gráfico histórico
     const avancoFisicoRealHH = fisRealizada.length > 0 ? fisRealizada[fisRealizada.length - 1].percentual_acumulado * 100 : 0
 
     const mesRefBCWS = fisRealizada.length > 0
@@ -155,18 +188,12 @@ export default async function handler(req, res) {
     const bcws = fisPlanMesAtual ? fisPlanMesAtual.percentual_acumulado * totalDiretos : 0
     const avancoFisicoPlano = fisPlanMesAtual ? fisPlanMesAtual.percentual_acumulado * 100 : 0
 
-    // --- Avanço físico para os itens sem Hh (grupos 17 e 18) ---
-    // Grupo 17 (Locação de Equipamentos): o uso varia de equipamento pra equipamento,
-    // então em vez de supor uma curva de uso constante, usamos o valor já lançado/pago
-    // de cada item (capado no seu próprio custo planejado) como earned value.
     const bcwpEquipamentos = itensGrupo17.reduce((soma, item) => {
       const realizado = custoRealizadoPorEap[item.cod_eap] || 0
       const planejado = parseFloat(item.preco_total || 0)
       return soma + Math.min(realizado, planejado)
     }, 0)
 
-    // Grupo 18 (Funcionários Direto): custo contínuo (folha), sem entregável discreto —
-    // avanço linear pela quantidade de meses da obra já decorridos dentro do período do item.
     const bcwpFuncionarioDireto = itensGrupo18.reduce((soma, item) => {
       const inicio = item.mes_inicio || 1
       const fim = item.mes_fim || mesLimite
@@ -178,8 +205,6 @@ export default async function handler(req, res) {
 
     const bcwpHH = (avancoFisicoRealHH / 100) * totalDiretosHH
     const bcwp = bcwpHH + bcwpEquipamentos + bcwpFuncionarioDireto
-    // % de avanço físico final: agora cobre 100% do custo direto planejado,
-    // não só a fatia com Hh — isso é o que corrige o desvio físico artificial.
     const avancoFisicoReal = totalDiretos > 0 ? (bcwp / totalDiretos) * 100 : 0
 
     // ACWP para EVM: apenas custos DIRETOS realizados (codigo_eap que nao comeca com 19.)
@@ -250,7 +275,7 @@ export default async function handler(req, res) {
     const fisRealPorAnoMes = {}
     fisRealizada.forEach(f => {
       const anoMes = f.competencia ? f.competencia.slice(0, 7) : null
-      if (anoMes) fisRealPorAnoMes[anoMes] = f.percentual_acumulado * 100
+      if (anoMes) fisRealPorAnoMes[anoMes] = toPercent(f.percentual_acumulado)
     })
 
     const ultimaAnoMesFisReal = fisRealizada.length > 0
@@ -262,25 +287,33 @@ export default async function handler(req, res) {
     // Adm local 23500 + Locacoes/Funcionarios ~40632 + Contabeis 1459 + IPTU 463
     const RECORRENTE_MENSAL_PLAN = 23500 + 1459 + 463 + (356776/20) + (455860/20)
     const meses = []
-    let ultimoFisRealConhecido = null
     for (let i = 1; i <= 20; i++) {
       const finPlan = finPlanejada.find(f => f.mes_numero === i)
-      const fisPlan = fisPlanejada.find(f => f.mes_numero === i)
       const finReal = i <= mesLimite ? finRealizada.find(f => f.mes_numero === i) : null
-      const anoMesDoMes = finPlan?.competencia ? finPlan.competencia.slice(0, 7) : null
-      const fisRealValor = anoMesDoMes != null ? (fisRealPorAnoMes[anoMesDoMes] ?? null) : null
-      const fisRealFinal = (i <= mesLimite && ultimaAnoMesFisReal && anoMesDoMes && anoMesDoMes <= ultimaAnoMesFisReal)
-        ? (fisRealValor !== null ? fisRealValor : ultimoFisRealConhecido)
-        : null
+
+      const hhPlanejadoAcumMes = orcamentoPlanejado.reduce((sum, item) => {
+        const hh = parseFloat(item.hh || 0) || 0
+        if (hh <= 0) return sum
+        const mesInicio = parseInt(item.mes_inicio || 1)
+        const mesFim = parseInt(item.mes_fim || mesInicio)
+        const totalMeses = Math.max(1, mesFim - mesInicio + 1)
+        const mesesAtivos = Math.max(0, Math.min(i, mesFim) - mesInicio + 1)
+        return sum + hh * (mesesAtivos / totalMeses)
+      }, 0)
+
+      const hhRealizadoAcumMes = Array.from(ultimoRealizadoPorItem.values()).reduce((sum, item) => {
+        if ((parseInt(item.mes_numero || 0) || 0) <= i) return sum + (parseFloat(item.hh_realizado || 0) || 0)
+        return sum
+      }, 0)
+
       meses.push({
         mes_numero: i,
         competencia: finPlan ? finPlan.competencia : null,
-        financeiro_planejado: fisPlan ? (fisPlan.percentual_acumulado * totalDiretos) : null,
+        financeiro_planejado: finPlan ? (toFraction(toPercent(finPlan.percentual_acumulado)) * totalDiretos) : null,
         financeiro_realizado: (i <= mesLimite && i <= ultimoMesFinReal && finReal) ? (finReal.valor_direto != null ? finReal.valor_direto : finReal.valor_acumulado) : null,
-        fisico_planejado: fisPlan ? fisPlan.percentual_acumulado * 100 : null,
-        fisico_realizado: fisRealFinal,
+        fisico_planejado: totalProjectHh > 0 ? (hhPlanejadoAcumMes / totalProjectHh) * 100 : null,
+        fisico_realizado: totalProjectHh > 0 ? (hhRealizadoAcumMes / totalProjectHh) * 100 : null,
       })
-      if (fisRealFinal !== null) ultimoFisRealConhecido = fisRealFinal
     }
 
     return res.status(200).json({

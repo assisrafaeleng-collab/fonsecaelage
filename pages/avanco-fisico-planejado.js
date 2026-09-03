@@ -78,10 +78,24 @@ export default function AvancoFisicoPlanejado() {
   const [q, setQ] = useState('')
   const [open, setOpen] = useState({})
   const [metric, setMetric] = useState('pct') // 'pct' | 'custo' | 'hh'
+  const [hhPlanejadoMes, setHhPlanejadoMes] = useState(null)
 
   useEffect(() => {
     fetch('/api/orcamento-itens?fisico=1', { cache: 'no-store' }).then(r => r.json()).then(d => { setDados(Array.isArray(d) ? d : []); setLoading(false) }).catch(() => setLoading(false))
   }, [])
+
+  useEffect(() => {
+    if (!mes) return
+    fetch(`/api/avanco-fisico-realizado?mes=${mes}&obra_id=flats_pampulha`, { cache: 'no-store' })
+      .then(r => r.json())
+      .then(d => {
+        const total = Array.isArray(d.data)
+          ? d.data.reduce((s, item) => s + (parseFloat(item.hh_planejado) || 0), 0)
+          : 0
+        setHhPlanejadoMes(total)
+      })
+      .catch(() => setHhPlanejadoMes(0))
+  }, [mes])
 
   const totHh = useMemo(() => dados.reduce((s,r) => s+r.h, 0) || 1, [dados])
   const totC = useMemo(() => dados.reduce((s,r) => s+r.c, 0) || 1, [dados])
@@ -153,12 +167,13 @@ export default function AvancoFisicoPlanejado() {
   }, [visible, mes])
 
   const hhPeriodo = useMemo(() => {
+    if (hhPlanejadoMes != null && hhPlanejadoMes > 0) return hhPlanejadoMes
     return dados.filter(r => r.a <= mes && (pavF==='__ALL__' || r.p===pavF) && r.g !== 17 && r.g !== 18).reduce((s,r) => {
       const numMeses = Math.max(r.b - r.a + 1, 1)
       const mesesAtivos = Math.min(mes, r.b) - r.a + 1
       return s + (r.h * Math.max(0, mesesAtivos) / numMeses)
     }, 0)
-  }, [dados, mes, pavF])
+  }, [dados, mes, pavF, hhPlanejadoMes])
 
   const hhTotalFisico = useMemo(() => {
     return dados.filter(r => (pavF==='__ALL__' || r.p===pavF) && r.g !== 17 && r.g !== 18).reduce((s,r) => s + r.h, 0)

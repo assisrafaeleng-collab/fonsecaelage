@@ -5,6 +5,12 @@ import { supabase } from '../../lib/supabase'
 
 const mesDaSemana = (s) => Math.floor((s - 1) / 4) + 1
 
+const toPercent = (value) => {
+  const n = Number(value ?? 0)
+  if (!Number.isFinite(n)) return 0
+  return n > 1 ? n : n * 100
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' })
   const obra_id = req.query.obra_id || 'flats_pampulha'
@@ -47,7 +53,7 @@ export default async function handler(req, res) {
         semana: s,
         mes: mesDaSemana(s),
         semana_do_mes: ((s - 1) % 4) + 1,
-        planejado: p ? parseFloat(p.percentual_acumulado) : null,
+        planejado: p ? toPercent(p.percentual_acumulado) : null,
         realizado: s <= ultimaSemanaReal ? parseFloat(realPct.toFixed(2)) : null,
       })
     }
