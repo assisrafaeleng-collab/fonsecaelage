@@ -135,6 +135,11 @@ export default async function handler(req, res) {
     const hhRealizadoAcumulado = Array.from(ultimoRealizadoPorItem.values())
       .reduce((sum, item) => sum + (item.hh_realizado || 0), 0)
 
+    // Hh realizado acumulado, respeitando o mes do filtro
+    const hhRealizadoAteFiltro = Array.from(ultimoRealizadoPorItem.values())
+      .filter(item => (item.mes_numero || 0) <= mesLimite)
+      .reduce((sum, item) => sum + (item.hh_realizado || 0), 0)
+
     const hhPlanejadoAcumulado = getHHPlanejadoAcumulado(mesLimite)
 
     const fisRealizada = Object.entries(avancoRealPorMes).map(([mes, val]) => {
@@ -180,7 +185,10 @@ export default async function handler(req, res) {
     const acwp = finRealizada.length > 0 ? finRealizada[finRealizada.length - 1].valor_acumulado : 0
     const custoDiretoReal = finRealizada.length > 0 ? finRealizada[finRealizada.length - 1].valor_direto : 0
     const custoIndiretoReal = finRealizada.length > 0 ? finRealizada[finRealizada.length - 1].valor_indireto : 0
-    const avancoFisicoRealHH = fisRealizada.length > 0 ? fisRealizada[fisRealizada.length - 1].percentual_acumulado * 100 : 0
+    // Realizado tambem na base Hh, acumulado ate o mes do filtro
+    const avancoFisicoRealHH = totalProjectHh > 0
+      ? (hhRealizadoAteFiltro / totalProjectHh) * 100
+      : 0
 
     const mesRefBCWS = fisRealizada.length > 0
       ? Math.min(fisRealizada[fisRealizada.length - 1].mes_numero, mesLimite)
@@ -189,9 +197,10 @@ export default async function handler(req, res) {
     const fisPlanMesAtual = fisPlanejada.find(f => f.mes_numero === mesRefBCWS) || fisPlanejada[fisPlanejada.length - 1]
 
     const bcws = fisPlanMesAtual ? fisPlanMesAtual.percentual_acumulado * totalDiretos : 0
-    // Card de Avanço Físico Planejado segue o FILTRO (mesLimite), não o mesRefBCWS
-    const fisPlanDoFiltro = fisPlanejada.find(f => f.mes_numero === mesLimite) || fisPlanejada[fisPlanejada.length - 1]
-    const avancoFisicoPlano = fisPlanDoFiltro ? fisPlanDoFiltro.percentual_acumulado * 100 : 0
+    // Card de Avanço Físico Planejado: base hora-homem (mesma da Curva S)
+    const avancoFisicoPlano = totalProjectHh > 0
+      ? (hhPlanejadoAcumulado / totalProjectHh) * 100
+      : 0
 
     const bcwpEquipamentos = itensGrupo17.reduce((soma, item) => {
       const realizado = custoRealizadoPorEap[item.cod_eap] || 0
