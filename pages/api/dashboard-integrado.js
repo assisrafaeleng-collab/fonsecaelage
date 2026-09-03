@@ -132,12 +132,17 @@ export default async function handler(req, res) {
       }
     })
 
+    const ultimoMesComHHReal = Array.from(ultimoRealizadoPorItem.values()).reduce((max, item) => {
+      const mes = Number(item.mes_numero || 0)
+      return mes > max ? mes : max
+    }, 0)
+
     const hhRealizadoAcumulado = Array.from(ultimoRealizadoPorItem.values())
       .reduce((sum, item) => sum + (item.hh_realizado || 0), 0)
 
-    // Hh realizado acumulado, respeitando o mes do filtro
+    // Hh realizado acumulado, respeitando o mes do filtro e cortando no último mês com dado real
     const hhRealizadoAteFiltro = Array.from(ultimoRealizadoPorItem.values())
-      .filter(item => (item.mes_numero || 0) <= mesLimite)
+      .filter(item => (item.mes_numero || 0) <= Math.min(ultimoMesComHHReal, mesLimite))
       .reduce((sum, item) => sum + (item.hh_realizado || 0), 0)
 
     const hhPlanejadoAcumulado = getHHPlanejadoAcumulado(mesLimite)
@@ -147,14 +152,14 @@ export default async function handler(req, res) {
       return {
         mes_numero: parseInt(mes),
         competencia: val.competencia,
-        percentual_acumulado: totalProjectHh > 0 ? Math.min(hhReal / totalProjectHh, 1) : 0
+        percentual_acumulado: totalProjectHh > 0 ? Math.min(1, Math.max(0, hhReal / totalProjectHh)) : 0
       }
     }).sort((a, b) => a.mes_numero - b.mes_numero)
 
     let maxAcumulado = 0
     fisRealizada.forEach(item => {
       maxAcumulado = Math.max(maxAcumulado, item.percentual_acumulado)
-      item.percentual_acumulado = maxAcumulado
+      item.percentual_acumulado = Math.min(1, Math.max(0, maxAcumulado))
     })
 
     const itensOrcamentoDireto = diretosPlanoRes.data || []
@@ -182,12 +187,21 @@ export default async function handler(req, res) {
     const custoGrupo18 = itensGrupo18.reduce((s, i) => s + parseFloat(i.preco_total || 0), 0)
     const totalDiretosHH = totalDiretos - custoGrupo17 - custoGrupo18
 
-    const acwp = finRealizada.length > 0 ? finRealizada[finRealizada.length - 1].valor_acumulado : 0
-    const custoDiretoReal = finRealizada.length > 0 ? finRealizada[finRealizada.length - 1].valor_direto : 0
+    const ultimoMesComCustoDiretoReal = finRealizada.reduce((max, item) => {
+      const valor = Number(item.valor_direto || 0)
+      return valor > 0 && item.mes_numero > max ? item.mes_numero : max
+    }, 0)
+
+    const acwp = finRealizada.length > 0
+      ? finRealizada.filter(item => item.mes_numero === ultimoMesComCustoDiretoReal)[0]?.valor_direto || 0
+      : 0
+    const custoDiretoReal = ultimoMesComCustoDiretoReal > 0
+      ? finRealizada.filter(item => item.mes_numero === ultimoMesComCustoDiretoReal)[0]?.valor_direto || 0
+      : 0
     const custoIndiretoReal = finRealizada.length > 0 ? finRealizada[finRealizada.length - 1].valor_indireto : 0
     // Realizado tambem na base Hh, acumulado ate o mes do filtro
     const avancoFisicoRealHH = totalProjectHh > 0
-      ? (hhRealizadoAteFiltro / totalProjectHh) * 100
+      ? Math.min(100, Math.max(0, (hhRealizadoAteFiltro / totalProjectHh) * 100))
       : 0
 
     const mesRefBCWS = fisRealizada.length > 0
@@ -199,7 +213,7 @@ export default async function handler(req, res) {
     const bcws = fisPlanMesAtual ? fisPlanMesAtual.percentual_acumulado * totalDiretos : 0
     // Card de Avanço Físico Planejado: base hora-homem (mesma da Curva S)
     const avancoFisicoPlano = totalProjectHh > 0
-      ? (hhPlanejadoAcumulado / totalProjectHh) * 100
+      ? Math.min(100, Math.max(0, (hhPlanejadoAcumulado / totalProjectHh) * 100))
       : 0
 
     const bcwpEquipamentos = itensGrupo17.reduce((soma, item) => {
@@ -258,7 +272,7 @@ export default async function handler(req, res) {
       orcamento_total: orcamentoTotal,
       custo_direto_total: parseFloat(totalDiretos.toFixed(2)),
       custo_indireto_total: parseFloat(totalIndiretos.toFixed(2)),
-      custo_realizado: acwp,
+      custo_realizado: custoDiretoReal,
       custo_direto_realizado: custoDiretoReal,
       custo_indireto_realizado: custoIndiretoReal,
       avanco_fisico_realizado: avancoFisicoReal,
@@ -295,7 +309,8 @@ export default async function handler(req, res) {
     const ultimaAnoMesFisReal = fisRealizada.length > 0
       ? fisRealizada[fisRealizada.length - 1].competencia?.slice(0, 7)
       : null
-    const ultimoMesFinReal = finRealizada.length > 0 ? finRealizada[finRealizada.length - 1].mes_numero : 0
+    const ultimoMesFinReal = ultimoMesComCustoDiretoReal > 0 ? ultimoMesComCustoDiretoReal : 0
+    const ultimoMesRealizadoComDados = ultimoMesComHHReal || 0
 
     // Indiretos recorrentes que compoem a curva financeira (funcao do tempo)
     // Adm local 23500 + Locacoes/Funcionarios ~40632 + Contabeis 1459 + IPTU 463
@@ -305,28 +320,27 @@ export default async function handler(req, res) {
       const finPlan = finPlanejada.find(f => f.mes_numero === i)
       const finReal = i <= mesLimite ? finRealizada.find(f => f.mes_numero === i) : null
 
-      const hhPlanejadoAcumMes = orcamentoPlanejado.reduce((sum, item) => {
-        const hh = parseFloat(item.hh || 0) || 0
-        if (hh <= 0) return sum
-        const mesInicio = parseInt(item.mes_inicio || 1)
-        const mesFim = parseInt(item.mes_fim || mesInicio)
-        const totalMeses = Math.max(1, mesFim - mesInicio + 1)
-        const mesesAtivos = Math.max(0, Math.min(i, mesFim) - mesInicio + 1)
-        return sum + hh * (mesesAtivos / totalMeses)
-      }, 0)
+      const hhPlanejadoAcumMes = getHHPlanejadoAcumulado(i)
 
       const hhRealizadoAcumMes = Array.from(ultimoRealizadoPorItem.values()).reduce((sum, item) => {
         if ((parseInt(item.mes_numero || 0) || 0) <= i) return sum + (parseFloat(item.hh_realizado || 0) || 0)
         return sum
       }, 0)
 
+      const temRealizadoNoMes = i <= ultimoMesRealizadoComDados
+
+      const fisicoPlanejadoPct = totalProjectHh > 0 ? Math.min(100, Math.max(0, (hhPlanejadoAcumMes / totalProjectHh) * 100)) : null
+      const fisicoRealizadoPct = temRealizadoNoMes && totalProjectHh > 0 && i <= ultimoMesRealizadoComDados
+        ? Math.min(100, Math.max(0, (hhRealizadoAcumMes / totalProjectHh) * 100))
+        : null
+
       meses.push({
         mes_numero: i,
         competencia: finPlan ? finPlan.competencia : null,
         financeiro_planejado: finPlan ? (toFraction(toPercent(finPlan.percentual_acumulado)) * totalDiretos) : null,
         financeiro_realizado: (i <= mesLimite && i <= ultimoMesFinReal && finReal) ? (finReal.valor_direto != null ? finReal.valor_direto : finReal.valor_acumulado) : null,
-        fisico_planejado: totalProjectHh > 0 ? (hhPlanejadoAcumMes / totalProjectHh) * 100 : null,
-        fisico_realizado: totalProjectHh > 0 ? (hhRealizadoAcumMes / totalProjectHh) * 100 : null,
+        fisico_planejado: fisicoPlanejadoPct,
+        fisico_realizado: fisicoRealizadoPct,
       })
     }
 

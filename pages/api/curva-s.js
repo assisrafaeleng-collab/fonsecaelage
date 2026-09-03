@@ -2,6 +2,7 @@
 // Retorna dados da Curva S (planejado vs realizado)
 
 import { createClient } from '@supabase/supabase-js';
+import { getHHPlanejadoAcumulado, getTotalPlanejadoHH } from '../../lib/cronograma-hh';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -25,7 +26,7 @@ export default async function handler(req, res) {
     if (realizadoError) throw realizadoError;
 
     const itens = orcamentoData || [];
-    const totalHh = itens.reduce((sum, item) => sum + (parseFloat(item.hh || 0) || 0), 0);
+    const totalHh = getTotalPlanejadoHH() || itens.reduce((sum, item) => sum + (parseFloat(item.hh || 0) || 0), 0);
 
     const ultimoRealizadoPorItem = new Map();
     (realizadoData || []).forEach(item => {
@@ -49,15 +50,7 @@ export default async function handler(req, res) {
       const mesLabel = `M${mes}`;
       labels.push(mesLabel);
 
-      const planejadoAcum = itens.reduce((sum, item) => {
-        const hh = parseFloat(item.hh || 0) || 0;
-        if (hh <= 0) return sum;
-        const mesInicio = parseInt(item.mes_inicio || 1);
-        const mesFim = parseInt(item.mes_fim || mesInicio);
-        const totalMeses = Math.max(1, mesFim - mesInicio + 1);
-        const mesesAtivos = Math.max(0, Math.min(mes, mesFim) - mesInicio + 1);
-        return sum + hh * (mesesAtivos / totalMeses);
-      }, 0);
+      const planejadoAcum = getHHPlanejadoAcumulado(mes);
 
       const realizadoAcum = Array.from(ultimoRealizadoPorItem.values()).reduce((sum, item) => {
         return (parseInt(item.mes_numero || 0) <= mes) ? sum + (parseFloat(item.hh_realizado || 0) || 0) : sum;

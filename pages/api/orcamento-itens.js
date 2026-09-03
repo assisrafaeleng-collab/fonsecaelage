@@ -7,6 +7,7 @@
 // (itens "Apenas Material" e o 1.1.X). Sem o parametro, retorna tudo (financeiro).
 
 import { supabase } from '../../lib/supabase'
+import { getPlanejadoHhByItem } from '../../lib/cronograma-hh'
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -25,18 +26,32 @@ export default async function handler(req, res) {
 
     if (error) throw new Error(error.message)
 
-    let itens = (data || []).map(r => ({
-      g: r.grupo_numero,
-      n: r.grupo_nome,
-      p: r.pavimento,
-      i: r.cod_eap,
-      d: r.descricao,
-      q: parseFloat(r.quantidade) || 0,
-      c: parseFloat(r.preco_total) || 0,
-      h: parseFloat(r.hh) || 0,
-      a: r.mes_inicio,
-      b: r.mes_fim,
-    }))
+    let itens = (data || []).map(r => {
+      const matriz = getPlanejadoHhByItem({
+        grupo_nome: r.grupo_nome,
+        grupo: r.grupo_nome,
+        atividade: r.descricao,
+        descricao: r.descricao,
+        hh: r.hh,
+        mes_inicio: r.mes_inicio,
+        mes_fim: r.mes_fim,
+      })
+      const totalMatriz = matriz.reduce((sum, value) => sum + (Number(value) || 0), 0)
+      const mesesComValor = matriz.map((value, idx) => ({ idx: idx + 1, value: Number(value) || 0 })).filter(x => x.value > 0)
+
+      return {
+        g: r.grupo_numero,
+        n: r.grupo_nome,
+        p: r.pavimento,
+        i: r.cod_eap,
+        d: r.descricao,
+        q: parseFloat(r.quantidade) || 0,
+        c: parseFloat(r.preco_total) || 0,
+        h: totalMatriz > 0 ? totalMatriz : (parseFloat(r.hh) || 0),
+        a: mesesComValor[0]?.idx || r.mes_inicio || 1,
+        b: mesesComValor[mesesComValor.length - 1]?.idx || r.mes_fim || r.mes_inicio || 1,
+      }
+    })
 
     // Contexto FISICO: remove itens que nao entram no avanco fisico.
     // IMPORTANTE: usar "(apenas material)" COM PARENTESES — assim pega so os

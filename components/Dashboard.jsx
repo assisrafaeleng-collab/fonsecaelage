@@ -138,9 +138,9 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
   const fisPlan = meses_alinhados.map(m => m.fisico_planejado)
 
   const ultimoMesFisReal = meses_alinhados.reduce((last, m, i) =>
-    (m.fisico_realizado != null && m.fisico_realizado > 0) ? i : last, -1)
+    (m.fisico_realizado != null && Number.isFinite(m.fisico_realizado)) ? i : last, -1)
   const ultimoMesFinReal = meses_alinhados.reduce((last, m, i) =>
-    (m.financeiro_realizado != null && m.financeiro_realizado > 0) ? i : last, -1)
+    (m.financeiro_realizado != null && Number.isFinite(m.financeiro_realizado)) ? i : last, -1)
 
   const fisReal = meses_alinhados.map((m, i) =>
     i <= ultimoMesFisReal ? m.fisico_realizado : null)
