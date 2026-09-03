@@ -101,11 +101,13 @@ export default function CustosDiretosRealizados() {
 
   const totHh = useMemo(() => dados.reduce((s,r) => s+r.h, 0) || 1, [dados])
 
-  // Data limite do período
+  // Data limite do período (sem bug de fuso horário)
   const dataLimite = useMemo(() => {
-    const d = new Date('2026-07-01')
-    d.setMonth(d.getMonth() + mes - 1)
-    return d.toISOString().slice(0,7)
+    // Obra começa em julho/2026 = mês 7. mes=1 -> 2026-07, mes=2 -> 2026-08, etc.
+    const mesReal = 7 + (mes - 1)
+    const ano = 2026 + Math.floor((mesReal - 1) / 12)
+    const mesFinal = ((mesReal - 1) % 12) + 1
+    return `${ano}-${String(mesFinal).padStart(2,'0')}`
   }, [mes])
 
   // Lançamentos filtrados até o período
