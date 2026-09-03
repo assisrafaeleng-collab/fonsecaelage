@@ -1,5 +1,6 @@
 import { supabase } from '../../lib/supabase'
 import { normalizeCompetencia } from '../../lib/competencia'
+import { getHHPlanejadoAcumulado, getTotalPlanejadoHH } from '../../lib/cronograma-hh'
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -114,7 +115,7 @@ export default async function handler(req, res) {
     })
 
     const orcamentoPlanejado = orcamentoPlanejadoRes.data || []
-    const totalProjectHh = orcamentoPlanejado.reduce((sum, item) => sum + (parseFloat(item.hh || 0) || 0), 0)
+    const totalProjectHh = getTotalPlanejadoHH() || orcamentoPlanejado.reduce((sum, item) => sum + (parseFloat(item.hh || 0) || 0), 0)
 
     const ultimoRealizadoPorItem = new Map()
     avancoRealData.forEach(item => {
@@ -134,15 +135,7 @@ export default async function handler(req, res) {
     const hhRealizadoAcumulado = Array.from(ultimoRealizadoPorItem.values())
       .reduce((sum, item) => sum + (item.hh_realizado || 0), 0)
 
-    const hhPlanejadoAcumulado = orcamentoPlanejado.reduce((sum, item) => {
-      const hh = parseFloat(item.hh || 0) || 0
-      if (hh <= 0) return sum
-      const mesInicio = parseInt(item.mes_inicio || 1)
-      const mesFim = parseInt(item.mes_fim || mesInicio)
-      const totalMeses = Math.max(1, mesFim - mesInicio + 1)
-      const mesesAtivos = Math.max(0, Math.min(mesLimite, mesFim) - mesInicio + 1)
-      return sum + hh * (mesesAtivos / totalMeses)
-    }, 0)
+    const hhPlanejadoAcumulado = getHHPlanejadoAcumulado(mesLimite)
 
     const fisRealizada = Object.entries(avancoRealPorMes).map(([mes, val]) => {
       const hhReal = val.itens.reduce((s, i) => s + parseFloat(i.hh_realizado || 0), 0)
@@ -196,7 +189,9 @@ export default async function handler(req, res) {
     const fisPlanMesAtual = fisPlanejada.find(f => f.mes_numero === mesRefBCWS) || fisPlanejada[fisPlanejada.length - 1]
 
     const bcws = fisPlanMesAtual ? fisPlanMesAtual.percentual_acumulado * totalDiretos : 0
-    const avancoFisicoPlano = fisPlanMesAtual ? fisPlanMesAtual.percentual_acumulado * 100 : 0
+    // Card de Avanço Físico Planejado segue o FILTRO (mesLimite), não o mesRefBCWS
+    const fisPlanDoFiltro = fisPlanejada.find(f => f.mes_numero === mesLimite) || fisPlanejada[fisPlanejada.length - 1]
+    const avancoFisicoPlano = fisPlanDoFiltro ? fisPlanDoFiltro.percentual_acumulado * 100 : 0
 
     const bcwpEquipamentos = itensGrupo17.reduce((soma, item) => {
       const realizado = custoRealizadoPorEap[item.cod_eap] || 0
