@@ -10,7 +10,16 @@ export default async function handler(req, res) {
   const mesLimite = parseInt(req.query.mes) || 20  // 20 meses
 
   try {
-    const [finPlanejadaRes, fisPlanejadaRes, custosRes, horasRes, avancoRealRes, indiretosPlanoRes, diretosPlanoRes, orcamentoPlanejadoRes] = await Promise.all([
+    const [
+      finPlanejadaRes,
+      fisPlanejadaRes,
+      custosRes,
+      horasRes,
+      avancoRealRes,
+      indiretosPlanoRes,
+      diretosPlanoRes,
+      orcamentoPlanejadoRes
+    ] = await Promise.all([
       supabase.from('v_curva_s_financeira_planejada').select('*').eq('obra_id', obra_id).order('mes_numero'),
       supabase.from('v_curva_s_fisica_planejada').select('*').eq('obra_id', obra_id).order('mes_numero'),
       supabase.from('custos_lancamentos').select('competencia, data_emissao, valor, status, grupo_custo, codigo_eap').eq('obra_id', obra_id).order('data_emissao'),
@@ -18,6 +27,7 @@ export default async function handler(req, res) {
       supabase.from('avanco_fisico_realizado').select('mes_numero, competencia, atividade_nome, percentual_realizado, hh_planejado, hh_realizado, codigo_eap, pavimento').eq('obra_id', obra_id).lte('mes_numero', mesLimite).order('mes_numero'),
       supabase.from('custos_indiretos_planejados').select('valor_total').eq('obra_id', obra_id),
       supabase.from('orcamento_planejado').select('preco_total, grupo_numero, cod_eap, hh, mes_inicio, mes_fim').eq('obra_id', obra_id),
+      supabase.from('orcamento_planejado').select('hh, mes_inicio, mes_fim').eq('obra_id', obra_id),
     ])
 
     if (finPlanejadaRes.error) throw new Error(finPlanejadaRes.error.message)
