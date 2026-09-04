@@ -1,4 +1,13 @@
-﻿fix_*.js
+﻿node_modules/
+.next/
+.env.local
+.env*.local
+.DS_Store
+*.log
+.vercel
+
+# scripts de correcao e backups locais
+fix_*.js
 corrigir_*.js
 mover_*.js
 *.bak
