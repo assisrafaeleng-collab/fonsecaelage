@@ -1,6 +1,7 @@
 // components/PaineisAnalise.jsx
 // Painéis colapsáveis de análise: Alertas, Curva S unificada, Heatmap por pavimento
 import React, { useState, useEffect, useMemo } from 'react'
+import { getFracaoPlanejada } from '../lib/cronograma-hh'
 
 const fmtR = v => 'R$ ' + Math.round(v || 0).toLocaleString('pt-BR')
 const fmtP = v => (v || 0).toFixed(1).replace('.', ',') + '%'
@@ -71,6 +72,7 @@ function buildHeatmapGrid(dados, avanco, mes) {
       const totHh = items.reduce((s, r) => s + (r.h || 0), 0)
       let realHh = 0
       let planPct = 0
+      let planHh = 0
       let planCount = 0
       let launched = false
 
@@ -82,21 +84,34 @@ function buildHeatmapGrid(dados, avanco, mes) {
         launched = launched || itemLancado
         realHh += (r.h || 0) * pct / 100
 
-        if (mes >= r.a) {
-          const numMeses = Math.max(r.b - r.a + 1, 1)
-          const ativos = Math.min(mes, r.b) - r.a + 1
-          planPct += Math.min(100, ativos / numMeses * 100)
+        // Fracao planejada pela curva da propria atividade, ponderada por Hh.
+        // Antes era regra de tres sobre a janela, o que dava o mesmo
+        // percentual para servicos com cronogramas bem diferentes.
+        let fracao = getFracaoPlanejada(r.i, r.d, mes)
+        if (fracao == null) {
+          if (mes >= r.a) {
+            const numMeses = Math.max(r.b - r.a + 1, 1)
+            const ativos = Math.min(mes, r.b) - r.a + 1
+            fracao = Math.min(1, ativos / numMeses)
+          } else {
+            fracao = 0
+          }
         }
+        planHh += (r.h || 0) * fracao
+        planPct += fracao * 100
         planCount++
       })
 
       const realPct = totHh > 0
         ? (realHh / totHh * 100)
         : (items.length > 0 ? items.reduce((s, r) => s + (hasLancamento(avanco, `${r.i}|${pav}`) ? (avanco[`${r.i}|${pav}`] || 0) : 0), 0) / items.length : 0)
-      const planAvg = planCount > 0 ? planPct / planCount : 0
+      const planAvg = totHh > 0 ? (planHh / totHh * 100) : (planCount > 0 ? planPct / planCount : 0)
 
       cells[`${g}|${pav}`] = {
         real: realPct,
+        realHh,
+        planHh,
+        totHh,
         plan: planAvg,
         items: items.length,
         launched
@@ -116,11 +131,15 @@ function buildAtividades(grid) {
 
       const launchedCells = cells.filter(cell => cell.launched)
       const baseCells = launchedCells.length > 0 ? launchedCells : cells
-      const realizado = baseCells.length > 0
-        ? baseCells.reduce((sum, cell) => sum + cell.real, 0) / baseCells.length
+      // Ponderado por Hh e sobre TODOS os pavimentos do grupo, nao apenas os
+      // lancados: a media simples dava peso igual a pavimentos de tamanhos
+      // muito diferentes e inflava o avanco.
+      const somaHh = cells.reduce((s, c) => s + (c.totHh || 0), 0)
+      const realizado = somaHh > 0
+        ? cells.reduce((s, c) => s + (c.realHh || 0), 0) / somaHh * 100
         : 0
-      const planejado = baseCells.length > 0
-        ? baseCells.reduce((sum, cell) => sum + cell.plan, 0) / baseCells.length
+      const planejado = somaHh > 0
+        ? cells.reduce((s, c) => s + (c.planHh || 0), 0) / somaHh * 100
         : null
       const delta = planejado == null ? null : realizado - planejado
 
