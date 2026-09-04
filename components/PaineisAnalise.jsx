@@ -6,7 +6,7 @@ import { getFracaoPlanejada } from '../lib/cronograma-hh'
 const fmtR = v => 'R$ ' + Math.round(v || 0).toLocaleString('pt-BR')
 const fmtP = v => (v || 0).toFixed(1).replace('.', ',') + '%'
 
-const PAVS = ['1º', '2º', '3º', '4º', '5º', '6º/Plat', 'Edifício']
+const PAVS = ['1º', '2º', '3º', '4º', '5º', '6º/Plat', '7º', 'Edifício']
 const GRUPOS_NOMES = {
   1:'Prelim', 2:'Fundaç', 3:'Estrut', 4:'Alven', 5:'Reboco', 6:'Hidro', 7:'Elétr',
   8:'InstEsp', 9:'Cobert', 10:'Gesso', 11:'Pisos', 12:'Esquad', 13:'Pintura',
