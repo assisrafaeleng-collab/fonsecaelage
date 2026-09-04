@@ -290,7 +290,8 @@ export default async function handler(req, res) {
       custo_realizado: custoTotalRealizadoAcum,
       custo_direto_realizado: custoDiretoReal,
       custo_indireto_realizado: custoIndiretoReal,
-      avanco_fisico_realizado: avancoFisicoReal,
+      // Card: Hh realizado / Hh total — mesma base do planejado e da Curva S
+      avanco_fisico_realizado: parseFloat(avancoFisicoRealHH.toFixed(2)),
       avanco_fisico_planejado: avancoFisicoPlano,
       bcwp: parseFloat(bcwp.toFixed(2)),
       bcws: parseFloat(bcws.toFixed(2)),
@@ -305,7 +306,7 @@ export default async function handler(req, res) {
       saldo_real: parseFloat(saldoReal.toFixed(2)),
       desvio_financeiro: desvioFinanceiro,
       desvio_financeiro_perc: parseFloat(desvioFinanceiroPerc.toFixed(2)),
-      desvio_fisico: parseFloat((avancoFisicoReal - avancoFisicoPlano).toFixed(2)),
+      desvio_fisico: parseFloat((avancoFisicoRealHH - avancoFisicoPlano).toFixed(2)),
       projecao_custo_final: eac,
       saldo_orcamento: totalDiretos - acwpProducao,
       mes_atual: mesAtual,
@@ -330,6 +331,16 @@ export default async function handler(req, res) {
     // Indiretos recorrentes que compoem a curva financeira (funcao do tempo)
     // Adm local 23500 + Locacoes/Funcionarios ~40632 + Contabeis 1459 + IPTU 463
     const RECORRENTE_MENSAL_PLAN = 23500 + 1459 + 463 + (356776/20) + (455860/20)
+    // Direto planejado acumulado, mes a mes, direto da view.
+    // O percentual_acumulado da view e sobre o orcamento TOTAL: usa-lo
+    // contra o custo direto inflava a linha planejada da Curva S.
+    const diretosPlanejadoAcum = {}
+    let acumDiretosPlan = 0
+    finPlanejada.forEach(f => {
+      acumDiretosPlan += Number(f.valor_diretos || 0)
+      diretosPlanejadoAcum[Number(f.mes_numero)] = acumDiretosPlan
+    })
+
     const meses = []
     for (let i = 1; i <= 20; i++) {
       const finPlan = finPlanejada.find(f => f.mes_numero === i)
@@ -352,7 +363,7 @@ export default async function handler(req, res) {
       meses.push({
         mes_numero: i,
         competencia: finPlan ? finPlan.competencia : null,
-        financeiro_planejado: finPlan ? (toFraction(toPercent(finPlan.percentual_acumulado)) * totalDiretos) : null,
+        financeiro_planejado: diretosPlanejadoAcum[i] != null ? diretosPlanejadoAcum[i] : null,
         financeiro_realizado: (i <= mesLimite && i <= ultimoMesFinReal && finReal) ? (finReal.valor_direto != null ? finReal.valor_direto : finReal.valor_acumulado) : null,
         fisico_planejado: fisicoPlanejadoPct,
         fisico_realizado: fisicoRealizadoPct,
