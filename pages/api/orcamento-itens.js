@@ -26,6 +26,13 @@ export default async function handler(req, res) {
 
     if (error) throw new Error(error.message)
 
+    // Soma do Hh do orcamento por grupo — base do rateio do total da matriz
+    const hhOrcamentoPorGrupo = {}
+    ;(data || []).forEach(r => {
+      const g = r.grupo_numero
+      hhOrcamentoPorGrupo[g] = (hhOrcamentoPorGrupo[g] || 0) + (parseFloat(r.hh) || 0)
+    })
+
     let itens = (data || []).map(r => {
       const matriz = getPlanejadoHhByItem({
         grupo_nome: r.grupo_nome,
@@ -47,7 +54,9 @@ export default async function handler(req, res) {
         d: r.descricao,
         q: parseFloat(r.quantidade) || 0,
         c: parseFloat(r.preco_total) || 0,
-        h: totalMatriz > 0 ? totalMatriz : (parseFloat(r.hh) || 0),
+        h: (totalMatriz > 0 && (hhOrcamentoPorGrupo[r.grupo_numero] || 0) > 0)
+          ? (parseFloat(r.hh) || 0) * (totalMatriz / hhOrcamentoPorGrupo[r.grupo_numero])
+          : (parseFloat(r.hh) || 0),
         a: mesesComValor[0]?.idx || r.mes_inicio || 1,
         b: mesesComValor[mesesComValor.length - 1]?.idx || r.mes_fim || r.mes_inicio || 1,
       }
