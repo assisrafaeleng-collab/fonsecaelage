@@ -1,6 +1,7 @@
 // pages/avanco-fisico-planejado.js
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/router'
+import { getHHPlanejadoAcumulado, getPercentualPlanejadoAcumulado } from '../lib/cronograma-hh'
 
 const PAVS = ['1º','2º','3º','4º','5º','6º/Plat','Edifício']
 const NOMES_MESES = ['jul','ago','set','out','nov','dez','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez','jan','fev']
@@ -179,7 +180,8 @@ export default function AvancoFisicoPlanejado() {
     return dados.filter(r => (pavF==='__ALL__' || r.p===pavF) && r.g !== 17 && r.g !== 18).reduce((s,r) => s + r.h, 0)
   }, [dados, pavF])
 
-  const pctAvanco = hhTotalFisico > 0 ? Math.min(100, (hhPeriodo/hhTotalFisico*100)) : 0
+  // Mesma base do dashboard: acumulado da matriz do cronograma
+  const pctAvanco = getPercentualPlanejadoAcumulado(mes) * 100
 
   const toggle = key => setOpen(o => ({...o, [key]: !o[key]}))
 
@@ -206,7 +208,7 @@ export default function AvancoFisicoPlanejado() {
           </div>
           <div style={{...S.kpi, borderLeft:'3px solid #5B9BD5'}}>
             <div style={S.kpiLbl}>{metric==='pct'?'% Físico':metric==='custo'?'Valor no período':'Hh no período'}</div>
-            <div style={{...S.kpiVal, color:'#5B9BD5', fontSize:18}}>{fmtVal(totalPlanPeriodo)}</div>
+            <div style={{...S.kpiVal, color:'#5B9BD5', fontSize:18}}>{metric==='hh' ? fmtH(getHHPlanejadoAcumulado(mes)) : fmtVal(totalPlanPeriodo)}</div>
             <div style={S.kpiSub}>acumulado até M{mes}</div>
           </div>
           <div style={{...S.kpi, borderLeft:'3px solid #3fae86'}}>

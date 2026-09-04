@@ -1,6 +1,7 @@
 // pages/avanco-fisico-realizado.js
 import { useState, useEffect, useMemo, Fragment } from 'react'
 import { useRouter } from 'next/router'
+import { getHHPlanejadoAcumulado, getTotalPlanejadoHH } from '../lib/cronograma-hh'
 
 const PAVS = ['1º','2º','3º','4º','5º','6º/Plat','Edifício']
 const NOMES_MESES = ['jul','ago','set','out','nov','dez','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez','jan','fev']
@@ -268,8 +269,10 @@ export default function AvancoFisicoRealizado() {
     }, 0)
   }, [visible, pcts])
 
-  const hhPlanTotal = useMemo(() => visible.reduce((s,r) => s+r.h, 0), [visible])
-  const pctMedio = hhPlanTotal > 0 ? (hhRealTotal/hhPlanTotal*100) : 0
+  // Planejado do periodo: mesma base do dashboard e da tela de Planejado
+  const hhPlanTotal = useMemo(() => getHHPlanejadoAcumulado(mes), [mes])
+  // % do projeto ja realizado — mesmo numero do card do dashboard
+  const pctMedio = getTotalPlanejadoHH() > 0 ? (hhRealTotal/getTotalPlanejadoHH()*100) : 0
 
   const custoRealTotal = useMemo(() => {
     return visible.reduce((s,r) => {
