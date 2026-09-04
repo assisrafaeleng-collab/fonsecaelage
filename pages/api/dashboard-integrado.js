@@ -192,6 +192,11 @@ export default async function handler(req, res) {
       return valor > 0 && item.mes_numero > max ? item.mes_numero : max
     }, 0)
 
+    // Total acumulado (direto + indireto) — o Dashboard subtrai o indireto para achar o direto
+    const custoTotalRealizadoAcum = finRealizada.length > 0
+      ? Number(finRealizada[finRealizada.length - 1].valor_acumulado || 0)
+      : 0
+
     const acwp = finRealizada.length > 0
       ? finRealizada.filter(item => item.mes_numero === ultimoMesComCustoDiretoReal)[0]?.valor_direto || 0
       : 0
@@ -272,7 +277,7 @@ export default async function handler(req, res) {
       orcamento_total: orcamentoTotal,
       custo_direto_total: parseFloat(totalDiretos.toFixed(2)),
       custo_indireto_total: parseFloat(totalIndiretos.toFixed(2)),
-      custo_realizado: custoDiretoReal,
+      custo_realizado: custoTotalRealizadoAcum,
       custo_direto_realizado: custoDiretoReal,
       custo_indireto_realizado: custoIndiretoReal,
       avanco_fisico_realizado: avancoFisicoReal,
