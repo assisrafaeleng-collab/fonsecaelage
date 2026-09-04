@@ -16,3 +16,6 @@ diff_*.txt
 trecho.txt
 g23.json
 realizado.json
+
+*.bak*
+avanco.json
