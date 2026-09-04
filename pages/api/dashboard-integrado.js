@@ -1,6 +1,6 @@
 import { supabase } from '../../lib/supabase'
 import { normalizeCompetencia } from '../../lib/competencia'
-import { getHHPlanejadoAcumulado, getTotalPlanejadoHH } from '../../lib/cronograma-hh'
+import { getHHPlanejadoAcumulado, getTotalPlanejadoHH, getPlanejadoHhByItem } from '../../lib/cronograma-hh'
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -27,7 +27,7 @@ export default async function handler(req, res) {
       supabase.from('cronograma_horas_planejado').select('grupo_nome, horas_totais').eq('obra_id', obra_id),
       supabase.from('avanco_fisico_realizado').select('mes_numero, competencia, atividade_nome, percentual_realizado, hh_planejado, hh_realizado, codigo_eap, pavimento').eq('obra_id', obra_id).lte('mes_numero', mesLimite).order('mes_numero'),
       supabase.from('custos_indiretos_planejados').select('valor_total').eq('obra_id', obra_id),
-      supabase.from('orcamento_planejado').select('preco_total, grupo_numero, cod_eap, hh, mes_inicio, mes_fim').eq('obra_id', obra_id),
+      supabase.from('orcamento_planejado').select('preco_total, grupo_numero, grupo_nome, cod_eap, hh, mes_inicio, mes_fim').eq('obra_id', obra_id),
       supabase.from('orcamento_planejado').select('hh, mes_inicio, mes_fim').eq('obra_id', obra_id),
     ])
 
@@ -127,13 +127,37 @@ export default async function handler(req, res) {
     const orcamentoPlanejado = orcamentoPlanejadoRes.data || []
     const totalProjectHh = getTotalPlanejadoHH() || orcamentoPlanejado.reduce((sum, item) => sum + (parseFloat(item.hh || 0) || 0), 0)
 
+    // Hh atual de cada item: Hh do orcamento rateado para fechar com a matriz.
+    // Mesma conta que as telas de Planejado e Realizado fazem.
+    const itensDiretosOrc = diretosPlanoRes.data || []
+    const hhOrcPorGrupo = {}
+    const nomePorGrupo = {}
+    itensDiretosOrc.forEach(it => {
+      const g = it.grupo_numero
+      hhOrcPorGrupo[g] = (hhOrcPorGrupo[g] || 0) + (parseFloat(it.hh) || 0)
+      if (it.grupo_nome) nomePorGrupo[g] = it.grupo_nome
+    })
+    const fatorPorGrupo = {}
+    Object.keys(hhOrcPorGrupo).forEach(g => {
+      const matriz = getPlanejadoHhByItem({ grupo_nome: nomePorGrupo[g] || "", hh: 0 })
+      const totalMatriz = matriz.reduce((s, v) => s + (Number(v) || 0), 0)
+      fatorPorGrupo[g] = (totalMatriz > 0 && hhOrcPorGrupo[g] > 0) ? (totalMatriz / hhOrcPorGrupo[g]) : 1
+    })
+    const hhAtualPorItem = {}
+    itensDiretosOrc.forEach(it => {
+      hhAtualPorItem[it.cod_eap] = (parseFloat(it.hh) || 0) * (fatorPorGrupo[it.grupo_numero] || 1)
+    })
+
     const ultimoRealizadoPorItem = new Map()
     avancoRealData.forEach(item => {
       const key = item.codigo_eap || `${item.atividade_nome || 'atividade'}|${item.pavimento || ''}`
       const atual = ultimoRealizadoPorItem.get(key)
       const novo = {
         ...item,
-        hh_realizado: parseFloat(item.hh_realizado || 0),
+        // Calculado na hora: % lancado x Hh atual do item (nao usa o valor gravado)
+        hh_realizado: (hhAtualPorItem[item.codigo_eap] != null)
+          ? (parseFloat(item.percentual_realizado || 0) / 100) * hhAtualPorItem[item.codigo_eap]
+          : parseFloat(item.hh_realizado || 0),
         hh_planejado: parseFloat(item.hh_planejado || 0),
         mes_numero: parseInt(item.mes_numero || 0)
       }
