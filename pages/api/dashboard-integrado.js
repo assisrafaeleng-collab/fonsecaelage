@@ -1,6 +1,6 @@
 import { supabase } from '../../lib/supabase'
 import { normalizeCompetencia } from '../../lib/competencia'
-import { getHHPlanejadoAcumulado, getTotalPlanejadoHH, getPlanejadoHhByItem } from '../../lib/cronograma-hh'
+import { getHHPlanejadoAcumulado, getTotalPlanejadoHH, getPlanejadoHhByItem, getPlanejadoHhBySubgrupo } from '../../lib/cronograma-hh'
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -143,9 +143,24 @@ export default async function handler(req, res) {
       const totalMatriz = matriz.reduce((s, v) => s + (Number(v) || 0), 0)
       fatorPorGrupo[g] = (totalMatriz > 0 && hhOrcPorGrupo[g] > 0) ? (totalMatriz / hhOrcPorGrupo[g]) : 1
     })
+    // Soma do Hh por subgrupo, para o mesmo rateio fino das telas
+    const chaveSub = (cod) => String(cod || "").split(".").slice(0, 2).join(".")
+    const hhOrcPorSub = {}
+    itensDiretosOrc.forEach(it => {
+      const k = chaveSub(it.cod_eap)
+      hhOrcPorSub[k] = (hhOrcPorSub[k] || 0) + (parseFloat(it.hh) || 0)
+    })
     const hhAtualPorItem = {}
     itensDiretosOrc.forEach(it => {
-      hhAtualPorItem[it.cod_eap] = (parseFloat(it.hh) || 0) * (fatorPorGrupo[it.grupo_numero] || 1)
+      const hhItem = parseFloat(it.hh) || 0
+      const mSub = getPlanejadoHhBySubgrupo(it.cod_eap)
+      if (mSub) {
+        const totalSub = mSub.reduce((s, v) => s + (Number(v) || 0), 0)
+        const base = hhOrcPorSub[chaveSub(it.cod_eap)] || 0
+        hhAtualPorItem[it.cod_eap] = (totalSub > 0 && base > 0) ? hhItem * (totalSub / base) : hhItem
+      } else {
+        hhAtualPorItem[it.cod_eap] = hhItem * (fatorPorGrupo[it.grupo_numero] || 1)
+      }
     })
 
     const ultimoRealizadoPorItem = new Map()

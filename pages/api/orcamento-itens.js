@@ -7,7 +7,7 @@
 // (itens "Apenas Material" e o 1.1.X). Sem o parametro, retorna tudo (financeiro).
 
 import { supabase } from '../../lib/supabase'
-import { getPlanejadoHhByItem } from '../../lib/cronograma-hh'
+import { getPlanejadoHhByItem, getPlanejadoHhBySubgrupo } from '../../lib/cronograma-hh'
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -27,6 +27,14 @@ export default async function handler(req, res) {
     if (error) throw new Error(error.message)
 
     // Soma do Hh do orcamento por grupo — base do rateio do total da matriz
+    // Soma do Hh por subgrupo (grupo.pavimento) — base do rateio fino
+    const hhOrcamentoPorSub = {}
+    const chaveSub = (cod) => String(cod || "").split(".").slice(0, 2).join(".")
+    ;(data || []).forEach(r => {
+      const k = chaveSub(r.cod_eap)
+      hhOrcamentoPorSub[k] = (hhOrcamentoPorSub[k] || 0) + (parseFloat(r.hh) || 0)
+    })
+
     const hhOrcamentoPorGrupo = {}
     ;(data || []).forEach(r => {
       const g = r.grupo_numero
@@ -34,6 +42,8 @@ export default async function handler(req, res) {
     })
 
     let itens = (data || []).map(r => {
+      // Subgrupo tem prioridade: da a janela real do pavimento
+      const matrizSub = getPlanejadoHhBySubgrupo(r.cod_eap)
       const matriz = getPlanejadoHhByItem({
         grupo_nome: r.grupo_nome,
         grupo: r.grupo_nome,
@@ -43,8 +53,10 @@ export default async function handler(req, res) {
         mes_inicio: r.mes_inicio,
         mes_fim: r.mes_fim,
       })
-      const totalMatriz = matriz.reduce((sum, value) => sum + (Number(value) || 0), 0)
-      const mesesComValor = matriz.map((value, idx) => ({ idx: idx + 1, value: Number(value) || 0 })).filter(x => x.value > 0)
+      const matrizUsada = matrizSub || matriz
+      const somaBase = matrizSub ? (hhOrcamentoPorSub[chaveSub(r.cod_eap)] || 0) : (hhOrcamentoPorGrupo[r.grupo_numero] || 0)
+      const totalMatriz = matrizUsada.reduce((sum, value) => sum + (Number(value) || 0), 0)
+      const mesesComValor = matrizUsada.map((value, idx) => ({ idx: idx + 1, value: Number(value) || 0 })).filter(x => x.value > 0)
 
       return {
         g: r.grupo_numero,
@@ -54,8 +66,8 @@ export default async function handler(req, res) {
         d: r.descricao,
         q: parseFloat(r.quantidade) || 0,
         c: parseFloat(r.preco_total) || 0,
-        h: (totalMatriz > 0 && (hhOrcamentoPorGrupo[r.grupo_numero] || 0) > 0)
-          ? (parseFloat(r.hh) || 0) * (totalMatriz / hhOrcamentoPorGrupo[r.grupo_numero])
+        h: (totalMatriz > 0 && somaBase > 0)
+          ? (parseFloat(r.hh) || 0) * (totalMatriz / somaBase)
           : (parseFloat(r.hh) || 0),
         a: mesesComValor[0]?.idx || r.mes_inicio || 1,
         b: mesesComValor[mesesComValor.length - 1]?.idx || r.mes_fim || r.mes_inicio || 1,
