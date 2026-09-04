@@ -334,12 +334,24 @@ export default async function handler(req, res) {
     // Direto planejado acumulado, mes a mes, direto da view.
     // O percentual_acumulado da view e sobre o orcamento TOTAL: usa-lo
     // contra o custo direto inflava a linha planejada da Curva S.
-    const diretosPlanejadoAcum = {}
-    let acumDiretosPlan = 0
-    finPlanejada.forEach(f => {
-      acumDiretosPlan += Number(f.valor_diretos || 0)
-      diretosPlanejadoAcum[Number(f.mes_numero)] = acumDiretosPlan
-    })
+    // Direto planejado acumulado a partir do ORCAMENTO (orcamento_planejado),
+    // com o preco_total de cada item rateado entre mes_inicio e mes_fim.
+    // Mesma regra do card em /api/orcamento-detalhado, entao card e curva batem.
+    const diretosOrcamentoAcum = {}
+    for (let m = 1; m <= 20; m++) {
+      let soma = 0
+      itensOrcamentoDireto.forEach(item => {
+        const a = Number(item.mes_inicio || 1)
+        const b = Number(item.mes_fim || a)
+        const custo = parseFloat(item.preco_total || 0) || 0
+        if (!custo) return
+        const numMeses = Math.max(b - a + 1, 1)
+        const mesesAtivos = Math.min(m, b) - a + 1
+        if (mesesAtivos <= 0) return
+        soma += custo * (mesesAtivos / numMeses)
+      })
+      diretosOrcamentoAcum[m] = soma
+    }
 
     const meses = []
     for (let i = 1; i <= 20; i++) {
@@ -363,7 +375,7 @@ export default async function handler(req, res) {
       meses.push({
         mes_numero: i,
         competencia: finPlan ? finPlan.competencia : null,
-        financeiro_planejado: diretosPlanejadoAcum[i] != null ? diretosPlanejadoAcum[i] : null,
+        financeiro_planejado: diretosOrcamentoAcum[i] != null ? diretosOrcamentoAcum[i] : null,
         financeiro_realizado: (i <= mesLimite && i <= ultimoMesFinReal && finReal) ? (finReal.valor_direto != null ? finReal.valor_direto : finReal.valor_acumulado) : null,
         fisico_planejado: fisicoPlanejadoPct,
         fisico_realizado: fisicoRealizadoPct,
