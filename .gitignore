@@ -1,7 +1,9 @@
-node_modules/
-.next/
-.env.local
-.env*.local
-.DS_Store
-*.log
-.vercel
+﻿fix_*.js
+corrigir_*.js
+mover_*.js
+*.bak
+*.bak[0-9]
+diff_*.txt
+trecho.txt
+g23.json
+realizado.json
