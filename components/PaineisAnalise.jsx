@@ -1,16 +1,16 @@
-// components/PaineisAnalise.jsx
-// Painéis colapsáveis de análise: Alertas, Curva S unificada, Heatmap por pavimento
+﻿// components/PaineisAnalise.jsx
+// PainÃ©is colapsÃ¡veis de anÃ¡lise: Alertas, Curva S unificada, Heatmap por pavimento
 import React, { useState, useEffect, useMemo } from 'react'
 import { getFracaoPlanejada } from '../lib/cronograma-hh'
 
 const fmtR = v => 'R$ ' + Math.round(v || 0).toLocaleString('pt-BR')
 const fmtP = v => (v || 0).toFixed(1).replace('.', ',') + '%'
 
-const PAVS = ['1º', '2º', '3º', '4º', '5º', '6º/Plat', 'Edifício']
+const PAVS = ['1Âº', '2Âº', '3Âº', '4Âº', '5Âº', '6Âº/Plat', '7º', 'EdifÃ­cio']
 const GRUPOS_NOMES = {
-  1:'Prelim', 2:'Fundaç', 3:'Estrut', 4:'Alven', 5:'Reboco', 6:'Hidro', 7:'Elétr',
+  1:'Prelim', 2:'FundaÃ§', 3:'Estrut', 4:'Alven', 5:'Reboco', 6:'Hidro', 7:'ElÃ©tr',
   8:'InstEsp', 9:'Cobert', 10:'Gesso', 11:'Pisos', 12:'Esquad', 13:'Pintura',
-  14:'Louças', 15:'Urban', 16:'Finais', 17:'LocEq', 18:'Func'
+  14:'LouÃ§as', 15:'Urban', 16:'Finais', 17:'LocEq', 18:'Func'
 }
 
 const S = {
@@ -166,14 +166,14 @@ function Secao({ titulo, badge, badgeColor, children, defaultOpen=false }) {
             <span style={{...S.badge, background: badgeColor || '#2a2a31', color:'#fff'}}>{badge}</span>
           )}
         </div>
-        <span style={{color:'#6d675e', fontSize:12}}>{open ? '▲' : '▼'}</span>
+        <span style={{color:'#6d675e', fontSize:12}}>{open ? 'â–²' : 'â–¼'}</span>
       </div>
       {open && <div style={S.body}>{children}</div>}
     </div>
   )
 }
 
-// ─── ALERTAS DE DESVIO ────────────────────────────────────────
+// â”€â”€â”€ ALERTAS DE DESVIO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function Alertas({ mes }) {
   const [alertas, setAlertas] = useState([])
   const [loading, setLoading] = useState(true)
@@ -228,19 +228,19 @@ function Alertas({ mes }) {
           }
         })
         Object.entries(gruposAtrasados).forEach(([g, info]) => {
-          found.push({ tipo:'prazo', nivel:'medio', msg: `Grupo ${g} (${info.nome}): ${info.count} atividades deveriam ter iniciado e não há custos lançados` })
+          found.push({ tipo:'prazo', nivel:'medio', msg: `Grupo ${g} (${info.nome}): ${info.count} atividades deveriam ter iniciado e nÃ£o hÃ¡ custos lanÃ§ados` })
         })
 
-        // 3. Categorias indiretas próximas de estourar (>90% do orçamento)
+        // 3. Categorias indiretas prÃ³ximas de estourar (>90% do orÃ§amento)
         const indPlan = indPlanRes.categorias || []
         const indReal = indRealRes.realPorCategoria || {}
         indPlan.forEach(cat => {
           const real = indReal[cat.categoria] || 0
           const total = cat.valor_total_projeto || cat.valor_total || 0
           if (total > 0 && real > total * 0.9 && real < total * 1.001) {
-            found.push({ tipo:'indireto', nivel:'medio', msg: `${cat.categoria}: ${(real/total*100).toFixed(0)}% do orçamento consumido (${fmtR(real)} de ${fmtR(total)})` })
+            found.push({ tipo:'indireto', nivel:'medio', msg: `${cat.categoria}: ${(real/total*100).toFixed(0)}% do orÃ§amento consumido (${fmtR(real)} de ${fmtR(total)})` })
           } else if (total > 0 && real > total) {
-            found.push({ tipo:'indireto', nivel:'alto', msg: `${cat.categoria}: ESTOUROU o orçamento em ${fmtR(real - total)} (${fmtR(real)} de ${fmtR(total)})` })
+            found.push({ tipo:'indireto', nivel:'alto', msg: `${cat.categoria}: ESTOUROU o orÃ§amento em ${fmtR(real - total)} (${fmtR(real)} de ${fmtR(total)})` })
           }
         })
 
@@ -269,12 +269,12 @@ function Alertas({ mes }) {
   }
 
   if (loading) return <div style={{color:'#6d675e', fontSize:12}}>Analisando...</div>
-  if (alertas.length === 0) return <div style={{color:'#3f9e6c', fontSize:13}}>Nenhum desvio relevante detectado até M{mes}.</div>
+  if (alertas.length === 0) return <div style={{color:'#3f9e6c', fontSize:13}}>Nenhum desvio relevante detectado atÃ© M{mes}.</div>
 
   return (
     <div>
       {alertas.map((a, i) => {
-        // Chave estável para o alerta (baseada na msg)
+        // Chave estÃ¡vel para o alerta (baseada na msg)
         const key = a.msg.slice(0, 80)
         const resolvido = !!resolvidos[key]
         return (
@@ -292,7 +292,7 @@ function Alertas({ mes }) {
               style={{width:16, height:16, cursor:'pointer', accentColor: '#3f9e6c', flexShrink:0}}
               title={resolvido ? 'Desmarcar' : 'Marcar como resolvido'}
             />
-            <span style={{flexShrink:0, fontSize:11, color: resolvido ? '#3f9e6c' : (a.nivel==='alto' ? '#d6453c' : '#e0a93b')}}>{resolvido ? 'Resolvido' : (a.nivel==='alto' ? 'Alto' : 'Médio')}</span>
+            <span style={{flexShrink:0, fontSize:11, color: resolvido ? '#3f9e6c' : (a.nivel==='alto' ? '#d6453c' : '#e0a93b')}}>{resolvido ? 'Resolvido' : (a.nivel==='alto' ? 'Alto' : 'MÃ©dio')}</span>
             <span style={{
               fontSize:12, color:'#eeeef2', lineHeight:1.5, flex:1,
               textDecoration: resolvido ? 'line-through' : 'none',
@@ -305,7 +305,7 @@ function Alertas({ mes }) {
   )
 }
 
-// ─── CURVA S UNIFICADA ────────────────────────────────────────
+// â”€â”€â”€ CURVA S UNIFICADA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function CurvaS({ mes }) {
   const [curvas, setCurvas] = useState(null)
 
@@ -347,8 +347,8 @@ function CurvaS({ mes }) {
   }
 
   const series = [
-    { nome:'Físico Planejado', cor:'#6f86c9', dados: getSeries(curvas.fisico_planejado), dash:'4,3' },
-    { nome:'Físico Realizado', cor:'#4a8fe0', dados: getSeries(curvas.fisico_realizado), dash:null },
+    { nome:'FÃ­sico Planejado', cor:'#6f86c9', dados: getSeries(curvas.fisico_planejado), dash:'4,3' },
+    { nome:'FÃ­sico Realizado', cor:'#4a8fe0', dados: getSeries(curvas.fisico_realizado), dash:null },
     { nome:'Financeiro Planejado', cor:'#9a8a5f', dados: getSeries(curvas.financeiro_planejado), dash:'4,3' },
     { nome:'Financeiro Realizado', cor:'#e0a93b', dados: getSeries(curvas.financeiro_realizado), dash:null },
   ]
@@ -400,7 +400,7 @@ function CurvaS({ mes }) {
   )
 }
 
-// ─── HEATMAP POR PAVIMENTO ────────────────────────────────────
+// â”€â”€â”€ HEATMAP POR PAVIMENTO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export function Heatmap({ mes }) {
   const { dados, avanco, loading } = useHeatmapSource(mes)
 
@@ -415,7 +415,7 @@ export function Heatmap({ mes }) {
     const { real, plan } = cell
     if (plan === 0 && real === 0) return '#1a1a20'  // futuro
     if (real >= plan - 5) {
-      // Em dia ou adiantado: verde com intensidade pelo avanço
+      // Em dia ou adiantado: verde com intensidade pelo avanÃ§o
       const alpha = 0.15 + (real/100) * 0.55
       return `rgba(63,158,108,${alpha})`
     }
@@ -448,7 +448,7 @@ export function Heatmap({ mes }) {
                 return (
                   <td key={g} style={{padding:0, lineHeight:1}}>
                     {cell ? (
-                      <div title={`Grupo ${g} · ${pav}\nReal: ${cell.real.toFixed(0)}% · Plan: ${cell.plan.toFixed(0)}%\n${cell.items} itens`}
+                      <div title={`Grupo ${g} Â· ${pav}\nReal: ${cell.real.toFixed(0)}% Â· Plan: ${cell.plan.toFixed(0)}%\n${cell.items} itens`}
                         style={{
                           background: cellColor(cell), borderRadius:4, height:22,
                           display:'flex', alignItems:'center', justifyContent:'center',
@@ -466,7 +466,7 @@ export function Heatmap({ mes }) {
       </table>
       <div style={{display:'flex', gap:14, marginTop:10, justifyContent:'center', flexWrap:'wrap'}}>
         <span style={{fontSize:9, color:'#a09a90'}}><span style={{display:'inline-block',width:10,height:10,background:'rgba(63,158,108,0.6)',borderRadius:2,marginRight:4}}/>Em dia</span>
-        <span style={{fontSize:9, color:'#a09a90'}}><span style={{display:'inline-block',width:10,height:10,background:'rgba(224,169,59,0.45)',borderRadius:2,marginRight:4}}/>Atenção</span>
+        <span style={{fontSize:9, color:'#a09a90'}}><span style={{display:'inline-block',width:10,height:10,background:'rgba(224,169,59,0.45)',borderRadius:2,marginRight:4}}/>AtenÃ§Ã£o</span>
         <span style={{fontSize:9, color:'#a09a90'}}><span style={{display:'inline-block',width:10,height:10,background:'rgba(214,69,60,0.5)',borderRadius:2,marginRight:4}}/>Atrasado</span>
         <span style={{fontSize:9, color:'#a09a90'}}><span style={{display:'inline-block',width:10,height:10,background:'#1a1a20',border:'1px solid #2a2a31',borderRadius:2,marginRight:4}}/>Futuro</span>
       </div>
@@ -554,7 +554,8 @@ export function FisicoPorAtividade({ mes }) {
   )
 }
 
-// ─── COMPONENTE PRINCIPAL ─────────────────────────────────────
+// â”€â”€â”€ COMPONENTE PRINCIPAL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default function PaineisAnalise({ mes }) {
   return null
 }
+
