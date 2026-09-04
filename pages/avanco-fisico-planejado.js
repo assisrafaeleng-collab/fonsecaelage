@@ -1,7 +1,7 @@
 // pages/avanco-fisico-planejado.js
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/router'
-import { getHHPlanejadoAcumulado, getPercentualPlanejadoAcumulado } from '../lib/cronograma-hh'
+import { getHHPlanejadoAcumulado, getPercentualPlanejadoAcumulado, getFracaoPlanejada } from '../lib/cronograma-hh'
 
 const PAVS = ['1º','2º','3º','4º','5º','6º/Plat','Edifício']
 const NOMES_MESES = ['jul','ago','set','out','nov','dez','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez','jan','fev']
@@ -101,20 +101,22 @@ export default function AvancoFisicoPlanejado() {
   const totHh = useMemo(() => dados.reduce((s,r) => s+r.h, 0) || 1, [dados])
   const totC = useMemo(() => dados.reduce((s,r) => s+r.c, 0) || 1, [dados])
 
+  // Fracao planejada do item ate o mes: curva da atividade > curva do
+  // pavimento > regra de tres pela janela (so para itens sem cronograma).
+  const fracaoItem = r => {
+    const f = getFracaoPlanejada(r.i, r.d, mes)
+    if (f !== null && f !== undefined) return f
+    if (mes < r.a) return 0
+    const numMeses = Math.max(r.b - r.a + 1, 1)
+    return Math.min(1, (Math.min(mes, r.b) - r.a + 1) / numMeses)
+  }
   const valItem = r => {
-    if (mes < r.a) return 0
-    const numMeses = Math.max(r.b - r.a + 1, 1)
-    const mesesAtivos = Math.min(mes, r.b) - r.a + 1
-    if (metric==='custo') return r.c * mesesAtivos / numMeses
-    if (metric==='hh') return r.h * mesesAtivos / numMeses
-    return (r.h * mesesAtivos / numMeses) / totHh
+    const f = fracaoItem(r)
+    if (metric==='custo') return r.c * f
+    if (metric==='hh') return r.h * f
+    return (r.h * f) / totHh
   }
-  const pctPlan = r => {
-    if (mes < r.a) return 0
-    const numMeses = Math.max(r.b - r.a + 1, 1)
-    const mesesAtivos = Math.min(mes, r.b) - r.a + 1
-    return Math.min(100, (mesesAtivos / numMeses) * 100)
-  }
+  const pctPlan = r => Math.min(100, fracaoItem(r) * 100)
   const fmtVal = v => {
     if (metric==='custo') return fmtR(v)
     if (metric==='hh') return fmtH(v)
