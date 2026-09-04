@@ -84,6 +84,16 @@ export default async function handler(req, res) {
         }
       })
 
+    // Mes do projeto a partir da competencia (jul/2026 = M1).
+    // Sem isso as competencias eram numeradas em sequencia e a curva
+    // financeira ficava deslocada pelos custos de pre-obra.
+    const mesProjetoDaCompetencia = (comp) => {
+      const ano = Number(String(comp).slice(0, 4))
+      const mes = Number(String(comp).slice(5, 7))
+      if (!ano || !mes) return 0
+      return (ano - 2026) * 12 + (mes - 7) + 1
+    }
+
     const finRealizada = []
     let acumuladoFin = 0, acumuladoDireto = 0, acumuladoIndireto = 0
     Object.keys(custosAgrupados).sort().forEach((comp, idx) => {
@@ -91,7 +101,7 @@ export default async function handler(req, res) {
       acumuladoDireto += custosDiretosAgrupados[comp] || 0
       acumuladoIndireto += custosIndiretosAgrupados[comp] || 0
       finRealizada.push({
-        mes_numero: idx + 1,
+        mes_numero: mesProjetoDaCompetencia(comp),
         competencia: comp,
         valor_mensal: custosAgrupados[comp],
         valor_acumulado: acumuladoFin,
