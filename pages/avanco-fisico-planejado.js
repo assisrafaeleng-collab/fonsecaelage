@@ -218,11 +218,6 @@ export default function AvancoFisicoPlanejado() {
             <div style={{...S.kpiVal, color:'#3fae86'}}>{gruposAtivos}</div>
             <div style={S.kpiSub}>de {groups.length} grupos visíveis</div>
           </div>
-          <div style={{...S.kpi, borderLeft:'3px solid #a09a90'}}>
-            <div style={S.kpiLbl}>Total {pavF!=='__ALL__'?pavF:'geral'}</div>
-            <div style={{...S.kpiVal, fontSize:16, color:'#ece9e4'}}>{fmtVal(totalGeral)}</div>
-            <div style={S.kpiSub}>{visible.length} itens</div>
-          </div>
         </div>
 
         {/* Timeline global */}
