@@ -10,31 +10,62 @@ const fmtP = v => (v * 100).toFixed(1).replace('.', ',') + '%'
 const COMP_MAP = {'2026-07':'M1','2026-08':'M2','2026-09':'M3','2026-10':'M4','2026-11':'M5','2026-12':'M6','2027-01':'M7','2027-02':'M8','2027-03':'M9','2027-04':'M10','2027-05':'M11','2027-06':'M12','2027-07':'M13','2027-08':'M14','2027-09':'M15','2027-10':'M16','2027-11':'M17','2027-12':'M18','2028-01':'M19','2028-02':'M20'}
 function compLabel(comp) { return COMP_MAP[comp] || comp }
 
+/* ---- Paleta unica do painel. Mudar aqui muda a tela inteira. ---- */
+const C = {
+  bg:    '#14161a',  // fundo da pagina
+  surf:  '#1b1e24',  // cartoes
+  surf2: '#22262d',  // campos, trilhos
+  bd:    '#282c33',  // divisor
+  bd2:   '#1e2127',  // divisor interno
+  fg:    '#e8eaed',  // numero principal (realizado)
+  fg2:   '#c5c9d0',  // texto corrido
+  fg3:   '#8b919c',  // rotulo, valor de referencia (planejado)
+  fg4:   '#5a616b',  // sem dado
+  accent:'#7fa8d4',  // interacao (links, foco) - nunca dado
+  ok:    '#7fb08a',  // economia
+  warn:  '#d9a05b',  // atencao
+  over:  '#c77b74',  // estouro
+}
+
+/* Zona morta: desvio pequeno nao ganha cor. So sai do cinza
+   quem passou de 15% (atencao) ou 30% (estouro). */
+const LIM_NEUTRO = 15
+const LIM_ALERTA = 30
+function corDesvio(p) {
+  if (p <= -LIM_NEUTRO) return C.ok
+  if (p >= LIM_ALERTA)  return C.over
+  if (p >= LIM_NEUTRO)  return C.warn
+  return C.fg3
+}
+/* Segundo canal de leitura: funciona impresso em preto e branco. */
+const seta = p => p > 0 ? '\u25b2 ' : p < 0 ? '\u25bc ' : ''
+const fmtDesvio = p => seta(p) + Math.abs(p).toFixed(1).replace('.', ',') + '%'
+
 const S = {
-  page: { minHeight:'100vh', background:'#0f0f11', color:'#ece9e4', fontFamily:'"Segoe UI",system-ui,sans-serif', fontVariantNumeric:'tabular-nums' },
+  page: { minHeight:'100vh', background:C.bg, color:C.fg, fontFamily:'"Segoe UI",system-ui,sans-serif', fontVariantNumeric:'tabular-nums' },
   wrap: { maxWidth:1140, margin:'0 auto', padding:'0 20px 40px' },
-  eyebrow: { color:'#6d675e', fontSize:11, letterSpacing:1.4, textTransform:'uppercase', paddingTop:28, marginBottom:2 },
+  eyebrow: { color:C.fg3, fontSize:11, letterSpacing:1.4, textTransform:'uppercase', paddingTop:28, marginBottom:2 },
   h1: { fontSize:22, fontWeight:600, margin:'2px 0 2px' },
-  sub: { color:'#a09a90', fontSize:13, marginBottom:18 },
+  sub: { color:C.fg2, fontSize:13, marginBottom:18 },
   nav: { display:'flex', gap:8, marginBottom:16 },
-  navBtn: { background:'transparent', border:'1px solid #2a2a31', color:'#a09a90', borderRadius:8, padding:'7px 14px', fontSize:13, cursor:'pointer', fontFamily:'inherit' },
+  navBtn: { background:'transparent', border:`1px solid ${C.bd}`, color:C.fg2, borderRadius:8, padding:'7px 14px', fontSize:13, cursor:'pointer', fontFamily:'inherit' },
   kpiGrid: { display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12, marginBottom:16 },
-  kpi: { background:'#17171b', border:'1px solid #2a2a31', borderRadius:12, padding:'14px 16px' },
-  kpiLbl: { color:'#6d675e', fontSize:10, letterSpacing:1, textTransform:'uppercase', marginBottom:4 },
+  kpi: { background:C.surf, border:`1px solid ${C.bd}`, borderRadius:12, padding:'14px 16px' },
+  kpiLbl: { color:C.fg3, fontSize:10, letterSpacing:1, textTransform:'uppercase', marginBottom:4 },
   kpiVal: { fontSize:22, fontWeight:700 },
-  kpiSub: { color:'#a09a90', fontSize:11, marginTop:3 },
+  kpiSub: { color:C.fg2, fontSize:11, marginTop:3 },
   controls: { display:'flex', gap:10, marginBottom:14, flexWrap:'wrap', alignItems:'flex-end' },
-  lbl: { display:'block', color:'#6d675e', fontSize:10, letterSpacing:.5, textTransform:'uppercase', marginBottom:4 },
-  select: { background:'#1e1e24', border:'1px solid #2a2a31', color:'#ece9e4', borderRadius:8, padding:'8px 11px', fontSize:13, fontFamily:'inherit' },
-  input: { background:'#1e1e24', border:'1px solid #2a2a31', color:'#ece9e4', borderRadius:8, padding:'8px 11px', fontSize:13, fontFamily:'inherit', minWidth:160 },
-  seg: { display:'flex', background:'#1e1e24', border:'1px solid #2a2a31', borderRadius:8, overflow:'hidden' },
-  card: { background:'#17171b', border:'1px solid #2a2a31', borderRadius:12, marginBottom:8, overflow:'hidden' },
+  lbl: { display:'block', color:C.fg3, fontSize:10, letterSpacing:.5, textTransform:'uppercase', marginBottom:4 },
+  select: { background:C.surf2, border:`1px solid ${C.bd}`, color:C.fg, borderRadius:8, padding:'8px 11px', fontSize:13, fontFamily:'inherit' },
+  input: { background:C.surf2, border:`1px solid ${C.bd}`, color:C.fg, borderRadius:8, padding:'8px 11px', fontSize:13, fontFamily:'inherit', minWidth:160 },
+  seg: { display:'flex', background:C.surf2, border:`1px solid ${C.bd}`, borderRadius:8, overflow:'hidden' },
+  card: { background:C.surf, border:`1px solid ${C.bd}`, borderRadius:12, marginBottom:8, overflow:'hidden' },
   chead: { display:'flex', alignItems:'center', gap:10, padding:'13px 16px', cursor:'pointer', userSelect:'none' },
-  badge: { width:28, height:28, borderRadius:6, background:'#1e1e24', border:'1px solid #2a2a31', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, color:'#a09a90', fontWeight:600, flexShrink:0 },
-  body: { borderTop:'1px solid #2a2a31' },
-  subsec: { padding:'10px 16px 4px', color:'#3fae86', fontSize:11, letterSpacing:.5, textTransform:'uppercase', fontWeight:600 },
-  empty: { color:'#6d675e', textAlign:'center', padding:32, fontSize:14 },
-  thRow: { display:'grid', gridTemplateColumns:'50px 1fr 120px 120px 80px 80px', gap:6, padding:'6px 16px 4px', fontSize:9, color:'#6d675e', textTransform:'uppercase', letterSpacing:'.5px', borderBottom:'1px solid #2a2a31' },
+  badge: { width:28, height:28, borderRadius:6, background:C.surf2, border:`1px solid ${C.bd}`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, color:C.fg2, fontWeight:600, flexShrink:0 },
+  body: { borderTop:`1px solid ${C.bd}` },
+  subsec: { padding:'10px 16px 4px', color:C.fg2, fontSize:11, letterSpacing:.5, textTransform:'uppercase', fontWeight:600 },
+  empty: { color:C.fg3, textAlign:'center', padding:32, fontSize:14 },
+  thRow: { display:'grid', gridTemplateColumns:'50px 1fr 120px 120px 80px 80px', gap:6, padding:'6px 16px 4px', fontSize:9, color:C.fg3, textTransform:'uppercase', letterSpacing:'.5px', borderBottom:`1px solid ${C.bd}` },
   itemRow: { display:'grid', gridTemplateColumns:'50px 1fr 120px 120px 80px 80px', gap:6, padding:'5px 16px', fontSize:11, alignItems:'center' },
 }
 
@@ -43,8 +74,8 @@ function Seg({ value, onChange, options }) {
     <div style={S.seg}>
       {options.map(o => (
         <button key={o.v} onClick={() => onChange(o.v)} style={{
-          background: value===o.v ? '#e6a338' : 'transparent',
-          color: value===o.v ? '#231803' : '#a09a90',
+          background: value===o.v ? C.fg : 'transparent',
+          color: value===o.v ? C.bg : C.fg3,
           border:0, padding:'8px 12px', fontSize:12, cursor:'pointer',
           fontFamily:'inherit', whiteSpace:'nowrap', fontWeight: value===o.v ? 600 : 400,
         }}>{o.l}</button>
@@ -54,10 +85,10 @@ function Seg({ value, onChange, options }) {
 }
 
 function MiniBar({ pct }) {
-  const cor = pct > 105 ? '#B03030' : pct > 0 ? '#4D9B6A' : '#333'
+  const cor = pct > 115 ? C.over : pct > 105 ? C.warn : pct > 0 ? C.fg3 : C.fg4
   const w = Math.min(pct, 100)
   return (
-    <div style={{ height:5, background:'#1e1e24', borderRadius:3, overflow:'hidden', width:'100%' }}>
+    <div style={{ height:5, background:C.surf2, borderRadius:3, overflow:'hidden', width:'100%' }}>
       <div style={{ height:'100%', width:`${w}%`, background:cor, borderRadius:3 }} />
     </div>
   )
@@ -245,7 +276,7 @@ export default function CustosDiretosRealizados() {
   const toggle = key => setOpen(o => ({...o, [key]: !o[key]}))
   const toggleItem = key => setOpenItem(o => ({...o, [key]: !o[key]}))
 
-  if (loading) return <div style={S.page}><div style={{padding:40,color:'#a09a90'}}>Carregando...</div></div>
+  if (loading) return <div style={S.page}><div style={{padding:40,color:C.fg2}}>Carregando...</div></div>
 
   return (
     <div style={S.page}>
@@ -261,22 +292,22 @@ export default function CustosDiretosRealizados() {
 
         {/* KPIs */}
         <div style={S.kpiGrid}>
-          <div style={{...S.kpi, borderLeft:'3px solid #5B9BD5'}}>
+          <div style={{...S.kpi, borderLeft:`3px solid ${C.bd}`}}>
             <div style={S.kpiLbl}>Planejado até M{mes} — {NOMES_MESES[mes-1]}/{ANOS[mes-1]}</div>
-            <div style={{...S.kpiVal, color:'#5B9BD5'}}>{fmtVal(totalPlan)}</div>
+            <div style={{...S.kpiVal, color:C.fg3}}>{fmtVal(totalPlan)}</div>
             <div style={S.kpiSub}>{groups.length} grupos · {visible.length} itens ativos</div>
           </div>
-          <div style={{...S.kpi, borderLeft:'3px solid #E91E8C'}}>
+          <div style={{...S.kpi, borderLeft:`3px solid ${C.bd}`}}>
             <div style={S.kpiLbl}>Realizado até M{mes}</div>
-            <div style={{...S.kpiVal, color:'#E91E8C'}}>{fmtR(totalReal)}</div>
+            <div style={{...S.kpiVal, color:C.fg}}>{fmtR(totalReal)}</div>
             <div style={S.kpiSub}>{lancFiltrados.length} lançamentos</div>
           </div>
-          <div style={{...S.kpi, borderLeft:`3px solid ${desvio > 5 ? '#B03030' : '#4D9B6A'}`}}>
+          <div style={{...S.kpi, borderLeft:`3px solid ${corDesvio(desvio)}`}}>
             <div style={S.kpiLbl}>Desvio financeiro</div>
-            <div style={{...S.kpiVal, fontSize:20, color: desvio > 5 ? '#B03030' : desvio > 0 ? '#C8860A' : '#4D9B6A'}}>
-              {desvio >= 0 ? '+' : ''}{desvio.toFixed(1)}%
+            <div style={{...S.kpiVal, fontSize:20, color: corDesvio(desvio)}}>
+              {fmtDesvio(desvio)}
             </div>
-            <div style={S.kpiSub}>{desvio > 5 ? '⚠️ Acima do planejado' : desvio > 0 ? '⚠️ Levemente acima' : '✅ Dentro do orçamento'}</div>
+            <div style={S.kpiSub}>{desvio >= LIM_ALERTA ? 'Acima do planejado' : desvio >= LIM_NEUTRO ? 'Levemente acima' : desvio <= -LIM_NEUTRO ? 'Economia sobre o planejado' : 'Em linha com o planejado'}</div>
           </div>
         </div>
 
@@ -348,25 +379,25 @@ export default function CustosDiretosRealizados() {
                 <div style={S.badge}>{badge}</div>
                 <div style={{flex:1}}>
                   <div style={{fontSize:13, fontWeight:500}}>{g.label}</div>
-                  <div style={{fontSize:10, color:'#6d675e', marginTop:1}}>{g.rows.length} itens · M{Math.min(...g.rows.map(r=>r.a))}–M{Math.max(...g.rows.map(r=>r.b))}</div>
+                  <div style={{fontSize:10, color:C.fg3, marginTop:1}}>{g.rows.length} itens · M{Math.min(...g.rows.map(r=>r.a))}–M{Math.max(...g.rows.map(r=>r.b))}</div>
                 </div>
                 <div style={{textAlign:'right', minWidth:110}}>
-                  <div style={{fontSize:12, color:'#5B9BD5', fontWeight:600}}>{fmtVal(gPlan)}</div>
-                  <div style={{fontSize:9, color:'#6d675e'}}>planejado</div>
+                  <div style={{fontSize:12, color:C.fg3, fontWeight:600}}>{fmtVal(gPlan)}</div>
+                  <div style={{fontSize:9, color:C.fg3}}>planejado</div>
                 </div>
                 <div style={{textAlign:'right', minWidth:110}}>
-                  <div style={{fontSize:12, color:'#E91E8C', fontWeight:600}}>{metric==='custo' ? fmtR(gReal) : '—'}</div>
-                  <div style={{fontSize:9, color:'#6d675e'}}>realizado</div>
+                  <div style={{fontSize:12, color:C.fg, fontWeight:600}}>{metric==='custo' ? fmtR(gReal) : '—'}</div>
+                  <div style={{fontSize:9, color:C.fg3}}>realizado</div>
                 </div>
                 <div style={{textAlign:'right', minWidth:70}}>
-                  <div style={{fontSize:12, fontWeight:700, color: gDesvio>5?'#B03030':gDesvio>0?'#C8860A':'#4D9B6A'}}>
-                    {metric==='custo' ? `${gDesvio>=0?'+':''}${gDesvio.toFixed(1)}%` : '—'}
+                  <div style={{fontSize:12, fontWeight:700, color: corDesvio(gDesvio)}}>
+                    {metric==='custo' ? fmtDesvio(gDesvio) : '—'}
                   </div>
                 </div>
                 <div style={{width:60}}>
                   <MiniBar pct={gPlan>0?(gReal/gPlan*100):0} />
                 </div>
-                <div style={{color:'#6d675e', fontSize:12, flexShrink:0, marginLeft:4}}>{isOpen?'▲':'▼'}</div>
+                <div style={{color:C.fg3, fontSize:12, flexShrink:0, marginLeft:4}}>{isOpen?'▲':'▼'}</div>
               </div>
 
               {isOpen && (
@@ -405,20 +436,20 @@ export default function CustosDiretosRealizados() {
                           return (
                             <React.Fragment key={`${r.i}-${ri}`}>
                               <div style={{...S.itemRow, background: ri%2===0 ? 'rgba(255,255,255,0.01)' : 'transparent'}}>
-                                <span style={{color:'#6d675e', fontFamily:'monospace', fontSize:10}}>{r.i}</span>
-                                <span style={{color:'#a09a90', fontSize:11}}>{r.d}</span>
-                                <span style={{textAlign:'right', color:'#5B9BD5', fontWeight:500}}>{fmtVal(rPlan)}</span>
-                                <span style={{textAlign:'right', color: rReal>0 ? '#E91E8C' : '#444', fontWeight: rReal>0 ? 600 : 400}}>
+                                <span style={{color:C.fg3, fontFamily:'monospace', fontSize:10}}>{r.i}</span>
+                                <span style={{color:C.fg2, fontSize:11}}>{r.d}</span>
+                                <span style={{textAlign:'right', color:C.fg3, fontWeight:500}}>{fmtVal(rPlan)}</span>
+                                <span style={{textAlign:'right', color: rReal>0 ? C.fg : C.fg4, fontWeight: rReal>0 ? 600 : 400}}>
                                   {metric==='custo' ? (rReal>0 ? fmtR(rReal) : '—') : '—'}
                                 </span>
-                                <span style={{textAlign:'right', fontSize:11, color: rReal===0?'#444':rDesvio>5?'#B03030':rDesvio>0?'#C8860A':'#4D9B6A', fontWeight:600}}>
-                                  {metric==='custo' && rReal>0 ? `${rDesvio>=0?'+':''}${rDesvio.toFixed(1)}%` : '—'}
+                                <span style={{textAlign:'right', fontSize:11, color: rReal===0?C.fg4:corDesvio(rDesvio), fontWeight:600}}>
+                                  {metric==='custo' && rReal>0 ? fmtDesvio(rDesvio) : '—'}
                                 </span>
                                 <span style={{display:'flex', alignItems:'center', gap:4}}>
-                                  <span style={{color:'#6d675e', fontSize:9}}>M{String(r.a).padStart(2,'0')}–M{String(r.b).padStart(2,'0')}</span>
+                                  <span style={{color:C.fg3, fontSize:9}}>M{String(r.a).padStart(2,'0')}–M{String(r.b).padStart(2,'0')}</span>
                                   {rLancs.length > 0 && (
                                     <span
-                                      style={{color:'#e6a338', fontSize:10, cursor:'pointer', marginLeft:4}}
+                                      style={{color:C.accent, fontSize:10, cursor:'pointer', marginLeft:4}}
                                       onClick={(e) => { e.stopPropagation(); toggleItem(itemKey); }}
                                     >
                                       {openItem[itemKey] ? '▲' : '▼'}
@@ -427,19 +458,19 @@ export default function CustosDiretosRealizados() {
                                 </span>
                               </div>
                               {openItem[itemKey] && rLancs.length > 0 && (
-                                <div style={{padding:'4px 16px 8px 66px', background:'rgba(255,255,255,0.02)', borderBottom:'1px solid #1f1f24'}}>
-                                  <div style={{fontSize:10, color:'#6d675e', display:'grid', gridTemplateColumns:'80px 1fr 100px 60px', gap:4, padding:'4px 0', borderBottom:'1px solid #2a2a31', fontWeight:600}}>
+                                <div style={{padding:'4px 16px 8px 66px', background:'rgba(255,255,255,0.02)', borderBottom:`1px solid ${C.bd2}`}}>
+                                  <div style={{fontSize:10, color:C.fg3, display:'grid', gridTemplateColumns:'80px 1fr 100px 60px', gap:4, padding:'4px 0', borderBottom:`1px solid ${C.bd}`, fontWeight:600}}>
                                     <span>Data</span>
                                     <span>Descrição</span>
                                     <span style={{textAlign:'right'}}>Valor</span>
                                     <span style={{textAlign:'right'}}>Período</span>
                                   </div>
                                   {rLancs.map((lc, li) => (
-                                    <div key={li} style={{fontSize:10, color:'#a09a90', display:'grid', gridTemplateColumns:'80px 1fr 100px 60px', gap:4, padding:'3px 0', borderBottom:'1px solid #1a1a1f'}}>
+                                    <div key={li} style={{fontSize:10, color:C.fg2, display:'grid', gridTemplateColumns:'80px 1fr 100px 60px', gap:4, padding:'3px 0', borderBottom:`1px solid ${C.bd2}`}}>
                                       <span>{lc.data_emissao ? lc.data_emissao.slice(0,10) : '—'}</span>
                                       <span>{lc.descricao || lc.codigo_eap}</span>
-                                      <span style={{textAlign:'right', color:'#E91E8C', fontWeight:500}}>{fmtR(parseFloat(lc.valor||0))}</span>
-                                      <span style={{textAlign:'right', color:'#5B9BD5'}}>{compLabel(lc.competencia)}</span>
+                                      <span style={{textAlign:'right', color:C.fg, fontWeight:500}}>{fmtR(parseFloat(lc.valor||0))}</span>
+                                      <span style={{textAlign:'right', color:C.fg3}}>{compLabel(lc.competencia)}</span>
                                     </div>
                                   ))}
                                 </div>
@@ -447,20 +478,20 @@ export default function CustosDiretosRealizados() {
                             </React.Fragment>
                           )
                         })}
-                        <div style={{display:'flex', justifyContent:'flex-end', gap:20, padding:'8px 16px', borderTop:'1px solid #2a2a31', fontSize:12}}>
-                          <span style={{color:'#6d675e'}}>subtotal:</span>
-                          <span style={{color:'#5B9BD5', fontWeight:600}}>{fmtVal(subPlan)}</span>
-                          {metric==='custo' && subReal>0 && <span style={{color:'#E91E8C', fontWeight:600}}>{fmtR(subReal)} real</span>}
+                        <div style={{display:'flex', justifyContent:'flex-end', gap:20, padding:'8px 16px', borderTop:`1px solid ${C.bd}`, fontSize:12}}>
+                          <span style={{color:C.fg3}}>subtotal:</span>
+                          <span style={{color:C.fg3, fontWeight:600}}>{fmtVal(subPlan)}</span>
+                          {metric==='custo' && subReal>0 && <span style={{color:C.fg, fontWeight:600}}>{fmtR(subReal)} real</span>}
                         </div>
                       </div>
                     )
                   })}
-                  <div style={{display:'flex', justifyContent:'space-between', padding:'10px 16px', borderTop:'2px solid #2a2a31', fontSize:12, fontWeight:700}}>
-                    <span style={{color:'#a09a90'}}>Total {g.label}:</span>
+                  <div style={{display:'flex', justifyContent:'space-between', padding:'10px 16px', borderTop:`2px solid ${C.bd}`, fontSize:12, fontWeight:700}}>
+                    <span style={{color:C.fg2}}>Total {g.label}:</span>
                     <div style={{display:'flex', gap:20}}>
-                      <span style={{color:'#5B9BD5'}}>Plan: {fmtVal(gPlan)}</span>
-                      {metric==='custo' && <span style={{color:'#E91E8C'}}>Real: {fmtR(gReal)}</span>}
-                      {metric==='custo' && gReal>0 && <span style={{color:gDesvio>5?'#B03030':'#4D9B6A'}}>Desvio: {gDesvio>=0?'+':''}{gDesvio.toFixed(1)}%</span>}
+                      <span style={{color:C.fg3}}>Plan: {fmtVal(gPlan)}</span>
+                      {metric==='custo' && <span style={{color:C.fg}}>Real: {fmtR(gReal)}</span>}
+                      {metric==='custo' && gReal>0 && <span style={{color:corDesvio(gDesvio)}}>Desvio: {fmtDesvio(gDesvio)}</span>}
                     </div>
                   </div>
                 </div>
@@ -470,74 +501,74 @@ export default function CustosDiretosRealizados() {
         })}
 
         {/* Footer */}
-        <div style={{display:'grid', gridTemplateColumns:'1fr auto auto auto', gap:20, alignItems:'center', padding:'14px 18px', borderRadius:10, background:'#17171b', border:'1px solid #2a2a31', marginTop:8}}>
+        <div style={{display:'grid', gridTemplateColumns:'1fr auto auto auto', gap:20, alignItems:'center', padding:'14px 18px', borderRadius:10, background:C.surf, border:`1px solid ${C.bd}`, marginTop:8}}>
           <span style={{fontSize:13, fontWeight:700}}>TOTAL GERAL</span>
-          <span style={{fontSize:14, fontWeight:700, color:'#5B9BD5'}}>Plan: {fmtVal(totalPlan)}</span>
-          {metric==='custo' && <span style={{fontSize:14, fontWeight:700, color:'#E91E8C'}}>Real: {fmtR(totalReal)}</span>}
-          {metric==='custo' && <span style={{fontSize:14, fontWeight:700, color:desvio>5?'#B03030':'#4D9B6A'}}>Desvio: {desvio>=0?'+':''}{desvio.toFixed(1)}%</span>}
+          <span style={{fontSize:14, fontWeight:700, color:C.fg3}}>Plan: {fmtVal(totalPlan)}</span>
+          {metric==='custo' && <span style={{fontSize:14, fontWeight:700, color:C.fg}}>Real: {fmtR(totalReal)}</span>}
+          {metric==='custo' && <span style={{fontSize:14, fontWeight:700, color:corDesvio(desvio)}}>Desvio: {fmtDesvio(desvio)}</span>}
         </div>
       
         {/* Botão + Lista completa de lançamentos com filtros */}
         <div style={{marginTop:20}}>
           {!mostrarLista ? (
             <button onClick={() => setMostrarLista(true)} style={{
-              width:'100%', padding:'14px 18px', background:'#17171b', border:'1px solid #2a2a31',
-              borderRadius:10, color:'#e6a338', fontSize:13, fontWeight:600, cursor:'pointer',
+              width:'100%', padding:'14px 18px', background:C.surf, border:`1px solid ${C.bd}`,
+              borderRadius:10, color:C.accent, fontSize:13, fontWeight:600, cursor:'pointer',
               fontFamily:'inherit'
             }}>
               📋 Ver todos os lançamentos ({lanc.length})
             </button>
           ) : (
-            <div style={{background:'#17171b', border:'1px solid #2a2a31', borderRadius:12, overflow:'hidden'}}>
-              <div style={{padding:'14px 18px', borderBottom:'1px solid #2a2a31', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                <span style={{fontSize:12, fontWeight:600, color:'#a09a90', textTransform:'uppercase', letterSpacing:.5}}>
+            <div style={{background:C.surf, border:`1px solid ${C.bd}`, borderRadius:12, overflow:'hidden'}}>
+              <div style={{padding:'14px 18px', borderBottom:`1px solid ${C.bd}`, display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                <span style={{fontSize:12, fontWeight:600, color:C.fg2, textTransform:'uppercase', letterSpacing:.5}}>
                   Todos os lançamentos ({lancamentosParaLista.length}{lancamentosParaLista.length !== lanc.length ? ' de ' + lanc.length : ''})
                 </span>
-                <button onClick={() => setMostrarLista(false)} style={{background:'transparent', border:'none', color:'#6d675e', fontSize:12, cursor:'pointer'}}>✕ Fechar</button>
+                <button onClick={() => setMostrarLista(false)} style={{background:'transparent', border:'none', color:C.fg3, fontSize:12, cursor:'pointer'}}>✕ Fechar</button>
               </div>
               {/* Filtros */}
-              <div style={{padding:'12px 18px', borderBottom:'1px solid #2a2a31', display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:10}}>
+              <div style={{padding:'12px 18px', borderBottom:`1px solid ${C.bd}`, display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:10}}>
                 <div>
-                  <div style={{fontSize:9, color:'#6d675e', textTransform:'uppercase', letterSpacing:.5, marginBottom:4}}>Período</div>
-                  <select value={filtroPeriodo} onChange={e => setFiltroPeriodo(e.target.value)} style={{width:'100%', background:'#0f0f11', color:'#ece9e4', border:'1px solid #2a2a31', borderRadius:6, padding:'6px 8px', fontSize:12, fontFamily:'inherit'}}>
+                  <div style={{fontSize:9, color:C.fg3, textTransform:'uppercase', letterSpacing:.5, marginBottom:4}}>Período</div>
+                  <select value={filtroPeriodo} onChange={e => setFiltroPeriodo(e.target.value)} style={{width:'100%', background:C.bg, color:C.fg, border:`1px solid ${C.bd}`, borderRadius:6, padding:'6px 8px', fontSize:12, fontFamily:'inherit'}}>
                     <option value="todos">Todos</option>
                     {Object.values(COMP_MAP).map(m => <option key={m} value={m}>{m}</option>)}
                   </select>
                 </div>
                 <div>
-                  <div style={{fontSize:9, color:'#6d675e', textTransform:'uppercase', letterSpacing:.5, marginBottom:4}}>Grupo</div>
-                  <select value={filtroGrupo} onChange={e => setFiltroGrupo(e.target.value)} style={{width:'100%', background:'#0f0f11', color:'#ece9e4', border:'1px solid #2a2a31', borderRadius:6, padding:'6px 8px', fontSize:12, fontFamily:'inherit'}}>
+                  <div style={{fontSize:9, color:C.fg3, textTransform:'uppercase', letterSpacing:.5, marginBottom:4}}>Grupo</div>
+                  <select value={filtroGrupo} onChange={e => setFiltroGrupo(e.target.value)} style={{width:'100%', background:C.bg, color:C.fg, border:`1px solid ${C.bd}`, borderRadius:6, padding:'6px 8px', fontSize:12, fontFamily:'inherit'}}>
                     <option value="todos">Todos</option>
                     {gruposUnicos.map(g => <option key={g.g} value={g.g}>{g.g} - {g.n}</option>)}
                   </select>
                 </div>
                 <div>
-                  <div style={{fontSize:9, color:'#6d675e', textTransform:'uppercase', letterSpacing:.5, marginBottom:4}}>Pavimento</div>
-                  <select value={filtroPavimento} onChange={e => setFiltroPavimento(e.target.value)} style={{width:'100%', background:'#0f0f11', color:'#ece9e4', border:'1px solid #2a2a31', borderRadius:6, padding:'6px 8px', fontSize:12, fontFamily:'inherit'}}>
+                  <div style={{fontSize:9, color:C.fg3, textTransform:'uppercase', letterSpacing:.5, marginBottom:4}}>Pavimento</div>
+                  <select value={filtroPavimento} onChange={e => setFiltroPavimento(e.target.value)} style={{width:'100%', background:C.bg, color:C.fg, border:`1px solid ${C.bd}`, borderRadius:6, padding:'6px 8px', fontSize:12, fontFamily:'inherit'}}>
                     <option value="todos">Todos</option>
                     {pavimentosUnicos.map(p => <option key={p} value={p}>{p}</option>)}
                   </select>
                 </div>
                 <div>
-                  <div style={{fontSize:9, color:'#6d675e', textTransform:'uppercase', letterSpacing:.5, marginBottom:4}}>Buscar</div>
-                  <input type="text" value={filtroBusca} onChange={e => setFiltroBusca(e.target.value)} placeholder="descrição ou EAP..." style={{width:'100%', background:'#0f0f11', color:'#ece9e4', border:'1px solid #2a2a31', borderRadius:6, padding:'6px 8px', fontSize:12, fontFamily:'inherit', boxSizing:'border-box'}} />
+                  <div style={{fontSize:9, color:C.fg3, textTransform:'uppercase', letterSpacing:.5, marginBottom:4}}>Buscar</div>
+                  <input type="text" value={filtroBusca} onChange={e => setFiltroBusca(e.target.value)} placeholder="descrição ou EAP..." style={{width:'100%', background:C.bg, color:C.fg, border:`1px solid ${C.bd}`, borderRadius:6, padding:'6px 8px', fontSize:12, fontFamily:'inherit', boxSizing:'border-box'}} />
                 </div>
               </div>
               {/* Header da tabela */}
-              <div style={{display:'grid', gridTemplateColumns:'100px 1fr 80px 100px 60px', gap:8, padding:'8px 18px', fontSize:9, color:'#6d675e', textTransform:'uppercase', letterSpacing:.5, borderBottom:'1px solid #2a2a31'}}>
+              <div style={{display:'grid', gridTemplateColumns:'100px 1fr 80px 100px 60px', gap:8, padding:'8px 18px', fontSize:9, color:C.fg3, textTransform:'uppercase', letterSpacing:.5, borderBottom:`1px solid ${C.bd}`}}>
                 <span>Data</span><span>Descrição</span><span>EAP</span><span style={{textAlign:'right'}}>Valor</span><span style={{textAlign:'right'}}>M</span>
               </div>
               {/* Linhas */}
               <div style={{maxHeight:500, overflowY:'auto'}}>
                 {lancamentosParaLista.length === 0 ? (
-                  <div style={{padding:'30px', textAlign:'center', color:'#6d675e', fontSize:12}}>Nenhum lançamento encontrado com os filtros aplicados.</div>
+                  <div style={{padding:'30px', textAlign:'center', color:C.fg3, fontSize:12}}>Nenhum lançamento encontrado com os filtros aplicados.</div>
                 ) : lancamentosParaLista.map((l, i) => (
-                  <div key={i} style={{display:'grid', gridTemplateColumns:'100px 1fr 80px 100px 60px', gap:8, padding:'8px 18px', fontSize:12, alignItems:'center', background:i%2===0?'rgba(255,255,255,0.01)':'transparent', borderBottom:'1px solid #1a1a20'}}>
-                    <span style={{color:'#6d675e'}}>{l.data_emissao?.slice(0,10)}</span>
-                    <span style={{color:'#a09a90'}}>{l.descricao || l.historico}</span>
-                    <span style={{color:'#6d675e', fontFamily:'monospace', fontSize:10}}>{l.codigo_eap}</span>
-                    <span style={{textAlign:'right', color:'#E91E8C', fontWeight:600}}>{fmtR(l.valor)}</span>
-                    <span style={{textAlign:'right', color:'#5B9BD5', fontSize:11}}>{compLabel(l.competencia)}</span>
+                  <div key={i} style={{display:'grid', gridTemplateColumns:'100px 1fr 80px 100px 60px', gap:8, padding:'8px 18px', fontSize:12, alignItems:'center', background:i%2===0?'rgba(255,255,255,0.01)':'transparent', borderBottom:`1px solid ${C.bd2}`}}>
+                    <span style={{color:C.fg3}}>{l.data_emissao?.slice(0,10)}</span>
+                    <span style={{color:C.fg2}}>{l.descricao || l.historico}</span>
+                    <span style={{color:C.fg3, fontFamily:'monospace', fontSize:10}}>{l.codigo_eap}</span>
+                    <span style={{textAlign:'right', color:C.fg, fontWeight:600}}>{fmtR(l.valor)}</span>
+                    <span style={{textAlign:'right', color:C.fg3, fontSize:11}}>{compLabel(l.competencia)}</span>
                   </div>
                 ))}
               </div>
