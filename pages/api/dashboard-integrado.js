@@ -45,9 +45,11 @@ export default async function handler(req, res) {
 
     // Obra: Jul/2026 = M1
     const dataInicio = '2026-07-01'
-    const dataLimite = new Date(dataInicio)
-    dataLimite.setMonth(dataLimite.getMonth() + (mesLimite - 1))
-    const dataLimiteStr = dataLimite.toISOString().slice(0, 10)
+    // Limite por aritmetica de ano/mes, sem passar por Date: o parse de
+    // '2026-07-01' assume UTC e, em UTC-3, voltava um dia — o limite de M2
+    // virava 2026-07-31 e agosto inteiro ficava de fora do acumulado.
+    const _mesLimiteAbs = 6 + (mesLimite - 1)          // jul/2026 = indice 6
+    const dataLimiteStr = `${2026 + Math.floor(_mesLimiteAbs / 12)}-${String((_mesLimiteAbs % 12) + 1).padStart(2, '0')}-01`
 
     const custosAgrupados = {}
     const custosDiretosAgrupados = {}
