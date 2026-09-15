@@ -18,6 +18,17 @@ import {
   Filler
 } from 'chart.js'
 
+/* ---- Mesma paleta do Sirius 60. Planejado e referencia (azul lavado),
+   realizado e o numero medido (claro + pilula), cor semantica so em
+   saldo e desvio. Tons dessaturados: ver styles/globals.css ---- */
+const PLAN = '#6e8ba8'
+const REAL = '#f2f4f7'
+const PILL = { background: 'rgba(255,255,255,0.07)', padding: '3px 8px',
+               borderRadius: 6 }
+const VERDE = '#7fb08a'
+const VERMELHO = '#c77b74'
+const NEUTRO = '#8b919c'
+
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler)
 
 const fmtPerc = (val) => {
@@ -48,7 +59,7 @@ function ComparativoFisico({ mesLimite }) {
               <span style={{ fontSize: 11, display: 'flex', gap: 12, alignItems: 'center' }}>
                 <span style={{ color: 'var(--text2)' }}>Plan: {at.planejado.toFixed(1)}%</span>
                 <span style={{ color: 'var(--text2)' }}>Real: {at.realizado.toFixed(1)}%</span>
-                <span style={{ fontWeight: 700, color: (at.realizado - at.planejado) >= 0 ? '#3f9e6c' : '#d6453c' }}>
+                <span style={{ fontWeight: 700, color: (at.realizado - at.planejado) >= 0 ? VERDE : VERMELHO }}>
                   {(at.realizado - at.planejado) >= 0 ? 'Adiantado' : 'Atrasado'} {(at.realizado - at.planejado) >= 0 ? '+' : ''}{(at.realizado - at.planejado).toFixed(1)}%
                 </span>
               </span>
@@ -60,11 +71,11 @@ function ComparativoFisico({ mesLimite }) {
               const restante = Math.max(0, 100 - Math.max(r, p))
               return (
                 <div style={{ position: 'relative', height: 10, background: 'var(--bg2)', borderRadius: 5, overflow: 'hidden', display: 'flex' }}>
-                  <div style={{ height: '100%', width: `${r}%`, background: '#3f9e6c' }} title={`Executado: ${r.toFixed(1)}%`} />
+                  <div style={{ height: '100%', width: `${r}%`, background: VERDE }} title={`Executado: ${r.toFixed(1)}%`} />
                   {atraso > 0 && (
-                    <div style={{ height: '100%', width: `${atraso}%`, background: '#d6453c' }} title={`Atraso: ${atraso.toFixed(1)}%`} />
+                    <div style={{ height: '100%', width: `${atraso}%`, background: VERMELHO }} title={`Atraso: ${atraso.toFixed(1)}%`} />
                   )}
-                  <div style={{ height: '100%', width: `${restante}%`, background: '#6f86c9', opacity: 0.35 }} title={`A executar: ${restante.toFixed(1)}%`} />
+                  <div style={{ height: '100%', width: `${restante}%`, background: NEUTRO, opacity: 0.3 }} title={`A executar: ${restante.toFixed(1)}%`} />
                 </div>
               )
             })()}
@@ -150,11 +161,11 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
   const chartData = {
     labels,
     datasets: [
-      { label: 'Financeiro Planejado', data: finPlan, borderColor: '#9a8a5f', backgroundColor: 'rgba(154, 138, 95, 0.1)', fill: false, borderWidth: 1.5, borderDash: [5, 4], pointRadius: 3, pointHoverRadius: 5, pointStyle: 'circle', pointBackgroundColor: 'transparent', yAxisID: 'y-financeiro', tension: 0.3 },
+      { label: 'Financeiro Planejado', data: finPlan, borderColor: '#5f8a6d', backgroundColor: 'rgba(95, 138, 109, 0.1)', fill: false, borderWidth: 1.5, borderDash: [5, 4], pointRadius: 3, pointHoverRadius: 5, pointStyle: 'circle', pointBackgroundColor: 'transparent', yAxisID: 'y-financeiro', tension: 0.3 },
       {
         label: 'Financeiro Realizado',
         data: finReal,
-        borderColor: '#3f9e6c',
+        borderColor: VERDE,
         backgroundColor: (context) => {
           const { chart } = context
           const { ctx, chartArea } = chart
@@ -170,12 +181,12 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
         pointRadius: 4,
         pointHoverRadius: 6,
         pointStyle: 'circle',
-        pointBackgroundColor: '#3f9e6c',
+        pointBackgroundColor: VERDE,
         yAxisID: 'y-financeiro',
         tension: 0.35
       },
-      { label: 'Físico Planejado', data: fisPlan, borderColor: '#6f86c9', backgroundColor: 'rgba(111, 134, 201, 0.1)', fill: false, borderWidth: 1.5, borderDash: [5, 4], pointRadius: 3, pointHoverRadius: 5, pointStyle: 'circle', pointBackgroundColor: 'transparent', yAxisID: 'y-fisico', tension: 0.3 },
-      { label: 'Físico Realizado', data: fisReal, borderColor: '#4a8fe0', backgroundColor: 'rgba(74, 143, 224, 0.1)', fill: false, borderWidth: 2.5, borderDash: [], pointRadius: 4, pointHoverRadius: 6, pointStyle: 'circle', pointBackgroundColor: '#4a8fe0', yAxisID: 'y-fisico', tension: 0.35 }
+      { label: 'Físico Planejado', data: fisPlan, borderColor: '#5e7d99', backgroundColor: 'rgba(94, 125, 153, 0.1)', fill: false, borderWidth: 1.5, borderDash: [5, 4], pointRadius: 3, pointHoverRadius: 5, pointStyle: 'circle', pointBackgroundColor: 'transparent', yAxisID: 'y-fisico', tension: 0.3 },
+      { label: 'Físico Realizado', data: fisReal, borderColor: '#7fa8d4', backgroundColor: 'rgba(74, 143, 224, 0.1)', fill: false, borderWidth: 2.5, borderDash: [], pointRadius: 4, pointHoverRadius: 6, pointStyle: 'circle', pointBackgroundColor: '#7fa8d4', yAxisID: 'y-fisico', tension: 0.35 }
     ]
   }
 
@@ -184,9 +195,9 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
     maintainAspectRatio: false,
     interaction: { mode: 'index', intersect: false },
     plugins: {
-      legend: { display: false, position: 'top', labels: { color: '#9a9aa6', font: { size: 11 }, usePointStyle: true, padding: 15 } },
+      legend: { display: false, position: 'top', labels: { color: '#8b919c', font: { size: 11 }, usePointStyle: true, padding: 15 } },
       tooltip: {
-        backgroundColor: 'rgba(20,20,24,0.96)', titleColor: '#9a9aa6', bodyColor: '#9a9aa6', borderColor: 'rgba(255,255,255,0.14)', borderWidth: 1, padding: 12, displayColors: true,
+        backgroundColor: 'rgba(27,30,36,0.96)', titleColor: '#8b919c', bodyColor: '#8b919c', borderColor: 'rgba(255,255,255,0.14)', borderWidth: 1, padding: 12, displayColors: true,
         callbacks: {
           label: function(context) {
             const label = context.dataset.label || ''
@@ -199,9 +210,9 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
       }
     },
     scales: {
-      'y-financeiro': { type: 'linear', position: 'left', title: { display: true, text: 'Financeiro (R$ mil)', color: '#9a9aa6', font: { size: 11 } }, ticks: { color: '#9a9aa6', font: { size: 10 }, callback: (v) => `R$ ${v}k` }, grid: { color: 'rgba(255,255,255,0.06)' } },
-      'y-fisico': { type: 'linear', position: 'right', min: 0, max: 100, title: { display: true, text: 'Físico (%)', color: '#9a9aa6', font: { size: 11 } }, ticks: { color: '#9a9aa6', font: { size: 10 }, callback: (v) => `${v}%` }, grid: { drawOnChartArea: false } },
-      x: { ticks: { color: '#9a9aa6', font: { size: 10 }, maxRotation: 45, minRotation: 45 }, grid: { color: 'rgba(255,255,255,0.06)' } }
+      'y-financeiro': { type: 'linear', position: 'left', title: { display: true, text: 'Financeiro (R$ mil)', color: '#8b919c', font: { size: 11 } }, ticks: { color: '#8b919c', font: { size: 10 }, callback: (v) => `R$ ${v}k` }, grid: { color: 'rgba(255,255,255,0.06)' } },
+      'y-fisico': { type: 'linear', position: 'right', min: 0, max: 100, title: { display: true, text: 'Físico (%)', color: '#8b919c', font: { size: 11 } }, ticks: { color: '#8b919c', font: { size: 10 }, callback: (v) => `${v}%` }, grid: { drawOnChartArea: false } },
+      x: { ticks: { color: '#8b919c', font: { size: 10 }, maxRotation: 45, minRotation: 45 }, grid: { color: 'rgba(255,255,255,0.06)' } }
     }
   }
 
@@ -246,17 +257,19 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
       <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '16px' }}>
         <div className="kpi" style={{ cursor: 'pointer' }} onClick={() => router.push(`/custos-diretos-planejados?mes=${mesLimite}`)}>
           <div className="kpi-label">Custo Direto Planejado</div>
-          <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2' }}>{fmtMoeda(custoDiretoPlano)}</div>
+          <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2', color: PLAN }}>{fmtMoeda(custoDiretoPlano)}</div>
           <div className="kpi-sub">{mesLimite === 20 ? "Orçado para 20 meses" : `Acumulado até M${mesLimite}`}</div>
         </div>
         <div className="kpi" style={{ cursor: 'pointer' }} onClick={() => router.push('/custos-diretos-realizados-lista')}>
           <div className="kpi-label">Custo Direto Realizado</div>
-          <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2' }}>{fmtMoeda(custoDiretoReal)}</div>
+          <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2', color: REAL }}>
+            <span style={PILL}>{fmtMoeda(custoDiretoReal)}</span>
+          </div>
           <div className="kpi-sub">{fmtPerc((custoDiretoReal / custoDiretoPlano) * 100)} do planejado</div>
         </div>
         <div className="kpi">
           <div className="kpi-label">Saldo Custo Direto</div>
-          <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2', color: saldoCustoDireto >= 0 ? '#3f9e6c' : '#d6453c' }}>{fmtMoeda(saldoCustoDireto)}</div>
+          <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2', color: saldoCustoDireto >= 0 ? VERDE : VERMELHO }}>{fmtMoeda(saldoCustoDireto)}</div>
           <div className="kpi-sub">{saldoCustoDireto >= 0 ? 'Economia' : 'Acima'}</div>
         </div>
         <div className="kpi" style={{ cursor: 'pointer' }} onClick={() => router.push(`/avanco-fisico-planejado?mes=${mesLimite}`)}>
@@ -266,7 +279,7 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
         </div>
         <div className="kpi">
           <div className="kpi-label">Desvio Físico do Projeto</div>
-          <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2', color: avancoFisicoReal >= avancoFisicoPlano ? '#3f9e6c' : '#d6453c' }}>
+          <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2', color: avancoFisicoReal >= avancoFisicoPlano ? VERDE : VERMELHO }}>
             {avancoFisicoReal >= avancoFisicoPlano ? '+' : ''}{fmtPerc(avancoFisicoReal - avancoFisicoPlano)}
           </div>
           <div className="kpi-sub">{avancoFisicoReal >= avancoFisicoPlano ? 'Adiantado' : 'Atrasado'} · p.p. do projeto</div>
@@ -276,17 +289,19 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
       <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '16px', marginTop: '-10px' }}>
         <div className="kpi" style={{ cursor: 'pointer' }} onClick={() => router.push(`/custos-indiretos-planejados?mes=${mesLimite}`)}>
           <div className="kpi-label">Custo Indireto Planejado</div>
-          <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2' }}>{fmtMoeda(custoIndiretoPlano)}</div>
+          <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2', color: PLAN }}>{fmtMoeda(custoIndiretoPlano)}</div>
           <div className="kpi-sub">{mesLimite === 20 ? "Orçado para 20 meses" : `Acumulado até M${mesLimite}`}</div>
         </div>
         <div className="kpi" style={{ cursor: 'pointer' }} onClick={() => router.push('/custos-indiretos-realizados-lista')}>
           <div className="kpi-label">Custo Indireto Realizado</div>
-          <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2' }}>{fmtMoeda(custoIndiretoReal)}</div>
+          <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2', color: REAL }}>
+            <span style={PILL}>{fmtMoeda(custoIndiretoReal)}</span>
+          </div>
           <div className="kpi-sub">{custoIndiretoPlano > 0 ? fmtPerc((custoIndiretoReal / custoIndiretoPlano) * 100) : '0%'} do planejado</div>
         </div>
         <div className="kpi">
           <div className="kpi-label">Saldo Custo Indireto</div>
-          <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2', color: saldoCustoIndireto >= 0 ? '#3f9e6c' : '#d6453c' }}>{fmtMoeda(saldoCustoIndireto)}</div>
+          <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2', color: saldoCustoIndireto >= 0 ? VERDE : VERMELHO }}>{fmtMoeda(saldoCustoIndireto)}</div>
           <div className="kpi-sub">{saldoCustoIndireto >= 0 ? 'Economia' : 'Acima'}</div>
         </div>
         <div className="kpi" style={{ cursor: 'pointer' }} onClick={() => navRestrita('/avanco-fisico-realizado')}>
@@ -300,14 +315,14 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
       <div className="card">
         <div className="card-title">Curva S — Acompanhamento Físico-Financeiro</div>
         <div style={{ display:'flex', gap:'20px', flexWrap:'wrap', margin:'10px 0 6px' }}>
-          <span style={{ display:'flex', alignItems:'center', gap:'7px', font:"500 11px 'IBM Plex Sans'", color:'#9a9aa6' }}>
-            <span style={{ width:'18px', height:0, borderTop:'2px solid #3f9e6c' }}></span>Financeiro realizado</span>
-          <span style={{ display:'flex', alignItems:'center', gap:'7px', font:"500 11px 'IBM Plex Sans'", color:'#9a9aa6' }}>
-            <span style={{ width:'18px', height:0, borderTop:'2px dashed #9a8a5f' }}></span>Financeiro planejado</span>
-          <span style={{ display:'flex', alignItems:'center', gap:'7px', font:"500 11px 'IBM Plex Sans'", color:'#9a9aa6' }}>
-            <span style={{ width:'18px', height:0, borderTop:'2px solid #4a8fe0' }}></span>Físico realizado</span>
-          <span style={{ display:'flex', alignItems:'center', gap:'7px', font:"500 11px 'IBM Plex Sans'", color:'#9a9aa6' }}>
-            <span style={{ width:'18px', height:0, borderTop:'2px dashed #6f86c9' }}></span>Físico planejado</span>
+          <span style={{ display:'flex', alignItems:'center', gap:'7px', font:"500 11px 'IBM Plex Sans'", color:'#8b919c' }}>
+            <span style={{ width:'18px', height:0, borderTop:'2px solid #7fb08a' }}></span>Financeiro realizado</span>
+          <span style={{ display:'flex', alignItems:'center', gap:'7px', font:"500 11px 'IBM Plex Sans'", color:'#8b919c' }}>
+            <span style={{ width:'18px', height:0, borderTop:'2px dashed #5f8a6d' }}></span>Financeiro planejado</span>
+          <span style={{ display:'flex', alignItems:'center', gap:'7px', font:"500 11px 'IBM Plex Sans'", color:'#8b919c' }}>
+            <span style={{ width:'18px', height:0, borderTop:'2px solid #7fa8d4' }}></span>Físico realizado</span>
+          <span style={{ display:'flex', alignItems:'center', gap:'7px', font:"500 11px 'IBM Plex Sans'", color:'#8b919c' }}>
+            <span style={{ width:'18px', height:0, borderTop:'2px dashed #5e7d99' }}></span>Físico planejado</span>
         </div>
         <div style={{ height: '400px', position: 'relative' }}>
           <Line data={chartData} options={chartOptions} />
@@ -321,7 +336,7 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
 
       <div className="card">
         <div className="card-title">Físico por Atividade — Desvio Relativo da Atividade</div>
-        <div style={{ fontSize: '11px', color: '#a09a90', margin: '8px 0 12px', lineHeight: 1.5 }}>
+        <div style={{ fontSize: '11px', color: 'var(--text2)', margin: '8px 0 12px', lineHeight: 1.5 }}>
           Esta métrica mede o desvio da própria meta de cada atividade. Ela não é somável ao desvio absoluto do projeto.
         </div>
         <FisicoPorAtividade mes={mesLimite} />
