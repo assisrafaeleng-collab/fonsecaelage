@@ -245,13 +245,21 @@ export default async function handler(req, res) {
       .map((s) => ({ semana: s, data_fim: plan.get(s).data_fim }))
       .filter((x) => !!x.data_fim)
 
+    // Inicio da S1: seis dias antes do fim dela. Sem esse piso, todo lancamento
+    // anterior a obra (pre-obra, mobilizacao, projeto) caía na S1, inflando o
+    // ACWP e a parcela B da primeira semana.
+    const inicioDaObra = fimDeSemana.length
+      ? addDias(String(fimDeSemana[0].data_fim).slice(0, 10), -6)
+      : null
+
     const semanaDaData = (dataStr) => {
       if (!dataStr) return null
       const d = String(dataStr).slice(0, 10)
+      if (inicioDaObra && d < inicioDaObra) return null // pre-obra
       for (const w of fimDeSemana) {
         if (d <= String(w.data_fim).slice(0, 10)) return w.semana
       }
-      return null // depois do fim do cronograma: fica fora da curva
+      return null // depois do fim do cronograma
     }
 
     const tetoPorEap = {}
@@ -398,9 +406,20 @@ export default async function handler(req, res) {
         ? r2(totais.total - fimDaCurva.total_tabela)
         : null,
       calendario_extrapolado_a_partir_de: { semana: ancora.semana, data_fim: ancora.data_fim },
-      lancamentos_fora_da_curva: lancamentos.filter(
-        (l) => l.status === 'Normal' && semanaDaData(l.data_emissao) == null
+      inicio_da_obra: inicioDaObra,
+      lancamentos_antes_da_obra: lancamentos.filter(
+        (l) =>
+          l.status === 'Normal' &&
+          inicioDaObra &&
+          String(l.data_emissao || '').slice(0, 10) < inicioDaObra
       ).length,
+      lancamentos_depois_da_curva: lancamentos.filter((l) => {
+        if (l.status !== 'Normal') return false
+        const d = String(l.data_emissao || '').slice(0, 10)
+        if (!d) return false
+        if (inicioDaObra && d < inicioDaObra) return false
+        return semanaDaData(l.data_emissao) == null
+      }).length,
     }
 
     return res.status(200).json({
