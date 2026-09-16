@@ -33,6 +33,7 @@ const COLS = {
     table: 'v_avanco_semanal_realizado',
     semana: 'semana_numero',
     bcwpA: 'bcwp_a_acum',
+    hhAcum: 'hh_acumulado',
     dataInicio: 'data_inicio',
     dataFim: 'data_fim',
   },
@@ -49,6 +50,8 @@ const addDias = (iso, n) => {
   // fuso local. E a mesma armadilha das linhas 46-52 do dashboard-integrado.
   return new Date(Date.UTC(y, m - 1, d) + n * 86400000).toISOString().slice(0, 10)
 }
+
+const BASE_PARCELA_A = 'custo'
 
 // true  = as colunas bcws_* da curva ja sao acumuladas
 // false = sao incrementos semanais e a rota acumula
@@ -94,7 +97,7 @@ export default async function handler(req, res) {
         .order(COLS.realizado.semana),
       supabase
         .from('orcamento_planejado')
-        .select('cod_eap, grupo_numero, preco_total')
+        .select('cod_eap, grupo_numero, preco_total, hh, entra_evm')
         .eq('obra_id', obra_id),
       supabase
         .from('custos_lancamentos')
@@ -163,13 +166,17 @@ export default async function handler(req, res) {
     // -----------------------------------------------------------------------
     // 2. Parcela A realizada: pronta da view
     // -----------------------------------------------------------------------
+    const totalHhEvm = orcamento.reduce((soma, it) => (it.entra_evm ? soma + num(it.hh) : soma), 0)
+    if (BASE_PARCELA_A === 'hh' && totalHhEvm <= 0) throw new Error('orcamento_planejado: soma de hh com entra_evm = 0')
+
     const R = COLS.realizado
     const bcwpAPorSemana = new Map()
     const dataFimDaView = new Map()
     realizadoRaw.forEach((row) => {
       const s = parseInt(row[R.semana], 10)
       if (!Number.isFinite(s)) return
-      bcwpAPorSemana.set(s, num(row[R.bcwpA]))
+      const valorA = BASE_PARCELA_A === 'hh' ? (num(row[R.hhAcum]) / totalHhEvm) * totais.a : num(row[R.bcwpA])
+      bcwpAPorSemana.set(s, valorA)
       if (row[R.dataFim]) dataFimDaView.set(s, String(row[R.dataFim]).slice(0, 10))
     })
 
@@ -255,7 +262,7 @@ export default async function handler(req, res) {
     const semanaDaData = (dataStr) => {
       if (!dataStr) return null
       const d = String(dataStr).slice(0, 10)
-      if (inicioDaObra && d < inicioDaObra) return null // pre-obra
+      if (inicioDaObra && d < inicioDaObra) return fimDeSemana[0].semana // pre-obra vai para a S1
       for (const w of fimDeSemana) {
         if (d <= String(w.data_fim).slice(0, 10)) return w.semana
       }
@@ -366,7 +373,7 @@ export default async function handler(req, res) {
         totais.total > 0 && ponto.bcwp != null ? r2((ponto.bcwp / totais.total) * 100) : null,
       por_parcela: {
         a: {
-          criterio: 'hora-homem',
+          criterio: 'percentual fisico por item, ponderado por custo',
           bcws: ponto.bcws_a,
           bcwp: ponto.bcwp_a,
           spi: r3(spi(ponto.bcwp_a, ponto.bcws_a)),
@@ -407,6 +414,8 @@ export default async function handler(req, res) {
         : null,
       calendario_extrapolado_a_partir_de: { semana: ancora.semana, data_fim: ancora.data_fim },
       inicio_da_obra: inicioDaObra,
+      base_parcela_a: BASE_PARCELA_A,
+      hh_total_evm: r2(totalHhEvm),
       lancamentos_antes_da_obra: lancamentos.filter(
         (l) =>
           l.status === 'Normal' &&
