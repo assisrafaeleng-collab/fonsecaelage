@@ -1,13 +1,9 @@
 // pages/api/avanco-fisico-realizado.js
 import { supabase } from '../../lib/supabase'
 
-// Início da obra = 01/07/2026 (M01). Semana 1 = primeira semana de julho/2026.
-const DATA_INICIO = new Date('2026-07-01T00:00:00Z')
-function calcSemana(dataLanc) {
-  const d = dataLanc ? new Date(dataLanc) : new Date()
-  const diffDias = Math.floor((d - DATA_INICIO) / (1000 * 60 * 60 * 24))
-  return Math.max(1, Math.floor(diffDias / 7) + 1)
-}
+// A semana NAO e calculada aqui. O banco deriva semana_numero a partir de
+// data_lancamento, via gatilho tg_semana_avanco (05-avanco-semanal.sql).
+// Assim data e semana nunca divergem, nem quando a data e editada depois.
 
 export default async function handler(req, res) {
   const obra_id = req.query.obra_id || 'flats_pampulha'
@@ -40,7 +36,6 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, gravados: 0, aviso: 'Nenhum incremento informado' })
     }
 
-    const semana = calcSemana(new Date())
     const erros = []
     const rejeitados = []
     let gravados = 0
@@ -75,7 +70,7 @@ export default async function handler(req, res) {
         grupo_num: l.grupo_num, mes_numero: l.mes_numero != null ? l.mes_numero : mes,
         competencia: l.competencia, percentual_realizado: l.incremento,
         hh_planejado: hh_plan, hh_realizado: hh_plan * (l.incremento / 100),
-        semana_numero: semana,
+        data_lancamento: l.data_lancamento || new Date().toISOString(),
       }])
       if (e2) { erros.push(cod + ' historico: ' + e2.message); continue }
 
@@ -106,7 +101,7 @@ export default async function handler(req, res) {
 
     if (erros.length > 0) return res.status(500).json({ error: erros.join('; '), rejeitados })
 
-    return res.status(200).json({ success: true, gravados, rejeitados, semana })
+    return res.status(200).json({ success: true, gravados, rejeitados })
   }
 
   return res.status(405).json({ error: 'Method not allowed' })
