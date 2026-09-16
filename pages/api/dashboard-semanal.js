@@ -22,17 +22,32 @@ import { supabase } from '../../lib/supabase'
 const COLS = {
   curva: {
     table: 'curva_s_semanal_planejada',
-    semana: 'semana',
-    dataFim: 'data_fim',
-    bcwsA: 'bcws_a',
-    bcwsB: 'bcws_b',
-    bcwsC: 'bcws_c',
+    semana: 'semana_numero',
+    bcwsA: 'parcela_a_acum',
+    bcwsB: 'parcela_b_acum',
+    bcwsC: 'parcela_c_acum',
+    // conferencia: total das tres parcelas gravado na propria tabela
+    totalAcum: 'custo_evm_acum',
   },
   realizado: {
     table: 'v_avanco_semanal_realizado',
-    semana: 'semana',
+    semana: 'semana_numero',
     bcwpA: 'bcwp_a_acum',
+    dataInicio: 'data_inicio',
+    dataFim: 'data_fim',
   },
+}
+
+// A curva planejada nao tem coluna de data: o calendario sai da view do
+// realizado e e extrapolado a 7 dias por semana para as 87. Se a obra tiver
+// semana fora do padrao, a extrapolacao mente — o certo e a curva ter as
+// colunas de data tambem.
+const addDias = (iso, n) => {
+  const [y, m, d] = String(iso).slice(0, 10).split('-').map(Number)
+  if (!y || !m || !d) return null
+  // Date.UTC na entrada e toISOString na saida: tudo em UTC, sem passar pelo
+  // fuso local. E a mesma armadilha das linhas 46-52 do dashboard-integrado.
+  return new Date(Date.UTC(y, m - 1, d) + n * 86400000).toISOString().slice(0, 10)
 }
 
 // true  = as colunas bcws_* da curva ja sao acumuladas
@@ -132,7 +147,7 @@ export default async function handler(req, res) {
           accB += num(row[C.bcwsB])
           accC += num(row[C.bcwsC])
         }
-        plan.set(s, { semana: s, data_fim: row[C.dataFim] || null, a: accA, b: accB, c: accC })
+        plan.set(s, { semana: s, data_fim: null, a: accA, b: accB, c: accC, total_tabela: num(row[C.totalAcum]) })
         semanasOrdenadas.push(s)
       })
 
@@ -150,17 +165,71 @@ export default async function handler(req, res) {
     // -----------------------------------------------------------------------
     const R = COLS.realizado
     const bcwpAPorSemana = new Map()
+    const dataFimDaView = new Map()
     realizadoRaw.forEach((row) => {
       const s = parseInt(row[R.semana], 10)
       if (!Number.isFinite(s)) return
       bcwpAPorSemana.set(s, num(row[R.bcwpA]))
+      if (row[R.dataFim]) dataFimDaView.set(s, String(row[R.dataFim]).slice(0, 10))
     })
 
-    const semanaComDado = bcwpAPorSemana.size
-      ? Math.max(...Array.from(bcwpAPorSemana.keys()))
-      : 0
+    // Ancora do calendario: a semana mais antiga da view que tenha data.
+    const semanasComData = Array.from(dataFimDaView.keys()).sort((a, b) => a - b)
+    const ancora = semanasComData.length
+      ? { semana: semanasComData[0], data_fim: dataFimDaView.get(semanasComData[0]) }
+      : null
+    if (!ancora) throw new Error(`${R.table}: nenhuma linha com ${R.dataFim}; sem calendario nao da para semanalizar o custo da parcela B`)
+
+    semanasOrdenadas.forEach((s) => {
+      const p = plan.get(s)
+      p.data_fim = dataFimDaView.has(s)
+        ? dataFimDaView.get(s)
+        : addDias(ancora.data_fim, (s - ancora.semana) * 7)
+    })
+
+    // A view faz forward fill ate o fim do cronograma: ela tem as 87 semanas,
+    // com bcwp_a_acum constante depois do ultimo retrato. Pegar o maior
+    // semana_numero daria S87 e a curva do realizado viraria uma reta ate
+    // fev/2028 — obra "medida" ate o fim. A semana corrente vem do calendario:
+    // a ultima cujo data_fim ja passou.
+    // Fuso explicito da obra. toISOString() daria a data em UTC: as 21h de BH
+    // ja e o dia seguinte em UTC, e a semana corrente pularia uma noite antes
+    // da hora. Em Vercel o processo roda em UTC, entao nao da para confiar no
+    // fuso local do servidor — o timeZone vai fixo.
+    const hojeISO = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Sao_Paulo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date())
+
+    // Semana corrente = a semana EM CURSO, ou seja, a primeira cujo data_fim
+    // ainda nao chegou. Usar a ultima ja encerrada atrasaria o dashboard em
+    // uma semana durante os sete dias inteiros.
+    let semanaCorrente = 0
+    for (const s of semanasOrdenadas) {
+      const df = plan.get(s).data_fim
+      if (df && String(df).slice(0, 10) >= hojeISO) {
+        semanaCorrente = s
+        break
+      }
+    }
+    // Depois do fim do cronograma: fica na ultima semana planejada.
+    if (!semanaCorrente) semanaCorrente = ultimaSemana || 1
+
+    // Quando o BCWP_A para de crescer: util para ver se o forward fill esta
+    // cobrindo semanas sem retrato novo.
+    let ultimaSemanaComAvanco = 0
+    let anterior = null
+    semanasOrdenadas.forEach((s) => {
+      const v = bcwpAPorSemana.get(s)
+      if (v == null) return
+      if (anterior == null || v > anterior + 0.005) ultimaSemanaComAvanco = s
+      anterior = v
+    })
+
     const semanaAtual = Math.min(
-      Math.max(semanaQuery && Number.isFinite(semanaQuery) ? semanaQuery : semanaComDado, 1),
+      Math.max(semanaQuery && Number.isFinite(semanaQuery) ? semanaQuery : semanaCorrente, 1),
       ultimaSemana || TOTAL_SEMANAS
     )
 
@@ -314,7 +383,9 @@ export default async function handler(req, res) {
     //    em vez de virar um SPI silenciosamente errado.
     // -----------------------------------------------------------------------
     const consistencia = {
+      hoje: hojeISO,
       semanas_na_curva: semanasOrdenadas.length,
+      semanas_na_view: bcwpAPorSemana.size,
       semanas_esperadas: TOTAL_SEMANAS,
       total_a: r2(totais.a),
       total_b: r2(totais.b),
@@ -323,6 +394,10 @@ export default async function handler(req, res) {
       divergencia_a: r2(totais.a - ESPERADO.a),
       divergencia_b: r2(totais.b - ESPERADO.b),
       divergencia_c: r2(totais.c - ESPERADO.c),
+      divergencia_vs_custo_evm_acum: fimDaCurva
+        ? r2(totais.total - fimDaCurva.total_tabela)
+        : null,
+      calendario_extrapolado_a_partir_de: { semana: ancora.semana, data_fim: ancora.data_fim },
       lancamentos_fora_da_curva: lancamentos.filter(
         (l) => l.status === 'Normal' && semanaDaData(l.data_emissao) == null
       ).length,
@@ -330,7 +405,8 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       semana_atual: semanaAtual,
-      semana_com_dado: semanaComDado,
+      semana_corrente_calendario: semanaCorrente,
+      ultima_semana_com_avanco: ultimaSemanaComAvanco,
       kpis,
       curva,
       totais: {
