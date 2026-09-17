@@ -23,11 +23,13 @@ const COLS = {
   curva: {
     table: 'curva_s_semanal_planejada',
     semana: 'semana_numero',
+    mes: 'mes_numero',
     bcwsA: 'parcela_a_acum',
     bcwsB: 'parcela_b_acum',
     bcwsC: 'parcela_c_acum',
     // conferencia: total das tres parcelas gravado na propria tabela
     totalAcum: 'custo_evm_acum',
+    financeiro: 'financeiro_acum',
   },
   realizado: {
     table: 'v_avanco_semanal_realizado',
@@ -51,6 +53,13 @@ const addDias = (iso, n) => {
   return new Date(Date.UTC(y, m - 1, d) + n * 86400000).toISOString().slice(0, 10)
 }
 
+// Base de medicao da parcela A.
+//   'hh'    BCWP = hh_acumulado / Hh_total_evm x custo_total_A
+//   'custo' BCWP = bcwp_a_acum da view (percentual x custo do item)
+// A curva planejada distribui o BCWS por hora-homem, entao 'hh' deixa as duas
+// pontas na mesma regua. Itens sem Hh (concreto usinado, aco comprado pronto)
+// nao somam avanco proprio: o valor deles e apropriado conforme as atividades
+// com mao de obra andam. O dinheiro nao se perde — muda o momento.
 const BASE_PARCELA_A = 'custo'
 
 // true  = as colunas bcws_* da curva ja sao acumuladas
@@ -84,7 +93,7 @@ export default async function handler(req, res) {
   const semanaQuery = req.query.semana ? parseInt(req.query.semana, 10) : null
 
   try {
-    const [curvaRes, realizadoRes, orcamentoRes, custosRes] = await Promise.all([
+    const [curvaRes, realizadoRes, orcamentoRes, indiretoRes, custosRes] = await Promise.all([
       supabase
         .from(COLS.curva.table)
         .select('*')
@@ -97,7 +106,11 @@ export default async function handler(req, res) {
         .order(COLS.realizado.semana),
       supabase
         .from('orcamento_planejado')
-        .select('cod_eap, grupo_numero, preco_total, hh, entra_evm')
+        .select('cod_eap, grupo_numero, preco_total, hh, entra_evm, mes_inicio, mes_fim')
+        .eq('obra_id', obra_id),
+      supabase
+        .from('custos_indiretos_planejados')
+        .select('cod_eap, categoria, valor_total, mes_desembolso')
         .eq('obra_id', obra_id),
       supabase
         .from('custos_lancamentos')
@@ -113,6 +126,7 @@ export default async function handler(req, res) {
       [COLS.curva.table, curvaRes],
       [COLS.realizado.table, realizadoRes],
       ['orcamento_planejado', orcamentoRes],
+      ['custos_indiretos_planejados', indiretoRes],
       ['custos_lancamentos', custosRes],
     ]
     for (const [nome, r] of respostas) {
@@ -123,6 +137,7 @@ export default async function handler(req, res) {
     const curvaRaw = curvaRes.data
     const realizadoRaw = realizadoRes.data
     const orcamento = orcamentoRes.data
+    const indiretos = indiretoRes.data
     const lancamentos = custosRes.data
 
     // -----------------------------------------------------------------------
@@ -150,7 +165,7 @@ export default async function handler(req, res) {
           accB += num(row[C.bcwsB])
           accC += num(row[C.bcwsC])
         }
-        plan.set(s, { semana: s, data_fim: null, a: accA, b: accB, c: accC, total_tabela: num(row[C.totalAcum]) })
+        plan.set(s, { semana: s, data_fim: null, a: accA, b: accB, c: accC, total_tabela: num(row[C.totalAcum]), financeiro: num(row[C.financeiro]), mes: parseInt(row[C.mes], 10) || null })
         semanasOrdenadas.push(s)
       })
 
@@ -166,17 +181,62 @@ export default async function handler(req, res) {
     // -----------------------------------------------------------------------
     // 2. Parcela A realizada: pronta da view
     // -----------------------------------------------------------------------
-    const totalHhEvm = orcamento.reduce((soma, it) => (it.entra_evm ? soma + num(it.hh) : soma), 0)
-    if (BASE_PARCELA_A === 'hh' && totalHhEvm <= 0) throw new Error('orcamento_planejado: soma de hh com entra_evm = 0')
+    // Base de horas da parcela A: mesma definicao do CTE "itens" da view
+    // (orcamento_planejado com entra_evm). Sai do banco, nao e constante.
+    const totalHhEvm = orcamento.reduce(
+      (soma, it) => (it.entra_evm ? soma + num(it.hh) : soma),
+      0
+    )
+    if (BASE_PARCELA_A === 'hh' && totalHhEvm <= 0) {
+      throw new Error('orcamento_planejado: soma de hh com entra_evm = 0; sem base de horas nao da para medir a parcela A por Hh')
+    }
+
+    // ---------------------------------------------------------------------
+    // Custo indireto (cod_eap 19.x) semanalizado.
+    // A curva planejada nao cobre o indireto, entao cada item e distribuido
+    // linearmente pelas semanas entre mes_inicio e mes_fim — o mes de cada
+    // semana vem da propria curva, nao de calendario derivado. E rateio, nao
+    // cronograma: serve para acompanhar, nao para cobrar prazo de indireto.
+    // ---------------------------------------------------------------------
+    const semanasDoMes = new Map()
+    semanasOrdenadas.forEach((s) => {
+      const m = plan.get(s).mes
+      if (m == null) return
+      if (!semanasDoMes.has(m)) semanasDoMes.set(m, [])
+      semanasDoMes.get(m).push(s)
+    })
+
+    const indiretoSemanal = new Map()
+    let indiretoTotal = 0
+    indiretos.forEach((it) => {
+      const valor = num(it.valor_total)
+      indiretoTotal += valor
+      const m = parseInt(it.mes_desembolso, 10)
+      const alvo = semanasDoMes.get(m) || []
+      if (!alvo.length) return
+      const fatia = valor / alvo.length
+      alvo.forEach((s) => indiretoSemanal.set(s, (indiretoSemanal.get(s) || 0) + fatia))
+    })
+
+    // Um cod_eap que existe no orcamento e custo direto, mesmo que o codigo
+    // comece com 19. (ha itens de obra cadastrados assim por engano). So o que
+    // NAO esta no orcamento e comeca com 19. conta como indireto.
+    const eapDoOrcamento = new Set(orcamento.map((it) => it.cod_eap).filter(Boolean))
+    const ehIndireto = (eap) => !eapDoOrcamento.has(eap) && String(eap || '').startsWith('19.')
 
     const R = COLS.realizado
     const bcwpAPorSemana = new Map()
+    const bcwpABases = new Map()
     const dataFimDaView = new Map()
     realizadoRaw.forEach((row) => {
       const s = parseInt(row[R.semana], 10)
       if (!Number.isFinite(s)) return
-      const valorA = BASE_PARCELA_A === 'hh' ? (num(row[R.hhAcum]) / totalHhEvm) * totais.a : num(row[R.bcwpA])
-      bcwpAPorSemana.set(s, valorA)
+      // Em base Hh o BCWP e o avanco em horas convertido para reais pelo peso
+      // da parcela A. Em base custo vem pronto da view.
+      const porCusto = num(row[R.bcwpA])
+      const porHh = totalHhEvm > 0 ? (num(row[R.hhAcum]) / totalHhEvm) * totais.a : 0
+      bcwpAPorSemana.set(s, BASE_PARCELA_A === 'hh' ? porHh : porCusto)
+      bcwpABases.set(s, { custo: porCusto, hh: porHh, hh_acum: num(row[R.hhAcum]) })
       if (row[R.dataFim]) dataFimDaView.set(s, String(row[R.dataFim]).slice(0, 10))
     })
 
@@ -262,7 +322,10 @@ export default async function handler(req, res) {
     const semanaDaData = (dataStr) => {
       if (!dataStr) return null
       const d = String(dataStr).slice(0, 10)
-      if (inicioDaObra && d < inicioDaObra) return fimDeSemana[0].semana // pre-obra vai para a S1
+      // Pre-obra entra na S1: canteiro e terraplanagem foram pagos antes do
+      // marco de inicio e os retratos ja medem esses itens a 100% na S1.
+      // Descartar o custo e manter o BCWP inflaria o CPI.
+      if (inicioDaObra && d < inicioDaObra) return fimDeSemana[0].semana
       for (const w of fimDeSemana) {
         if (d <= String(w.data_fim).slice(0, 10)) return w.semana
       }
@@ -283,6 +346,7 @@ export default async function handler(req, res) {
     // incorridoB[semana][eap] -> valor da semana; acwp[semana] -> direto da semana
     const incorridoBPorSemana = new Map()
     const acwpPorSemana = new Map()
+    const acwpIndiretoPorSemana = new Map()
 
     lancamentos
       .filter((l) => l.status === 'Normal')
@@ -292,7 +356,9 @@ export default async function handler(req, res) {
         if (s == null) return
         const valor = num(l.valor)
 
-        if (!eap.startsWith('19.')) {
+        if (ehIndireto(eap)) {
+          acwpIndiretoPorSemana.set(s, (acwpIndiretoPorSemana.get(s) || 0) + valor)
+        } else {
           acwpPorSemana.set(s, (acwpPorSemana.get(s) || 0) + valor)
         }
         if (eapGrupo17.has(eap)) {
@@ -307,6 +373,8 @@ export default async function handler(req, res) {
     // -----------------------------------------------------------------------
     const incorridoAcumPorEap = {}
     let acwpAcum = 0
+    let indiretoPlanAcum = 0
+    let indiretoRealAcum = 0
     const curva = []
 
     semanasOrdenadas.forEach((s) => {
@@ -329,6 +397,8 @@ export default async function handler(req, res) {
       const bcwpC = p.c
 
       acwpAcum += acwpPorSemana.get(s) || 0
+      indiretoPlanAcum += indiretoSemanal.get(s) || 0
+      indiretoRealAcum += acwpIndiretoPorSemana.get(s) || 0
 
       const temRealizado = s <= semanaAtual
       const bcwpA = temRealizado ? (bcwpAPorSemana.get(s) ?? null) : null
@@ -348,6 +418,12 @@ export default async function handler(req, res) {
         bcwp_c: temRealizado ? r2(bcwpC) : null,
         bcwp: bcwpTotal == null ? null : r2(bcwpTotal),
         acwp: temRealizado ? r2(acwpAcum) : null,
+        financeiro_planejado: r2(p.financeiro),
+        indireto_planejado: r2(indiretoPlanAcum),
+        indireto_realizado: temRealizado ? r2(indiretoRealAcum) : null,
+        bcwp_a_custo: temRealizado ? r2((bcwpABases.get(s) || {}).custo || 0) : null,
+        bcwp_a_hh: temRealizado ? r2((bcwpABases.get(s) || {}).hh || 0) : null,
+        hh_acumulado: temRealizado ? r2((bcwpABases.get(s) || {}).hh_acum || 0) : null,
       })
     })
 
@@ -373,7 +449,7 @@ export default async function handler(req, res) {
         totais.total > 0 && ponto.bcwp != null ? r2((ponto.bcwp / totais.total) * 100) : null,
       por_parcela: {
         a: {
-          criterio: 'percentual fisico por item, ponderado por custo',
+          criterio: 'hora-homem',
           bcws: ponto.bcws_a,
           bcwp: ponto.bcwp_a,
           spi: r3(spi(ponto.bcwp_a, ponto.bcws_a)),
@@ -415,8 +491,11 @@ export default async function handler(req, res) {
       calendario_extrapolado_a_partir_de: { semana: ancora.semana, data_fim: ancora.data_fim },
       inicio_da_obra: inicioDaObra,
       base_parcela_a: BASE_PARCELA_A,
+      indireto_rateio: 'valor_total dividido pelas semanas do mes_desembolso',
+      indireto_itens: indiretos.length,
+      indireto_total: r2(indiretoTotal),
       hh_total_evm: r2(totalHhEvm),
-      lancamentos_antes_da_obra: lancamentos.filter(
+      lancamentos_pre_obra_na_s1: lancamentos.filter(
         (l) =>
           l.status === 'Normal' &&
           inicioDaObra &&
@@ -442,6 +521,8 @@ export default async function handler(req, res) {
         b: r2(totais.b),
         c: r2(totais.c),
         custo_direto: r2(totais.total),
+        indireto: r2(indiretoTotal),
+        obra: r2(totais.total + indiretoTotal),
       },
       consistencia,
       metadata: {
