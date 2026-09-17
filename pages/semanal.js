@@ -118,7 +118,7 @@ export default function Semanal() {
     if (series.finReal)
       datasets.push({
         label: 'Financeiro Realizado',
-        data: dados.curva.map((c) => (c.acwp != null ? c.acwp / 1000 : null)),
+        data: dados.curva.map((c) => (c.medido ? c.acwp / 1000 : null)),
         borderColor: FIN_REAL,
         backgroundColor: (context) => {
           const { chart } = context
@@ -140,7 +140,7 @@ export default function Semanal() {
     if (series.fisPlan)
       datasets.push({
         label: 'Físico Planejado',
-        data: dados.curva.map((c) => (c.bcws / total) * 100),
+        data: dados.curva.map((c) => (base === 'hh' ? c.avanco_plan_hh : c.avanco_plan_custo)),
         borderColor: FIS_PLAN,
         fill: false,
         borderWidth: 1.5,
@@ -154,10 +154,7 @@ export default function Semanal() {
     if (series.fisReal)
       datasets.push({
         label: 'Físico Realizado',
-        data: dados.curva.map((c) => {
-          const v = bcwpDe(c)
-          return v == null ? null : (v / total) * 100
-        }),
+        data: dados.curva.map((c) => (c.medido ? (base === 'hh' ? c.avanco_real_hh : c.avanco_real_custo) : null)),
         borderColor: FIS_REAL,
         fill: false,
         borderWidth: 2.5,
@@ -250,8 +247,9 @@ export default function Semanal() {
   const spi = p.bcws > 0 && bcwp != null ? bcwp / p.bcws : null
   const cpi = p.acwp > 0 && bcwp != null ? bcwp / p.acwp : null
   const saldoDireto = p.bcws - p.acwp
-  const avancoPlan = (p.bcws / total) * 100
-  const avancoReal = bcwp != null ? (bcwp / total) * 100 : null
+  // O alternador escolhe a régua do avanço físico: hora-homem ou custo.
+  const avancoPlan = base === 'hh' ? p.avanco_plan_hh : p.avanco_plan_custo
+  const avancoReal = base === 'hh' ? p.avanco_real_hh : p.avanco_real_custo
   const inicioSem = menos6(p.data_fim)
   const primeira = menos6(dados.curva[0].data_fim)
   const ultima = dados.curva[dados.curva.length - 1].data_fim
@@ -381,7 +379,7 @@ export default function Semanal() {
         <div className="kpi">
           <div className="kpi-label">Avanço Físico Planejado</div>
           <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2' }}>{fmtPerc(avancoPlan)}</div>
-          <div className="kpi-sub">Base: projeto acumulado</div>
+          <div className="kpi-sub">{base === 'hh' ? 'Hh acumulado ÷ Hh do projeto' : 'Custo acumulado ÷ custo direto'}</div>
         </div>
 
         <div className="kpi">

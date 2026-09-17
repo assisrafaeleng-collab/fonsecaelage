@@ -30,6 +30,7 @@ const COLS = {
     // conferencia: total das tres parcelas gravado na propria tabela
     totalAcum: 'custo_evm_acum',
     financeiro: 'financeiro_acum',
+    percHh: 'perc_hh_acum',
   },
   realizado: {
     table: 'v_avanco_semanal_realizado',
@@ -165,7 +166,7 @@ export default async function handler(req, res) {
           accB += num(row[C.bcwsB])
           accC += num(row[C.bcwsC])
         }
-        plan.set(s, { semana: s, data_fim: null, a: accA, b: accB, c: accC, total_tabela: num(row[C.totalAcum]), financeiro: num(row[C.financeiro]), mes: parseInt(row[C.mes], 10) || null })
+        plan.set(s, { semana: s, data_fim: null, a: accA, b: accB, c: accC, total_tabela: num(row[C.totalAcum]), financeiro: num(row[C.financeiro]), perc_hh: num(row[C.percHh]), mes: parseInt(row[C.mes], 10) || null })
         semanasOrdenadas.push(s)
       })
 
@@ -208,21 +209,29 @@ export default async function handler(req, res) {
 
     const indiretoSemanal = new Map()
     let indiretoTotal = 0
+    let indiretoSemMes = 0
     indiretos.forEach((it) => {
       const valor = num(it.valor_total)
       indiretoTotal += valor
       const m = parseInt(it.mes_desembolso, 10)
-      const alvo = semanasDoMes.get(m) || []
-      if (!alvo.length) return
+      // mes_desembolso = 0 nao e "mes zero": e custo que corre a obra inteira
+      // (administracao local, taxa de ADM, restaurante, contabilidade, IPTU).
+      // Sem mes definido e sem competencia, dilui pelas 87 semanas.
+      const alvo = m > 0 ? semanasDoMes.get(m) || [] : semanasOrdenadas
+      if (!alvo.length) {
+        indiretoSemMes += valor
+        return
+      }
       const fatia = valor / alvo.length
       alvo.forEach((s) => indiretoSemanal.set(s, (indiretoSemanal.get(s) || 0) + fatia))
     })
 
-    // Um cod_eap que existe no orcamento e custo direto, mesmo que o codigo
-    // comece com 19. (ha itens de obra cadastrados assim por engano). So o que
-    // NAO esta no orcamento e comeca com 19. conta como indireto.
-    const eapDoOrcamento = new Set(orcamento.map((it) => it.cod_eap).filter(Boolean))
-    const ehIndireto = (eap) => !eapDoOrcamento.has(eap) && String(eap || '').startsWith('19.')
+    // Classificacao pareada com a tela mensal: codigo comecando em 19. e
+    // sempre indireto, mesmo quando o item (passeio externo, grama) e
+    // fisicamente obra. Ha dois lancamentos cadastrados assim no orcamento
+    // (grupo 16, cod_eap 19.1.3 e 19.1.4) que deveriam ter outro codigo — a
+    // correcao certa e no cadastro, nao aqui, para nao divergir da mensal.
+    const ehIndireto = (eap) => String(eap || '').startsWith('19.')
 
     const R = COLS.realizado
     const bcwpAPorSemana = new Map()
@@ -429,10 +438,7 @@ export default async function handler(req, res) {
       indiretoRealAcum += acwpIndiretoPorSemana.get(s) || 0
 
       const temRealizado = s <= semanaAtual
-      const bcwpA = temRealizado ? (bcwpAPorSemana.get(s) ?? null) : null
-
-      const bcwpTotal =
-        temRealizado && bcwpA != null ? bcwpA + bcwpB + bcwpC : null
+      const bcwpABase = bcwpAPorSemana.get(s) || 0
 
       curva.push({
         semana: s,
@@ -441,14 +447,30 @@ export default async function handler(req, res) {
         bcws_b: r2(p.b),
         bcws_c: r2(p.c),
         bcws: r2(p.a + p.b + p.c),
-        bcwp_a: bcwpA == null ? null : r2(bcwpA),
-        bcwp_b: temRealizado ? r2(bcwpB) : null,
-        bcwp_c: temRealizado ? r2(bcwpC) : null,
-        bcwp: bcwpTotal == null ? null : r2(bcwpTotal),
-        acwp: temRealizado ? r2(acwpAcum) : null,
+        // Os acumulados de custo e medicao existem em qualquer semana: sao o
+        // que foi gasto e medido ate aqui. Nao ficam nulos no futuro — quem
+        // decide ate onde desenhar a linha e o grafico, com o campo "medido".
+        medido: temRealizado,
+        bcwp_a: r2(bcwpABase),
+        bcwp_b: r2(bcwpB),
+        bcwp_c: r2(bcwpC),
+        bcwp: r2(bcwpABase + bcwpB + bcwpC),
+        acwp: r2(acwpAcum),
         financeiro_planejado: r2(p.financeiro),
+        // Avanco fisico e medido em hora-homem, nao em reais: e a definicao da
+        // planilha de planejamento (Hh acumulado / Hh total do projeto). O BCWS
+        // continua rateado por custo — sao metricas diferentes, nao concorrentes.
+        // Duas reguas do avanco fisico, calculadas sempre. O alternador da
+        // tela escolhe qual mostrar; nenhuma das duas e "a certa" em abstrato.
+        avanco_plan_hh: r2(p.perc_hh),
+        avanco_plan_custo: totais.total > 0 ? r2((p.a + p.b + p.c) / totais.total * 100) : null,
+        avanco_real_hh: r2(((bcwpABases.get(s) || {}).hh_acum || 0) / totalHhEvm * 100),
+        avanco_real_custo:
+          totais.total > 0
+            ? r2((((bcwpABases.get(s) || {}).custo || 0) + bcwpB + bcwpC) / totais.total * 100)
+            : null,
         indireto_planejado: r2(indiretoPlanAcum),
-        indireto_realizado: temRealizado ? r2(indiretoRealAcum) : null,
+        indireto_realizado: r2(indiretoRealAcum),
         bcwp_a_custo: temRealizado ? r2((bcwpABases.get(s) || {}).custo || 0) : null,
         bcwp_a_hh: temRealizado ? r2((bcwpABases.get(s) || {}).hh || 0) : null,
         hh_acumulado: temRealizado ? r2((bcwpABases.get(s) || {}).hh_acum || 0) : null,
@@ -472,9 +494,8 @@ export default async function handler(req, res) {
       cpi: ponto.acwp > 0 && ponto.bcwp != null ? r3(ponto.bcwp / ponto.acwp) : null,
       sv: ponto.bcwp != null ? r2(ponto.bcwp - ponto.bcws) : null,
       cv: ponto.bcwp != null && ponto.acwp != null ? r2(ponto.bcwp - ponto.acwp) : null,
-      avanco_fisico_planejado: totais.total > 0 ? r2((ponto.bcws / totais.total) * 100) : null,
-      avanco_fisico_realizado:
-        totais.total > 0 && ponto.bcwp != null ? r2((ponto.bcwp / totais.total) * 100) : null,
+      avanco_fisico_planejado: ponto.avanco_plan_hh,
+      avanco_fisico_realizado: ponto.avanco_real_hh,
       por_parcela: {
         a: {
           criterio: 'hora-homem',
@@ -519,7 +540,9 @@ export default async function handler(req, res) {
       calendario_extrapolado_a_partir_de: { semana: ancora.semana, data_fim: ancora.data_fim },
       inicio_da_obra: inicioDaObra,
       base_parcela_a: BASE_PARCELA_A,
-      indireto_rateio: 'valor_total dividido pelas semanas do mes_desembolso',
+      indireto_rateio:
+        'mes_desembolso > 0 vai para as semanas do mes; mes_desembolso = 0 dilui pela obra inteira',
+      indireto_sem_mes_valido: r2(indiretoSemMes),
       indireto_itens: indiretos.length,
       lancamentos_sem_semana: semLancamentoDatado,
       valor_sem_semana: r2(valorSemData),
