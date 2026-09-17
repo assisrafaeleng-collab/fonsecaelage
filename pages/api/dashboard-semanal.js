@@ -114,7 +114,7 @@ export default async function handler(req, res) {
         .eq('obra_id', obra_id),
       supabase
         .from('custos_lancamentos')
-        .select('codigo_eap, data_emissao, valor, status')
+        .select('codigo_eap, data_emissao, valor, status, competencia')
         .eq('obra_id', obra_id)
         .order('data_emissao'),
     ])
@@ -319,6 +319,25 @@ export default async function handler(req, res) {
       ? addDias(String(fimDeSemana[0].data_fim).slice(0, 10), -6)
       : null
 
+    let semLancamentoDatado = 0
+    let valorSemData = 0
+
+    // Lancamento sem data de emissao cai na PRIMEIRA semana da sua competencia.
+    // E o caso do terreno: pago de uma vez, sem nota, competencia 2026-07.
+    // Diluir pelo mes desenharia uma rampa que nao aconteceu.
+    const primeiraSemanaDaCompetencia = (comp) => {
+      const c = String(comp || '').slice(0, 7)
+      if (!/^\d{4}-\d{2}$/.test(c)) return null
+      for (const w of fimDeSemana) {
+        if (String(w.data_fim).slice(0, 7) === c) return w.semana
+      }
+      // Competencia anterior ao inicio da obra: entra na primeira semana.
+      if (fimDeSemana.length && c < String(fimDeSemana[0].data_fim).slice(0, 7)) {
+        return fimDeSemana[0].semana
+      }
+      return null
+    }
+
     const semanaDaData = (dataStr) => {
       if (!dataStr) return null
       const d = String(dataStr).slice(0, 10)
@@ -352,8 +371,17 @@ export default async function handler(req, res) {
       .filter((l) => l.status === 'Normal')
       .forEach((l) => {
         const eap = l.codigo_eap || ''
-        const s = semanaDaData(l.data_emissao)
-        if (s == null) return
+        // Sem data de emissao nao da para dizer a que semana o lancamento
+        // pertence. Ele fica de fora, mas contado: valor que some do acumulado
+        // sem aviso e pior que valor ausente com aviso.
+        const s = l.data_emissao
+          ? semanaDaData(l.data_emissao)
+          : primeiraSemanaDaCompetencia(l.competencia)
+        if (s == null) {
+          semLancamentoDatado += 1
+          valorSemData += num(l.valor)
+          return
+        }
         const valor = num(l.valor)
 
         if (ehIndireto(eap)) {
@@ -493,6 +521,8 @@ export default async function handler(req, res) {
       base_parcela_a: BASE_PARCELA_A,
       indireto_rateio: 'valor_total dividido pelas semanas do mes_desembolso',
       indireto_itens: indiretos.length,
+      lancamentos_sem_semana: semLancamentoDatado,
+      valor_sem_semana: r2(valorSemData),
       indireto_total: r2(indiretoTotal),
       hh_total_evm: r2(totalHhEvm),
       lancamentos_pre_obra_na_s1: lancamentos.filter(

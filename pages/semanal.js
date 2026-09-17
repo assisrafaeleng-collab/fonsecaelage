@@ -300,6 +300,18 @@ export default function Semanal() {
         </div>
       </div>
 
+      {dados.consistencia.lancamentos_sem_semana > 0 && (
+        <div className="alert-strip">
+          <div className="alert-main">
+            <div className="alert-title">Fora do acumulado</div>
+            <div className="alert-text">
+              {dados.consistencia.lancamentos_sem_semana} lançamentos sem data nem competência, somando{' '}
+              <b>{fmtMoeda(dados.consistencia.valor_sem_semana)}</b>, não entram em nenhuma semana.
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="hero">
         <div className="hero-block">
           <div className="hero-label">Custo Total da Obra · Planejado</div>
