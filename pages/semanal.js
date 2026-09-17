@@ -1497,54 +1497,6 @@ export default function Semanal() {
       )}
 
       <DiarioOcorrencias />
-
-      <div className="card">
-        <div className="card-title">Medição do Custo Direto — as três parcelas</div>
-        <table>
-          <thead>
-            <tr>
-              <th>Parcela</th>
-              <th style={{ textAlign: 'right' }}>Planejado</th>
-              <th style={{ textAlign: 'right' }}>Agregado</th>
-              <th style={{ textAlign: 'right' }}>Índice</th>
-              <th style={{ textAlign: 'right' }}>Peso na obra</th>
-            </tr>
-          </thead>
-          <tbody>
-            {[
-              ['Produção', 'percentual físico por item', p.bcws_a, bcwpA, dados.totais.a],
-              ['Locação de equipamentos', 'custo incorrido, limitado ao planejado', p.bcws_b, p.bcwp_b, dados.totais.b],
-              ['Funcionários diretos', 'tempo decorrido — não sinaliza atraso', p.bcws_c, p.bcwp_c, dados.totais.c],
-            ].map(([nome, criterio, plan, agregado, peso]) => {
-              const i = plan > 0 && agregado != null ? agregado / plan : null
-              return (
-                <tr key={nome}>
-                  <td>
-                    <div style={{ fontWeight: 600 }}>{nome}</div>
-                    <div style={{ color: '#8b919c', fontSize: 11, marginTop: 2 }}>{criterio}</div>
-                  </td>
-                  <td style={{ textAlign: 'right', fontFamily: 'var(--mono)', color: PLAN }}>{fmtMoeda(plan)}</td>
-                  <td style={{ textAlign: 'right', fontFamily: 'var(--mono)' }}>
-                    {agregado == null ? '—' : fmtMoeda(agregado)}
-                  </td>
-                  <td
-                    style={{
-                      textAlign: 'right',
-                      fontFamily: 'var(--mono)',
-                      color: i == null ? '#8b919c' : i >= 1 ? VERDE : VERMELHO,
-                    }}
-                  >
-                    {fmtIdx(i)}
-                  </td>
-                  <td style={{ textAlign: 'right', fontFamily: 'var(--mono)', color: '#8b919c' }}>
-                    {fmtPerc((peso / total) * 100)}
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
     </div>
   )
 }
