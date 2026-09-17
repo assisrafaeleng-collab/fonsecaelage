@@ -75,8 +75,15 @@ const LIMITAR_B_AO_PLANEJADO_DA_SEMANA = false
 
 const TOTAL_SEMANAS = 87
 
+// Grupos cujo servico se repete andar a andar e o cronograma acompanha por
+// pavimento. Os demais sao lista unica, mesmo tendo pavimento no cadastro:
+// reboco, instalacoes, gesso e pisos sao tocados como frente geral.
+const GRUPOS_POR_PAVIMENTO = new Set([3, 4])
+
 // Valores de referencia so para o bloco de consistencia da resposta.
 const ESPERADO = { a: 2793442.79, b: 313367.06, c: 356776.0 }
+
+const iso10 = (v) => String(v || '').slice(0, 10)
 
 const num = (v) => {
   const n = parseFloat(v)
@@ -94,7 +101,7 @@ export default async function handler(req, res) {
   const semanaQuery = req.query.semana ? parseInt(req.query.semana, 10) : null
 
   try {
-    const [curvaRes, realizadoRes, orcamentoRes, indiretoRes, custosRes] = await Promise.all([
+    const [curvaRes, realizadoRes, orcamentoRes, indiretoRes, retratosRes, custosRes] = await Promise.all([
       supabase
         .from(COLS.curva.table)
         .select('*')
@@ -107,15 +114,21 @@ export default async function handler(req, res) {
         .order(COLS.realizado.semana),
       supabase
         .from('orcamento_planejado')
-        .select('cod_eap, grupo_numero, preco_total, hh, entra_evm, mes_inicio, mes_fim')
+        .select('*')
         .eq('obra_id', obra_id),
       supabase
         .from('custos_indiretos_planejados')
         .select('cod_eap, categoria, valor_total, mes_desembolso')
         .eq('obra_id', obra_id),
       supabase
+        .from('avanco_fisico_historico')
+        .select('id, codigo_eap, percentual_realizado, semana_numero, data_lancamento')
+        .eq('obra_id', obra_id)
+        .not('semana_numero', 'is', null)
+        .order('semana_numero'),
+      supabase
         .from('custos_lancamentos')
-        .select('codigo_eap, data_emissao, valor, status, competencia')
+        .select('codigo_eap, data_emissao, valor, status, competencia, fornecedor, historico, classificacao')
         .eq('obra_id', obra_id)
         .order('data_emissao'),
     ])
@@ -128,6 +141,7 @@ export default async function handler(req, res) {
       [COLS.realizado.table, realizadoRes],
       ['orcamento_planejado', orcamentoRes],
       ['custos_indiretos_planejados', indiretoRes],
+      ['avanco_fisico_historico', retratosRes],
       ['custos_lancamentos', custosRes],
     ]
     for (const [nome, r] of respostas) {
@@ -139,6 +153,7 @@ export default async function handler(req, res) {
     const realizadoRaw = realizadoRes.data
     const orcamento = orcamentoRes.data
     const indiretos = indiretoRes.data
+    const retratos = retratosRes.data
     const lancamentos = custosRes.data
 
     // -----------------------------------------------------------------------
@@ -443,6 +458,7 @@ export default async function handler(req, res) {
       curva.push({
         semana: s,
         data_fim: p.data_fim,
+        mes: p.mes,
         bcws_a: r2(p.a),
         bcws_b: r2(p.b),
         bcws_c: r2(p.c),
@@ -463,17 +479,354 @@ export default async function handler(req, res) {
         // Duas reguas do avanco fisico, calculadas sempre. O alternador da
         // tela escolhe qual mostrar; nenhuma das duas e "a certa" em abstrato.
         avanco_plan_hh: r2(p.perc_hh),
+        // Avanco fisico e producao. As parcelas B (locacao) e C (funcionarios)
+        // avancam por gasto e por calendario, nao por servico executado — somar
+        // as duas aqui faria o indicador subir sozinho com o tempo passando.
+        // As duas reguas (custo e Hh) pesam a MESMA parcela A de formas
+        // diferentes; e so isso que o alternador troca.
         avanco_plan_custo: totais.a > 0 ? r2((p.a / totais.a) * 100) : null,
         avanco_real_hh: r2(((bcwpABases.get(s) || {}).hh_acum || 0) / totalHhEvm * 100),
-        avanco_real_custo: totais.a > 0 ? r2((((bcwpABases.get(s) || {}).custo || 0) / totais.a) * 100) : null,
+        avanco_real_custo:
+          totais.a > 0 ? r2((((bcwpABases.get(s) || {}).custo || 0) / totais.a) * 100) : null,
         indireto_planejado: r2(indiretoPlanAcum),
         indireto_realizado: r2(indiretoRealAcum),
-
         bcwp_a_custo: temRealizado ? r2((bcwpABases.get(s) || {}).custo || 0) : null,
         bcwp_a_hh: temRealizado ? r2((bcwpABases.get(s) || {}).hh || 0) : null,
         hh_acumulado: temRealizado ? r2((bcwpABases.get(s) || {}).hh_acum || 0) : null,
       })
     })
+
+    // -----------------------------------------------------------------------
+    // 4b. Abertura por grupo, ate a semana selecionada.
+    // O planejado por grupo NAO existe pronto: a curva so guarda o agregado das
+    // tres parcelas. Cada item e rateado linearmente entre mes_inicio e mes_fim,
+    // que e a regua da tela mensal. A soma pode divergir do bcws da curva em
+    // semanas intermediarias — a diferenca vai no bloco de consistencia.
+    // -----------------------------------------------------------------------
+    const semanasAte = new Set(semanasOrdenadas.filter((w) => w <= semanaAtual))
+
+    const fatiaPlanejadaAte = (it) => {
+      const valor = num(it.preco_total)
+      const mi = parseInt(it.mes_inicio, 10) || 1
+      const mf = parseInt(it.mes_fim, 10) || mi
+      const alvo = []
+      for (let m = mi; m <= mf; m += 1) (semanasDoMes.get(m) || []).forEach((w) => alvo.push(w))
+      if (!alvo.length) return 0
+      const dentro = alvo.filter((w) => semanasAte.has(w)).length
+      return (valor / alvo.length) * dentro
+    }
+
+    const realizadoPorEapAte = {}
+    const lancamentosPorEap = {}
+    lancamentos
+      .filter((l) => l.status === 'Normal')
+      .forEach((l) => {
+        const w = l.data_emissao
+          ? semanaDaData(l.data_emissao)
+          : primeiraSemanaDaCompetencia(l.competencia)
+        if (w == null || !semanasAte.has(w)) return
+        const eap = l.codigo_eap || ''
+        // Mesma regra do card de custo direto: codigo 19. e indireto, mesmo
+        // quando o item existe no orcamento (passeio externo, grama). Sem isso
+        // a soma da tabela fica acima do card pelo valor desses lancamentos.
+        if (ehIndireto(eap)) return
+        realizadoPorEapAte[eap] = (realizadoPorEapAte[eap] || 0) + num(l.valor)
+        if (!lancamentosPorEap[eap]) lancamentosPorEap[eap] = []
+        lancamentosPorEap[eap].push({
+          semana: w,
+          data: l.data_emissao ? iso10(l.data_emissao) : null,
+          competencia: l.competencia || null,
+          fornecedor: l.fornecedor || '',
+          historico: l.historico || '',
+          valor: r2(num(l.valor)),
+        })
+      })
+
+    const porGrupo = new Map()
+    orcamento.forEach((it) => {
+      const g = parseInt(it.grupo_numero, 10)
+      if (!Number.isFinite(g)) return
+      if (!porGrupo.has(g)) {
+        porGrupo.set(g, {
+          grupo: g,
+          nome: it.grupo_nome || it.macrogrupo || it.grupo_descricao || ('Grupo ' + g),
+          mes_inicio: parseInt(it.mes_inicio, 10) || 1,
+          mes_fim: parseInt(it.mes_fim, 10) || 1,
+          planejado: 0,
+          realizado: 0,
+          itens: [],
+        })
+      }
+      const linha = porGrupo.get(g)
+      const plan = fatiaPlanejadaAte(it)
+      const real = realizadoPorEapAte[it.cod_eap] || 0
+      linha.planejado += plan
+      linha.realizado += real
+      linha.mes_inicio = Math.min(linha.mes_inicio, parseInt(it.mes_inicio, 10) || 1)
+      linha.mes_fim = Math.max(linha.mes_fim, parseInt(it.mes_fim, 10) || 1)
+      linha.itens.push({
+        cod_eap: it.cod_eap,
+        descricao: it.descricao || '',
+        mes_inicio: parseInt(it.mes_inicio, 10) || null,
+        mes_fim: parseInt(it.mes_fim, 10) || null,
+        planejado: r2(plan),
+        realizado: r2(real),
+        planejado_total: r2(num(it.preco_total)),
+        lancamentos: (lancamentosPorEap[it.cod_eap] || []).sort((a, b) =>
+          String(a.data || '').localeCompare(String(b.data || ''))
+        ),
+      })
+    })
+
+    const grupos = Array.from(porGrupo.values())
+      .sort((a, b) => a.grupo - b.grupo)
+      .map((g) => ({
+        ...g,
+        planejado: r2(g.planejado),
+        realizado: r2(g.realizado),
+        itens: g.itens.sort((a, b) =>
+          String(a.cod_eap).localeCompare(String(b.cod_eap), 'pt-BR', { numeric: true })
+        ),
+      }))
+
+    // Abertura do indireto por categoria, mesma logica: planejado rateado
+    // (mes_desembolso > 0 no mes; = 0 pela obra inteira) e truncado na semana;
+    // realizado somado dos lancamentos com codigo de indireto ate a semana.
+    const realizadoIndiretoPorEap = {}
+    let realizadoIndiretoSemCategoria = 0
+    lancamentos
+      .filter((l) => l.status === 'Normal')
+      .forEach((l) => {
+        const eap = l.codigo_eap || ''
+        if (!ehIndireto(eap)) return
+        const w = l.data_emissao
+          ? semanaDaData(l.data_emissao)
+          : primeiraSemanaDaCompetencia(l.competencia)
+        if (w == null || !semanasAte.has(w)) return
+        realizadoIndiretoPorEap[eap] = (realizadoIndiretoPorEap[eap] || 0) + num(l.valor)
+      })
+
+    const eapComCategoria = new Set(indiretos.map((it) => it.cod_eap).filter(Boolean))
+    Object.keys(realizadoIndiretoPorEap).forEach((eap) => {
+      if (!eapComCategoria.has(eap)) realizadoIndiretoSemCategoria += realizadoIndiretoPorEap[eap]
+    })
+
+    const indiretosAbertura = indiretos
+      .map((it) => {
+        const valor = num(it.valor_total)
+        const m = parseInt(it.mes_desembolso, 10)
+        const alvo = m > 0 ? semanasDoMes.get(m) || [] : semanasOrdenadas
+        const dentro = alvo.filter((w) => semanasAte.has(w)).length
+        const plan = alvo.length ? (valor / alvo.length) * dentro : 0
+        const real = realizadoIndiretoPorEap[it.cod_eap] || 0
+        return {
+          cod_eap: it.cod_eap,
+          categoria: it.categoria || it.cod_eap || 'Sem categoria',
+          mes_desembolso: Number.isFinite(m) ? m : null,
+          planejado: r2(plan),
+          planejado_total: r2(valor),
+          realizado: r2(real),
+        }
+      })
+      .sort((a, b) => b.planejado_total - a.planejado_total)
+
+    const somaIndiretoPlan = indiretosAbertura.reduce((t, i) => t + i.planejado, 0)
+    const somaIndiretoReal =
+      indiretosAbertura.reduce((t, i) => t + i.realizado, 0) + realizadoIndiretoSemCategoria
+
+    // Avanco fisico por item ate a semana. O realizado e o ULTIMO retrato do
+    // item ate aqui (mais recente por data_lancamento, nao o maior valor: item
+    // revisado para baixo tem que cair). O planejado e a fracao de semanas ja
+    // decorridas dentro do intervalo mes_inicio..mes_fim do item.
+    const ultimoRetrato = {}
+    const retratosPorEap = {}
+    retratos.forEach((r) => {
+      const w = parseInt(r.semana_numero, 10)
+      if (!Number.isFinite(w) || w > semanaAtual) return
+      const eap = r.codigo_eap
+      if (!retratosPorEap[eap]) retratosPorEap[eap] = []
+      retratosPorEap[eap].push({
+        id: r.id,
+        semana: w,
+        data: r.data_lancamento ? iso10(r.data_lancamento) : null,
+        perc: r2(num(r.percentual_realizado)),
+      })
+      const atual = ultimoRetrato[eap]
+      const chave = [w, r.data_lancamento || '', r.id || 0]
+      if (
+        !atual ||
+        chave[0] > atual.chave[0] ||
+        (chave[0] === atual.chave[0] &&
+          (String(chave[1]) > String(atual.chave[1]) ||
+            (String(chave[1]) === String(atual.chave[1]) && chave[2] > atual.chave[2])))
+      ) {
+        ultimoRetrato[eap] = { perc: num(r.percentual_realizado), chave, semana: w }
+      }
+    })
+
+    const percPlanejadoAte = (it) => {
+      const mi = parseInt(it.mes_inicio, 10) || 1
+      const mf = parseInt(it.mes_fim, 10) || mi
+      const alvo = []
+      for (let m = mi; m <= mf; m += 1) (semanasDoMes.get(m) || []).forEach((w) => alvo.push(w))
+      if (!alvo.length) return 0
+      return (alvo.filter((w) => semanasAte.has(w)).length / alvo.length) * 100
+    }
+
+    const avancoPorGrupo = new Map()
+    orcamento.forEach((it) => {
+      const g = parseInt(it.grupo_numero, 10)
+      if (!Number.isFinite(g) || !it.entra_evm) return
+      // Item so de material (concreto usinado, aco comprado pronto) nao tem
+      // hora-homem: nao mede avanco fisico e polui a lista com 0,0 h.
+      if (num(it.hh) <= 0) return
+      if (!avancoPorGrupo.has(g)) {
+        avancoPorGrupo.set(g, {
+          grupo: g,
+          nome: it.grupo_nome || it.macrogrupo || ('Grupo ' + g),
+          hh_total: 0,
+          hh_plan: 0,
+          hh_real: 0,
+          itens: [],
+        })
+      }
+      const linha = avancoPorGrupo.get(g)
+      const hh = num(it.hh)
+      const pPlan = percPlanejadoAte(it)
+      const retrato = ultimoRetrato[it.cod_eap]
+      const pReal = retrato ? retrato.perc : 0
+      linha.hh_total += hh
+      linha.hh_plan += (hh * pPlan) / 100
+      linha.hh_real += (hh * pReal) / 100
+      // Varias linhas do orcamento compartilham o mesmo cod_eap (o mesmo
+      // servico repetido por pavimento). A medicao e gravada por codigo, entao
+      // essas linhas sao UMA atividade mensuravel: somar as horas e mostrar uma
+      // vez so. Mostrar seis linhas identicas sugere seis medicoes possiveis.
+      const chave = GRUPOS_POR_PAVIMENTO.has(g)
+        ? `${it.cod_eap}|${it.pavimento || ''}`
+        : it.cod_eap
+      const existente = linha.itens.find((x) => x.chave === chave)
+      if (existente) {
+        existente.hh = r2(existente.hh + hh)
+        existente.linhas += 1
+        return
+      }
+      linha.itens.push({
+        chave,
+        linhas: 1,
+        cod_eap: it.cod_eap,
+        descricao: it.descricao || '',
+        pavimento: it.pavimento || null,
+        hh: r2(hh),
+        perc_planejado: r2(pPlan),
+        perc_realizado: r2(pReal),
+        medido_na_semana: retrato ? retrato.semana : null,
+        retratos: (retratosPorEap[it.cod_eap] || []).sort(
+          (a, b) => a.semana - b.semana || String(a.data || '').localeCompare(String(b.data || ''))
+        ),
+        mes_inicio: parseInt(it.mes_inicio, 10) || null,
+        mes_fim: parseInt(it.mes_fim, 10) || null,
+      })
+    })
+
+    // So aparece o que ja deveria ter comecado ate a semana (perc_planejado > 0)
+    // ou o que ja foi executado mesmo sem estar previsto ainda — atividade
+    // adiantada precisa aparecer. O denominador continua sendo o Hh INTEIRO do
+    // grupo e do pavimento: esconder item nao pode inflar percentual.
+    const visivel = (i) => i.perc_planejado > 0 || i.perc_realizado > 0
+
+    const avancoGrupos = Array.from(avancoPorGrupo.values())
+      .filter((g) => g.itens.some(visivel))
+      .sort((a, b) => a.grupo - b.grupo)
+      .map((g) => ({
+        grupo: g.grupo,
+        nome: g.nome,
+        hh_total: r2(g.hh_total),
+        hh_plan: r2(g.hh_plan),
+        hh_real: r2(g.hh_real),
+        perc_planejado: g.hh_total > 0 ? r2((g.hh_plan / g.hh_total) * 100) : null,
+        perc_realizado: g.hh_total > 0 ? r2((g.hh_real / g.hh_total) * 100) : null,
+        peso: totalHhEvm > 0 ? r2((g.hh_total / totalHhEvm) * 100) : null,
+        itens: g.itens.filter(visivel).sort((a, b) =>
+          String(a.cod_eap).localeCompare(String(b.cod_eap), 'pt-BR', { numeric: true })
+        ),
+        itens_nao_iniciados: g.itens.filter((i) => !visivel(i)).length,
+        por_pavimento: GRUPOS_POR_PAVIMENTO.has(g.grupo),
+        // Estrutura e alvenaria repetem o mesmo servico por pavimento.
+        // Agrupar por pavimento mostra em qual andar o atraso esta.
+        pavimentos: !GRUPOS_POR_PAVIMENTO.has(g.grupo) ? [] : (() => {
+          const m = new Map()
+          g.itens.forEach((i) => {
+            const p = i.pavimento || 'Sem pavimento'
+            if (!m.has(p)) m.set(p, { pavimento: p, hh_total: 0, hh_plan: 0, hh_real: 0, itens: [] })
+            const b = m.get(p)
+            b.hh_total += i.hh
+            b.hh_plan += (i.hh * i.perc_planejado) / 100
+            b.hh_real += (i.hh * i.perc_realizado) / 100
+            b.itens.push(i)
+          })
+          return Array.from(m.values())
+            .map((b) => ({
+              pavimento: b.pavimento,
+              hh_total: r2(b.hh_total),
+              hh_plan: r2(b.hh_plan),
+              hh_real: r2(b.hh_real),
+              perc_planejado: b.hh_total > 0 ? r2((b.hh_plan / b.hh_total) * 100) : null,
+              perc_realizado: b.hh_total > 0 ? r2((b.hh_real / b.hh_total) * 100) : null,
+              itens: b.itens.filter(visivel).sort((x, y) =>
+                String(x.cod_eap).localeCompare(String(y.cod_eap), 'pt-BR', { numeric: true })
+              ),
+            }))
+            .filter((b) => b.itens.length > 0)
+            .sort((x, y) => String(x.pavimento).localeCompare(String(y.pavimento), 'pt-BR', { numeric: true }))
+        })(),
+      }))
+
+    // Matriz pavimento x grupo para o mapa de avanco. Usa a MESMA base dos
+    // cards: Hh, ultimo retrato por item, corte na semana selecionada. Antes
+    // esse painel vinha das rotas mensais e discordava do resto da tela.
+    const celulas = new Map()
+    const pavimentosVistos = new Set()
+    const gruposVistos = new Map()
+    orcamento.forEach((it) => {
+      const g = parseInt(it.grupo_numero, 10)
+      if (!Number.isFinite(g) || !it.entra_evm) return
+      const hh = num(it.hh)
+      if (hh <= 0) return
+      const pav = it.pavimento || 'Sem pavimento'
+      pavimentosVistos.add(pav)
+      if (!gruposVistos.has(g)) gruposVistos.set(g, it.grupo_nome || it.macrogrupo || ('Grupo ' + g))
+      const k = `${pav}||${g}`
+      if (!celulas.has(k)) celulas.set(k, { pavimento: pav, grupo: g, hh: 0, plan: 0, real: 0 })
+      const c = celulas.get(k)
+      const pPlan = percPlanejadoAte(it)
+      const retrato = ultimoRetrato[it.cod_eap]
+      const pReal = retrato ? retrato.perc : 0
+      c.hh += hh
+      c.plan += (hh * pPlan) / 100
+      c.real += (hh * pReal) / 100
+    })
+
+    const mapaAvanco = {
+      pavimentos: Array.from(pavimentosVistos).sort((a, b) =>
+        String(a).localeCompare(String(b), 'pt-BR', { numeric: true })
+      ),
+      grupos: Array.from(gruposVistos.entries())
+        .map(([numero, nome]) => ({ numero, nome }))
+        .sort((a, b) => a.numero - b.numero),
+      celulas: Array.from(celulas.values()).map((c) => ({
+        pavimento: c.pavimento,
+        grupo: c.grupo,
+        hh: r2(c.hh),
+        perc_planejado: c.hh > 0 ? r2((c.plan / c.hh) * 100) : null,
+        perc_realizado: c.hh > 0 ? r2((c.real / c.hh) * 100) : null,
+      })),
+    }
+
+    const hhRealDosGrupos = avancoGrupos.reduce((t, g) => t + g.hh_real, 0)
+
+    const somaGruposPlan = grupos.reduce((t, g) => t + g.planejado, 0)
+    const somaGruposReal = grupos.reduce((t, g) => t + g.realizado, 0)
 
     // -----------------------------------------------------------------------
     // 5. KPIs da semana selecionada
@@ -538,6 +891,12 @@ export default async function handler(req, res) {
       calendario_extrapolado_a_partir_de: { semana: ancora.semana, data_fim: ancora.data_fim },
       inicio_da_obra: inicioDaObra,
       base_parcela_a: BASE_PARCELA_A,
+      grupos_planejado_soma: r2(somaGruposPlan),
+      hh_realizado_dos_grupos: r2(hhRealDosGrupos),
+      indiretos_planejado_soma: r2(somaIndiretoPlan),
+      indiretos_realizado_soma: r2(somaIndiretoReal),
+      indireto_realizado_sem_categoria: r2(realizadoIndiretoSemCategoria),
+      grupos_realizado_soma: r2(somaGruposReal),
       indireto_rateio:
         'mes_desembolso > 0 vai para as semanas do mes; mes_desembolso = 0 dilui pela obra inteira',
       indireto_sem_mes_valido: r2(indiretoSemMes),
@@ -567,6 +926,10 @@ export default async function handler(req, res) {
       ultima_semana_com_avanco: ultimaSemanaComAvanco,
       kpis,
       curva,
+      grupos,
+      indiretos: indiretosAbertura,
+      avanco_grupos: avancoGrupos,
+      mapa_avanco: mapaAvanco,
       totais: {
         a: r2(totais.a),
         b: r2(totais.b),
