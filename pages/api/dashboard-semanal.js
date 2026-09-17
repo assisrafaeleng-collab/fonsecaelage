@@ -463,14 +463,12 @@ export default async function handler(req, res) {
         // Duas reguas do avanco fisico, calculadas sempre. O alternador da
         // tela escolhe qual mostrar; nenhuma das duas e "a certa" em abstrato.
         avanco_plan_hh: r2(p.perc_hh),
-        avanco_plan_custo: totais.total > 0 ? r2((p.a + p.b + p.c) / totais.total * 100) : null,
+        avanco_plan_custo: totais.a > 0 ? r2((p.a / totais.a) * 100) : null,
         avanco_real_hh: r2(((bcwpABases.get(s) || {}).hh_acum || 0) / totalHhEvm * 100),
-        avanco_real_custo:
-          totais.total > 0
-            ? r2((((bcwpABases.get(s) || {}).custo || 0) + bcwpB + bcwpC) / totais.total * 100)
-            : null,
+        avanco_real_custo: totais.a > 0 ? r2((((bcwpABases.get(s) || {}).custo || 0) / totais.a) * 100) : null,
         indireto_planejado: r2(indiretoPlanAcum),
         indireto_realizado: r2(indiretoRealAcum),
+
         bcwp_a_custo: temRealizado ? r2((bcwpABases.get(s) || {}).custo || 0) : null,
         bcwp_a_hh: temRealizado ? r2((bcwpABases.get(s) || {}).hh || 0) : null,
         hh_acumulado: temRealizado ? r2((bcwpABases.get(s) || {}).hh_acum || 0) : null,

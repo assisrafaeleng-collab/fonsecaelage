@@ -167,6 +167,7 @@ export default function Home() {
         <div className="nav">
           <button className="nav-btn active">Dashboard</button>
           <button className="nav-btn" onClick={() => handleNavRestrita('/custos')}>Lançamentos de Custos</button>
+          <button className="nav-btn" onClick={() => window.location.href = '/semanal'}>Acompanhamento semanal</button>
         </div>
       </div>
 
