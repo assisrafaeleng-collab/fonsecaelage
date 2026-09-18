@@ -206,7 +206,7 @@ export default function Semanal() {
       return a == null ? null : a + (c.bcwp_b || 0) + (c.bcwp_c || 0)
     }
 
-    const labels = dados.curva.map((c) => `S${String(c.semana).padStart(2, '0')}`)
+    const labels = dados.curva.map((c) => `S${String(c.semana).padStart(2, '0')} · ${dm(menos6(c.data_fim))}`)
     const datasets = []
 
     if (series.finPlan)
@@ -217,7 +217,12 @@ export default function Semanal() {
         fill: false,
         borderWidth: 1.5,
         borderDash: [5, 4],
-        pointRadius: 0,
+        // 87 semanas contra 20 meses: com marcador em todas, as bolinhas se
+        // encostam e o tracejado some. Marcador a cada 3 semanas; o hover
+        // continua pegando todas.
+        pointRadius: (ctx) => (ctx.dataIndex % 3 === 0 ? 3 : 0),
+        pointStyle: 'circle',
+        pointBackgroundColor: 'transparent',
         pointHoverRadius: 5,
         yAxisID: 'y-financeiro',
         tension: 0.3,
@@ -239,7 +244,9 @@ export default function Semanal() {
         },
         fill: true,
         borderWidth: 2.5,
-        pointRadius: 0,
+        pointRadius: 4,
+        pointStyle: 'circle',
+        pointBackgroundColor: FIN_REAL,
         pointHoverRadius: 6,
         yAxisID: 'y-financeiro',
         tension: 0.35,
@@ -253,7 +260,9 @@ export default function Semanal() {
         fill: false,
         borderWidth: 1.5,
         borderDash: [5, 4],
-        pointRadius: 0,
+        pointRadius: (ctx) => (ctx.dataIndex % 3 === 0 ? 3 : 0),
+        pointStyle: 'circle',
+        pointBackgroundColor: 'transparent',
         pointHoverRadius: 5,
         yAxisID: 'y-fisico',
         tension: 0.3,
@@ -266,7 +275,9 @@ export default function Semanal() {
         borderColor: FIS_REAL,
         fill: false,
         borderWidth: 2.5,
-        pointRadius: 0,
+        pointRadius: 4,
+        pointStyle: 'circle',
+        pointBackgroundColor: FIS_REAL,
         pointHoverRadius: 6,
         yAxisID: 'y-fisico',
         tension: 0.35,
@@ -286,13 +297,19 @@ export default function Semanal() {
       plugins: {
         legend: { display: false },
         tooltip: {
-          backgroundColor: 'rgba(27,30,36,0.96)',
-          titleColor: '#8b919c',
-          bodyColor: '#8b919c',
+          backgroundColor: 'rgba(27,30,36,0.97)',
+          titleColor: '#e8eaed',
+          bodyColor: '#c3c9d2',
           borderColor: 'rgba(255,255,255,0.14)',
           borderWidth: 1,
           padding: 12,
+          boxPadding: 5,
+          displayColors: true,
           callbacks: {
+            title: (ctx) => {
+              const c = dados.curva[ctx[0].dataIndex]
+              return `Semana ${c.semana} · ${dm(menos6(c.data_fim))} a ${dm(c.data_fim)}`
+            },
             label: (ctx) => {
               const v = ctx.parsed.y
               if (v == null) return null
@@ -730,20 +747,44 @@ export default function Semanal() {
                   <span style={{ color: '#8b919c', textAlign: 'center' }}>{aberto ? '▴' : '▾'}</span>
                 </div>
 
-                {aberto && (
-                  <table style={{ marginBottom: 14 }}>
-                    <thead>
-                      <tr>
-                        <th style={{ width: 70 }}>EAP</th>
-                        <th>Descrição</th>
-                        <th style={{ textAlign: 'right', width: 120 }}>Planejado</th>
-                        <th style={{ textAlign: 'right', width: 120 }}>Realizado</th>
-                        <th style={{ textAlign: 'right', width: 80 }}>% do plan.</th>
-                        <th style={{ textAlign: 'right', width: 90 }}>Período</th>
-                      </tr>
-                    </thead>
+                {aberto &&
+                  (g.por_pavimento ? g.pavimentos || [] : [{ pavimento: null, itens: g.itens }]).map((pv) => (
+                    <div key={pv.pavimento || 'geral'}>
+                      {pv.pavimento && (
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 10,
+                            padding: '8px 4px',
+                            fontFamily: 'var(--mono)',
+                            fontSize: 11,
+                            letterSpacing: '0.08em',
+                            textTransform: 'uppercase',
+                            color: PLAN,
+                            borderTop: '1px solid var(--border)',
+                          }}
+                        >
+                          <span>{pv.pavimento}</span>
+                          <span style={{ color: '#8b919c', textTransform: 'none', letterSpacing: 0 }}>
+                            planejado {fmtMoeda(pv.planejado)} · realizado {fmtMoeda(pv.realizado)}
+                            {pv.planejado > 0 ? ` · ${fmtPerc((pv.realizado / pv.planejado) * 100)}` : ''}
+                          </span>
+                        </div>
+                      )}
+                      <table style={{ marginBottom: 10 }}>
+                        <thead>
+                          <tr>
+                            <th style={{ width: 70 }}>EAP</th>
+                            <th>Descrição</th>
+                            <th style={{ textAlign: 'right', width: 120 }}>Planejado</th>
+                            <th style={{ textAlign: 'right', width: 120 }}>Realizado</th>
+                            <th style={{ textAlign: 'right', width: 80 }}>% do plan.</th>
+                            <th style={{ textAlign: 'right', width: 90 }}>Período</th>
+                          </tr>
+                        </thead>
                     <tbody>
-                      {g.itens.map((i) => {
+                      {pv.itens.map((i) => {
                         const consumo = i.planejado > 0 ? (i.realizado / i.planejado) * 100 : null
                         return (
                         <React.Fragment key={i.chave || i.cod_eap}>
@@ -819,8 +860,9 @@ export default function Semanal() {
                         )
                       })}
                     </tbody>
-                  </table>
-                )}
+                      </table>
+                    </div>
+                  ))}
               </div>
             )
           })}

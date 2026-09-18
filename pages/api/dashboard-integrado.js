@@ -23,7 +23,7 @@ export default async function handler(req, res) {
     ] = await Promise.all([
       supabase.from('v_curva_s_financeira_planejada').select('*').eq('obra_id', obra_id).order('mes_numero'),
       supabase.from('v_curva_s_fisica_planejada').select('*').eq('obra_id', obra_id).order('mes_numero'),
-      supabase.from('custos_lancamentos').select('competencia, data_emissao, valor, status, grupo_custo, codigo_eap').eq('obra_id', obra_id).order('data_emissao'),
+      supabase.from('custos_lancamentos').select('competencia, data_emissao, data_vencimento, valor, status, grupo_custo, codigo_eap').eq('obra_id', obra_id).order('data_emissao'),
       supabase.from('cronograma_horas_planejado').select('grupo_nome, horas_totais').eq('obra_id', obra_id),
       supabase.from('avanco_fisico_realizado').select('mes_numero, competencia, atividade_nome, percentual_realizado, hh_planejado, hh_realizado, codigo_eap, pavimento').eq('obra_id', obra_id).lte('mes_numero', mesLimite).order('mes_numero'),
       supabase.from('custos_indiretos_planejados').select('valor_total').eq('obra_id', obra_id),
@@ -62,7 +62,7 @@ export default async function handler(req, res) {
     custosRealizados
       .filter(c => c.status === 'Normal')
       .forEach(c => {
-        const comp = normalizeCompetencia(c.competencia, c.data_emissao)
+        const comp = normalizeCompetencia(c.competencia, c.data_emissao, c.data_vencimento)
         if (!comp) return
 
         const compDate = `${comp}-01`

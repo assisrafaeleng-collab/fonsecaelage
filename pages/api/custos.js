@@ -14,7 +14,7 @@ export default async function handler(req, res) {
     if (resumo === 'competencias') {
       const { data, error } = await supabase
         .from('custos_lancamentos')
-        .select('competencia, data_emissao')
+        .select('competencia, data_emissao, data_vencimento')
         .eq('obra_id', obra_id)
         .eq('status', 'Normal')
         .order('data_emissao', { ascending: true })
@@ -23,7 +23,7 @@ export default async function handler(req, res) {
 
       const unicas = [...new Set(
         data
-          .map(d => normalizeCompetencia(d.competencia, d.data_emissao))
+          .map(d => normalizeCompetencia(d.competencia, d.data_emissao, d.data_vencimento))
           .filter(Boolean)
       )].sort((a, b) => a.localeCompare(b))
 
@@ -34,7 +34,7 @@ export default async function handler(req, res) {
     if (resumo === 'grupo') {
       const query = supabase
         .from('custos_lancamentos')
-        .select('competencia, data_emissao, grupo_custo, valor, status')
+        .select('competencia, data_emissao, data_vencimento, grupo_custo, valor, status')
         .eq('obra_id', obra_id)
 
       if (competencia) {
@@ -47,7 +47,7 @@ export default async function handler(req, res) {
 
       const agrupado = {}
       data.filter(d => d.status === 'Normal').forEach(d => {
-        const normalizedCompetencia = normalizeCompetencia(d.competencia, d.data_emissao) || d.competencia
+        const normalizedCompetencia = normalizeCompetencia(d.competencia, d.data_emissao, d.data_vencimento) || d.competencia
         const key = `${normalizedCompetencia}_${d.grupo_custo}`
         if (!agrupado[key]) {
           agrupado[key] = { competencia: normalizedCompetencia, grupo_custo: d.grupo_custo, total_normal: 0 }

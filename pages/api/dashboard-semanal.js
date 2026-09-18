@@ -571,6 +571,7 @@ export default async function handler(req, res) {
       linha.itens.push({
         cod_eap: it.cod_eap,
         descricao: it.descricao || '',
+        pavimento: it.pavimento || null,
         mes_inicio: parseInt(it.mes_inicio, 10) || null,
         mes_fim: parseInt(it.mes_fim, 10) || null,
         planejado: r2(plan),
@@ -591,6 +592,34 @@ export default async function handler(req, res) {
         itens: g.itens.sort((a, b) =>
           String(a.cod_eap).localeCompare(String(b.cod_eap), 'pt-BR', { numeric: true })
         ),
+        // Mesma regra do painel de avanco: estrutura e alvenaria abrem por
+        // pavimento; os outros ficam em lista unica.
+        por_pavimento: GRUPOS_POR_PAVIMENTO.has(g.grupo),
+        pavimentos: !GRUPOS_POR_PAVIMENTO.has(g.grupo)
+          ? []
+          : (() => {
+              const m = new Map()
+              g.itens.forEach((i) => {
+                const p = i.pavimento || 'Sem pavimento'
+                if (!m.has(p)) m.set(p, { pavimento: p, planejado: 0, realizado: 0, itens: [] })
+                const b = m.get(p)
+                b.planejado += i.planejado
+                b.realizado += i.realizado
+                b.itens.push(i)
+              })
+              return Array.from(m.values())
+                .map((b) => ({
+                  pavimento: b.pavimento,
+                  planejado: r2(b.planejado),
+                  realizado: r2(b.realizado),
+                  itens: b.itens.sort((x, y) =>
+                    String(x.cod_eap).localeCompare(String(y.cod_eap), 'pt-BR', { numeric: true })
+                  ),
+                }))
+                .sort((x, y) =>
+                  String(x.pavimento).localeCompare(String(y.pavimento), 'pt-BR', { numeric: true })
+                )
+            })(),
       }))
 
     // Abertura do indireto por categoria, mesma logica: planejado rateado
