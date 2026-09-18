@@ -910,14 +910,25 @@ export default function Semanal() {
             <tbody>
               {(indiretos || []).map((i) => {
                 const consumo = i.planejado > 0 ? (i.realizado / i.planejado) * 100 : null
+                const chave = `i${i.cod_eap || i.categoria}`
+                const temLanc = (i.lancamentos || []).length > 0
                 return (
-                  <tr key={i.cod_eap || i.categoria}>
+                  <React.Fragment key={i.cod_eap || i.categoria}>
+                  <tr
+                    onClick={() => setItemAberto(itemAberto === chave ? null : chave)}
+                    style={{ cursor: temLanc ? 'pointer' : 'default' }}
+                  >
                     <td style={{ fontFamily: 'var(--mono)', color: '#8b919c' }}>{i.cod_eap || '—'}</td>
                     <td>
                       {i.categoria}
                       <span style={{ color: '#8b919c', fontSize: 11, marginLeft: 8 }}>
                         {i.mes_desembolso > 0 ? `M${i.mes_desembolso}` : 'diluído na obra'}
                       </span>
+                      {temLanc && (
+                        <span style={{ color: '#8b919c', fontSize: 11, marginLeft: 8 }}>
+                          {itemAberto === chave ? '▴' : '▾'} {i.lancamentos.length} lanç.
+                        </span>
+                      )}
                     </td>
                     <td style={{ textAlign: 'right', fontFamily: 'var(--mono)', color: PLAN }}>
                       {i.planejado > 0 ? fmtMoeda(i.planejado) : '—'}
@@ -938,6 +949,40 @@ export default function Semanal() {
                       {fmtMoeda(i.planejado_total)}
                     </td>
                   </tr>
+                  {itemAberto === chave && temLanc && (
+                    <tr>
+                      <td colSpan={6} style={{ padding: 0 }}>
+                        <div style={{ background: 'var(--bg)', borderRadius: 8, padding: '10px 14px', margin: '0 0 8px' }}>
+                          {i.lancamentos.map((l, k) => (
+                            <div
+                              key={k}
+                              style={{
+                                display: 'grid',
+                                gridTemplateColumns: '80px 60px 1fr 1fr 110px',
+                                gap: 10,
+                                padding: '5px 0',
+                                fontSize: 12,
+                                borderBottom: k < i.lancamentos.length - 1 ? '1px solid var(--border)' : 'none',
+                              }}
+                            >
+                              <span style={{ fontFamily: 'var(--mono)', color: '#8b919c' }}>
+                                {l.data
+                                  ? l.data.slice(8, 10) + '/' + l.data.slice(5, 7) + '/' + l.data.slice(2, 4)
+                                  : l.competencia}
+                              </span>
+                              <span style={{ fontFamily: 'var(--mono)', color: '#8b919c' }}>
+                                S{String(l.semana).padStart(2, '0')}
+                              </span>
+                              <span>{l.fornecedor}</span>
+                              <span style={{ color: '#8b919c' }}>{l.historico}</span>
+                              <span style={{ textAlign: 'right', fontFamily: 'var(--mono)' }}>{fmtMoeda(l.valor)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  </React.Fragment>
                 )
               })}
             </tbody>

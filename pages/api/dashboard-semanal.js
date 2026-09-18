@@ -626,6 +626,7 @@ export default async function handler(req, res) {
     // (mes_desembolso > 0 no mes; = 0 pela obra inteira) e truncado na semana;
     // realizado somado dos lancamentos com codigo de indireto ate a semana.
     const realizadoIndiretoPorEap = {}
+    const lancamentosIndiretoPorEap = {}
     let realizadoIndiretoSemCategoria = 0
     lancamentos
       .filter((l) => l.status === 'Normal')
@@ -636,6 +637,15 @@ export default async function handler(req, res) {
         const w = dt ? semanaDaData(dt) : primeiraSemanaDaCompetencia(l.competencia)
         if (w == null || !semanasAte.has(w)) return
         realizadoIndiretoPorEap[eap] = (realizadoIndiretoPorEap[eap] || 0) + num(l.valor)
+        if (!lancamentosIndiretoPorEap[eap]) lancamentosIndiretoPorEap[eap] = []
+        lancamentosIndiretoPorEap[eap].push({
+          semana: w,
+          data: dataDoLancamento(l) ? iso10(dataDoLancamento(l)) : null,
+          competencia: l.competencia || null,
+          fornecedor: l.fornecedor || '',
+          historico: l.historico || '',
+          valor: r2(num(l.valor)),
+        })
       })
 
     const eapComCategoria = new Set(indiretos.map((it) => it.cod_eap).filter(Boolean))
@@ -658,6 +668,9 @@ export default async function handler(req, res) {
           planejado: r2(plan),
           planejado_total: r2(valor),
           realizado: r2(real),
+          lancamentos: (lancamentosIndiretoPorEap[it.cod_eap] || []).sort((a, b) =>
+            String(a.data || '').localeCompare(String(b.data || ''))
+          ),
         }
       })
       .sort((a, b) => b.planejado_total - a.planejado_total)
