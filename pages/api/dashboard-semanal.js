@@ -128,7 +128,7 @@ export default async function handler(req, res) {
         .order('semana_numero'),
       supabase
         .from('custos_lancamentos')
-        .select('codigo_eap, data_emissao, valor, status, competencia, fornecedor, historico, classificacao')
+        .select('codigo_eap, data_emissao, data_vencimento, valor, status, competencia, fornecedor, historico, classificacao')
         .eq('obra_id', obra_id)
         .order('data_emissao'),
     ])
@@ -343,6 +343,12 @@ export default async function handler(req, res) {
       ? addDias(String(fimDeSemana[0].data_fim).slice(0, 10), -6)
       : null
 
+    // Data que posiciona o lancamento na semana: a baixa (pagamento) quando
+    // existe, senao a emissao. Custo de obra e caixa — nota emitida em agosto e
+    // paga em setembro pertence a setembro. Os lancamentos antigos tem
+    // data_vencimento nulo e seguem pela emissao, como sempre seguiram.
+    const dataDoLancamento = (l) => l.data_vencimento || l.data_emissao || null
+
     let semLancamentoDatado = 0
     let valorSemData = 0
 
@@ -398,9 +404,8 @@ export default async function handler(req, res) {
         // Sem data de emissao nao da para dizer a que semana o lancamento
         // pertence. Ele fica de fora, mas contado: valor que some do acumulado
         // sem aviso e pior que valor ausente com aviso.
-        const s = l.data_emissao
-          ? semanaDaData(l.data_emissao)
-          : primeiraSemanaDaCompetencia(l.competencia)
+        const dt = dataDoLancamento(l)
+        const s = dt ? semanaDaData(dt) : primeiraSemanaDaCompetencia(l.competencia)
         if (s == null) {
           semLancamentoDatado += 1
           valorSemData += num(l.valor)
@@ -521,9 +526,8 @@ export default async function handler(req, res) {
     lancamentos
       .filter((l) => l.status === 'Normal')
       .forEach((l) => {
-        const w = l.data_emissao
-          ? semanaDaData(l.data_emissao)
-          : primeiraSemanaDaCompetencia(l.competencia)
+        const dt = dataDoLancamento(l)
+        const w = dt ? semanaDaData(dt) : primeiraSemanaDaCompetencia(l.competencia)
         if (w == null || !semanasAte.has(w)) return
         const eap = l.codigo_eap || ''
         // Mesma regra do card de custo direto: codigo 19. e indireto, mesmo
@@ -534,7 +538,7 @@ export default async function handler(req, res) {
         if (!lancamentosPorEap[eap]) lancamentosPorEap[eap] = []
         lancamentosPorEap[eap].push({
           semana: w,
-          data: l.data_emissao ? iso10(l.data_emissao) : null,
+          data: dataDoLancamento(l) ? iso10(dataDoLancamento(l)) : null,
           competencia: l.competencia || null,
           fornecedor: l.fornecedor || '',
           historico: l.historico || '',
@@ -599,9 +603,8 @@ export default async function handler(req, res) {
       .forEach((l) => {
         const eap = l.codigo_eap || ''
         if (!ehIndireto(eap)) return
-        const w = l.data_emissao
-          ? semanaDaData(l.data_emissao)
-          : primeiraSemanaDaCompetencia(l.competencia)
+        const dt = dataDoLancamento(l)
+        const w = dt ? semanaDaData(dt) : primeiraSemanaDaCompetencia(l.competencia)
         if (w == null || !semanasAte.has(w)) return
         realizadoIndiretoPorEap[eap] = (realizadoIndiretoPorEap[eap] || 0) + num(l.valor)
       })
@@ -909,14 +912,14 @@ export default async function handler(req, res) {
         (l) =>
           l.status === 'Normal' &&
           inicioDaObra &&
-          String(l.data_emissao || '').slice(0, 10) < inicioDaObra
+          String(dataDoLancamento(l) || '').slice(0, 10) < inicioDaObra
       ).length,
       lancamentos_depois_da_curva: lancamentos.filter((l) => {
         if (l.status !== 'Normal') return false
-        const d = String(l.data_emissao || '').slice(0, 10)
+        const d = String(dataDoLancamento(l) || '').slice(0, 10)
         if (!d) return false
         if (inicioDaObra && d < inicioDaObra) return false
-        return semanaDaData(l.data_emissao) == null
+        return semanaDaData(dataDoLancamento(l)) == null
       }).length,
     }
 
