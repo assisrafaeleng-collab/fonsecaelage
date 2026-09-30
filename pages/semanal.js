@@ -371,7 +371,46 @@ export default function Semanal() {
   const bcwp = bcwpA == null ? null : bcwpA + (p.bcwp_b || 0) + (p.bcwp_c || 0)
   const spi = p.bcws > 0 && bcwp != null ? bcwp / p.bcws : null
   const cpi = p.acwp > 0 && bcwp != null ? bcwp / p.acwp : null
-  const saldoDireto = p.bcws - p.acwp
+  // Custo direto na última semana com medição física. Agregado e realizado
+  // precisam estar na mesma data; depois da última medição o agregado fica
+  // parado e o gasto continua, o que faria o saldo parecer pior do que é.
+  const semRef = Math.min(p.semana, dados.ultima_semana_com_avanco || p.semana)
+  const pRef = dados.curva.find((c) => c.semana === semRef) || p
+  const sRef = `S${String(semRef).padStart(2, '0')}`
+  const refAtrasada = semRef < p.semana
+  // Valor agregado sempre na régua de custo: percentual executado × custo do
+  // item. O alternador Hh não muda quanto o serviço feito deveria ter custado.
+  const agregado =
+    pRef.bcwp_a_custo == null ? null : pRef.bcwp_a_custo + (pRef.bcwp_b || 0) + (pRef.bcwp_c || 0)
+  const realizadoRef = pRef.acwp
+  const saldoDireto = agregado == null ? null : agregado - realizadoRef
+  const idc = agregado != null && realizadoRef > 0 ? agregado / realizadoRef : null
+  const idp = agregado != null && pRef.bcws > 0 ? agregado / pRef.bcws : null
+
+  // Projeção do custo direto no término (mesma conta da rota, na semana de
+  // referência da tela).
+  //   otimista   = realizado + falta ÷ IDC
+  //   provável   = otimista + custo de calendário × semanas extras
+  //   pessimista = realizado + falta ÷ (IDC × IDP)
+  const projecao = (() => {
+    if (idc == null || idp == null || idc <= 0 || idp <= 0) return null
+    const orcado = dados.totais.custo_direto
+    const falta = orcado - agregado
+    const duracao = dados.curva.length
+    const semanasExtras = Math.max(duracao / idp - duracao, 0)
+    const porSemana = (dados.kpis.projecao && dados.kpis.projecao.custo_calendario_semana) || 0
+    const otimista = realizadoRef + falta / idc
+    return {
+      orcado,
+      falta,
+      otimista,
+      provavel: otimista + porSemana * semanasExtras,
+      pessimista: realizadoRef + falta / (idc * idp),
+      semanasExtras,
+      porSemana,
+      custoAtraso: porSemana * semanasExtras,
+    }
+  })()
   // O alternador escolhe a régua do avanço físico: hora-homem ou custo.
   const avancoPlan = base === 'hh' ? p.avanco_plan_hh : p.avanco_plan_custo
   const avancoReal = base === 'hh' ? p.avanco_real_hh : p.avanco_real_custo
@@ -552,12 +591,16 @@ export default function Semanal() {
 
       {/* Linha 1 — custo direto, na mesma ordem do dashboard mensal */}
       <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '16px' }}>
-        <div className="kpi">
-          <div className="kpi-label">Custo Direto Planejado</div>
+        <div
+          className="kpi kpi-clickable"
+          onClick={() => router.push(`/valor-agregado?semana=${semRef}`)}
+          title={`Serviço executado a preço de orçamento (percentual × custo do item).\nPlanejado pelo cronograma até ${sRef}: ${fmtMoeda(pRef.bcws)}\nClique para ver a memória de cálculo`}
+        >
+          <div className="kpi-label">Valor Agregado ↗</div>
           <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2', color: PLAN }}>
-            {fmtMoeda(p.bcws)}
+            {agregado == null ? '—' : fmtMoeda(agregado)}
           </div>
-          <div className="kpi-sub">Acumulado até S{String(p.semana).padStart(2, '0')}</div>
+          <div className="kpi-sub">Executado até {sRef}{refAtrasada ? ' · última medição' : ''}</div>
         </div>
 
         <div
@@ -567,20 +610,29 @@ export default function Semanal() {
         >
           <div className="kpi-label">Custo Direto Realizado {abrirGrupos ? '▴' : '▾'}</div>
           <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2', color: REAL }}>
-            <span style={PILL}>{fmtMoeda(p.acwp)}</span>
+            <span style={PILL}>{fmtMoeda(realizadoRef)}</span>
           </div>
-          <div className="kpi-sub">{fmtPerc((p.acwp / p.bcws) * 100)} do planejado</div>
+          <div className="kpi-sub">
+            {agregado ? `${fmtPerc((realizadoRef / agregado) * 100)} do agregado` : '—'}
+            {refAtrasada ? ` · até ${sRef}` : ''}
+          </div>
         </div>
 
         <div className="kpi">
           <div className="kpi-label">Saldo Custo Direto</div>
           <div
             className="kpi-value"
-            style={{ fontSize: '20px', lineHeight: '1.2', color: saldoDireto >= 0 ? VERDE : VERMELHO }}
+            style={{
+              fontSize: '20px',
+              lineHeight: '1.2',
+              color: saldoDireto == null ? REAL : saldoDireto >= 0 ? VERDE : VERMELHO,
+            }}
           >
-            {fmtMoeda(saldoDireto)}
+            {saldoDireto == null ? '—' : fmtMoeda(saldoDireto)}
           </div>
-          <div className="kpi-sub">{saldoDireto >= 0 ? 'Economia' : 'Acima'}</div>
+          <div className="kpi-sub">
+            {saldoDireto == null ? 'Sem medição' : `${saldoDireto >= 0 ? 'Economia' : 'Acima'} · eficiência ${fmtIdx(idc)}`}
+          </div>
         </div>
 
         <div className="kpi">
@@ -607,7 +659,7 @@ export default function Semanal() {
         </div>
       </div>
 
-      {/* Linha 2 — custo indireto, quatro cards como no mensal */}
+      {/* Linha 2 — custo indireto e avanço físico realizado */}
       <div
         className="kpi-grid"
         style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '16px', marginTop: '-10px' }}
@@ -659,6 +711,113 @@ export default function Semanal() {
             {avancoReal == null ? '—' : fmtPerc(avancoReal)}
           </div>
           <div className="kpi-sub">Medido até S{String(dados.ultima_semana_com_avanco).padStart(2, '0')}</div>
+        </div>
+      </div>
+
+      {/* Linha 3 — projeção do custo direto no término, três cenários */}
+      <div
+        className="kpi-grid"
+        style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '16px', marginTop: '-10px' }}
+      >
+        <div className="kpi" title="Referência das projeções">
+          <div className="kpi-label">Custo Direto Orçado</div>
+          <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2', color: PLAN }}>
+            {fmtMoeda(dados.totais.custo_direto)}
+          </div>
+          <div className="kpi-sub">Base das projeções · até {sRef}</div>
+          <div style={{ font: "500 10px 'IBM Plex Mono', monospace", color: '#8b919c', marginTop: 8, lineHeight: 1.5 }}>
+            falta = orçado − agregado
+            {projecao != null && (
+              <>
+                <br />
+                IDC {fmtIdx(idc)} · IDP {fmtIdx(idp)}
+              </>
+            )}
+          </div>
+        </div>
+
+        <div className="kpi">
+          <div className="kpi-label">Projeção Otimista</div>
+          <div
+            className="kpi-value"
+            style={{
+              fontSize: '20px',
+              lineHeight: '1.2',
+              color: projecao == null ? REAL : projecao.otimista <= projecao.orcado ? VERDE : VERMELHO,
+            }}
+          >
+            {projecao == null ? '—' : fmtMoeda(projecao.otimista)}
+          </div>
+          <div className="kpi-sub">
+            {projecao == null
+              ? 'Sem medição'
+              : `${projecao.otimista <= projecao.orcado ? 'Abaixo' : 'Acima'} do orçado em ${fmtMoeda(Math.abs(projecao.otimista - projecao.orcado))}`}
+          </div>
+          <div style={{ font: "500 10px 'IBM Plex Mono', monospace", color: '#8b919c', marginTop: 8, lineHeight: 1.5 }}>
+            Realizado + falta ÷ IDC
+            {projecao != null && (
+              <>
+                <br />
+                {`${fmtMoeda(realizadoRef)} + ${fmtMoeda(projecao.falta)} ÷ ${fmtIdx(idc)}`}
+              </>
+            )}
+          </div>
+        </div>
+
+        <div className="kpi">
+          <div className="kpi-label">Projeção Realista</div>
+          <div
+            className="kpi-value"
+            style={{
+              fontSize: '20px',
+              lineHeight: '1.2',
+              color: projecao == null ? REAL : projecao.provavel <= projecao.orcado ? VERDE : VERMELHO,
+            }}
+          >
+            {projecao == null ? '—' : fmtMoeda(projecao.provavel)}
+          </div>
+          <div className="kpi-sub">
+            {projecao == null
+              ? 'Sem medição'
+              : `${projecao.provavel <= projecao.orcado ? 'Abaixo' : 'Acima'} do orçado em ${fmtMoeda(Math.abs(projecao.provavel - projecao.orcado))}`}
+          </div>
+          <div style={{ font: "500 10px 'IBM Plex Mono', monospace", color: '#8b919c', marginTop: 8, lineHeight: 1.5 }}>
+            Otimista + semanas extras × custo de calendário
+            {projecao != null && (
+              <>
+                <br />
+                {`${fmtMoeda(projecao.otimista)} + ${projecao.semanasExtras.toFixed(1).replace('.', ',')} sem × ${fmtMoeda(projecao.porSemana)}`}
+              </>
+            )}
+          </div>
+        </div>
+
+        <div className="kpi">
+          <div className="kpi-label">Projeção Pessimista</div>
+          <div
+            className="kpi-value"
+            style={{
+              fontSize: '20px',
+              lineHeight: '1.2',
+              color: projecao == null ? REAL : projecao.pessimista <= projecao.orcado ? VERDE : VERMELHO,
+            }}
+          >
+            {projecao == null ? '—' : fmtMoeda(projecao.pessimista)}
+          </div>
+          <div className="kpi-sub">
+            {projecao == null
+              ? 'Sem medição'
+              : `${projecao.pessimista <= projecao.orcado ? 'Abaixo' : 'Acima'} do orçado em ${fmtMoeda(Math.abs(projecao.pessimista - projecao.orcado))}`}
+          </div>
+          <div style={{ font: "500 10px 'IBM Plex Mono', monospace", color: '#8b919c', marginTop: 8, lineHeight: 1.5 }}>
+            Realizado + falta ÷ (IDC × IDP)
+            {projecao != null && (
+              <>
+                <br />
+                {`${fmtMoeda(realizadoRef)} + ${fmtMoeda(projecao.falta)} ÷ (${fmtIdx(idc)} × ${fmtIdx(idp)})`}
+              </>
+            )}
+          </div>
         </div>
       </div>
 

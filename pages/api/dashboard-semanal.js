@@ -75,6 +75,47 @@ const LIMITAR_B_AO_PLANEJADO_DA_SEMANA = false
 
 const TOTAL_SEMANAS = 87
 
+// Custo que corre pelo calendario, usado no cenario provavel da projecao: cada
+// semana a mais de obra custa (parcela B + parcela C + indireto que corre a
+// obra inteira) / 87. O indireto entra pela regra mes_desembolso = 0, a mesma
+// do rateio. Se algum item com mes_desembolso = 0 nao depender do tempo (taxa
+// percentual, por exemplo), ponha o cod_eap aqui para tirar da conta.
+const INDIRETO_FORA_DO_CALENDARIO = new Set([])
+
+// Regras do valor agregado da producao (parcela A), por codigo.
+//
+// POR_TEMPO: verba que se gasta por mes, nao por servico. O agregado corre
+// linear pela obra toda (semanas decorridas / total), como o indireto de
+// mes_desembolso = 0; medicao lancada para o item e ignorada.
+const AGREGADO_POR_TEMPO = new Set(['1.1.6'])
+// HERDA: item so de material, sem medicao propria. Usa o percentual dos
+// servicos a que pertence, ponderado pelo custo deles. Cada par e um codigo
+// ('2.1.9') ou o comeco da descricao ('desc:Forma de chapa ...'). A busca por
+// descricao fica no MESMO subgrupo do item (3.3.7 so procura em 3.3.x), que
+// na estrutura e o pavimento; o que nao for achado aparece na consistencia.
+const FORMA = 'desc:Forma de chapa compensada plastificada 18 mm'
+const AGREGADO_HERDA = {
+  '2.1.13': ['2.1.9', '2.1.10'],
+  '2.1.14': ['2.1.9', '2.1.10'],
+  // Material de pilares/escada do 1o pavimento: segue a forma do mesmo
+  // pavimento. Por descricao pegaria a forma de todos os andares.
+  '3.1.6': ['3.1.4'],
+  '3.1.7': ['3.1.4'],
+  // Demais pavimentos: forma e aco (apenas material) seguem a forma do andar.
+  '3.2.6': [FORMA],
+  '3.2.7': [FORMA],
+  '3.3.7': [FORMA],
+  '3.3.8': [FORMA],
+  '3.4.7': [FORMA],
+  '3.4.8': [FORMA],
+  '3.5.6': [FORMA],
+  '3.5.7': [FORMA],
+  '3.6.5': [FORMA],
+  '3.6.6': [FORMA],
+  '3.7.5': [FORMA],
+  '3.7.6': [FORMA],
+}
+
 // Grupos cujo servico se repete andar a andar e o cronograma acompanha por
 // pavimento. Os demais sao lista unica, mesmo tendo pavimento no cadastro:
 // reboco, instalacoes, gesso e pisos sao tocados como frente geral.
@@ -222,6 +263,32 @@ export default async function handler(req, res) {
       semanasDoMes.get(m).push(s)
     })
 
+    // Planejado das verbas por tempo (AGREGADO_POR_TEMPO). A curva do banco
+    // foi gerada com o item entre mes_inicio e mes_fim do orcamento — no caso
+    // do 1.1.6, tudo no mes 1. Aqui ele sai dessa janela e volta linear pela
+    // obra toda, a mesma regra do agregado; sem isso o item pareceria
+    // atrasado ate a S87. O total da parcela A nao muda.
+    // ATENCAO: a correcao le mes_inicio/mes_fim do orcamento para saber como
+    // a curva distribuiu o item. Se mudar esses meses no banco, a curva tem
+    // que ser regerada junto — senao a correcao tira o valor do lugar errado.
+    const correcaoPlanejadoTempo = []
+    orcamento.forEach((it) => {
+      if (!it.entra_evm || !AGREGADO_POR_TEMPO.has(it.cod_eap)) return
+      const custo = num(it.preco_total)
+      const mi = parseInt(it.mes_inicio, 10) || 1
+      const mf = parseInt(it.mes_fim, 10) || mi
+      const janela = []
+      for (let m = mi; m <= mf; m += 1) (semanasDoMes.get(m) || []).forEach((w) => janela.push(w))
+      if (!janela.length || custo <= 0) return
+      const n = semanasOrdenadas.length
+      semanasOrdenadas.forEach((w, idx) => {
+        const original = (custo * janela.filter((x) => x <= w).length) / janela.length
+        const linear = (custo * (idx + 1)) / n
+        plan.get(w).a += linear - original
+      })
+      correcaoPlanejadoTempo.push({ cod_eap: it.cod_eap, custo: r2(custo), mes_inicio: mi, mes_fim: mf })
+    })
+
     const indiretoSemanal = new Map()
     let indiretoTotal = 0
     let indiretoSemMes = 0
@@ -248,8 +315,96 @@ export default async function handler(req, res) {
     // correcao certa e no cadastro, nao aqui, para nao divergir da mensal.
     const ehIndireto = (eap) => String(eap || '').startsWith('19.')
 
+    // -----------------------------------------------------------------------
+    // Valor agregado da producao calculado aqui, item a item, semana a semana.
+    // A view soma percentual x custo de todo item medido; as regras acima
+    // (verba por tempo, material que herda o avanco do servico) nao cabem
+    // nela. Hh continua vindo da view.
+    // -----------------------------------------------------------------------
+    const nSemanas = semanasOrdenadas.length || TOTAL_SEMANAS
+    const custoPorEap = {}
+    const descPorEap = {}
+    orcamento.forEach((it) => {
+      if (!it.entra_evm || !it.cod_eap) return
+      custoPorEap[it.cod_eap] = (custoPorEap[it.cod_eap] || 0) + num(it.preco_total)
+      if (!descPorEap[it.cod_eap]) descPorEap[it.cod_eap] = String(it.descricao || '')
+    })
+    const paresNaoEncontrados = []
+    const paresResolvidos = {}
+    Object.entries(AGREGADO_HERDA).forEach(([eap, pares]) => {
+      const codigos = []
+      pares.forEach((par) => {
+        if (par.startsWith('desc:')) {
+          const alvo = par.slice(5).trim().toLowerCase()
+          const subgrupo = String(eap).split('.').slice(0, 2).join('.') + '.'
+          const achados = Object.keys(descPorEap).filter(
+            (c) =>
+              c !== eap &&
+              String(c).startsWith(subgrupo) &&
+              descPorEap[c].trim().toLowerCase().startsWith(alvo)
+          )
+          if (!achados.length) paresNaoEncontrados.push(`${eap} -> ${par}`)
+          achados.forEach((c) => codigos.push(c))
+        } else if (custoPorEap[par] != null) codigos.push(par)
+        else paresNaoEncontrados.push(`${eap} -> ${par}`)
+      })
+      if (codigos.length) paresResolvidos[eap] = Array.from(new Set(codigos))
+    })
+
+    // Percentual medido por codigo em cada semana (ultimo retrato ate ela).
+    const retratosOrd = retratos
+      .map((r) => ({ eap: r.codigo_eap, w: parseInt(r.semana_numero, 10), d: String(r.data_lancamento || ''), id: r.id || 0, perc: num(r.percentual_realizado) }))
+      .filter((r) => Number.isFinite(r.w))
+      .sort((a, b) => a.w - b.w || (a.d < b.d ? -1 : a.d > b.d ? 1 : 0) || a.id - b.id)
+    const percMedido = {}
+    const semanaMedida = {}
+    let iRet = 0
+    const percPorSemana = new Map()
+    semanasOrdenadas.forEach((w) => {
+      while (iRet < retratosOrd.length && retratosOrd[iRet].w <= w) {
+        const r = retratosOrd[iRet]
+        percMedido[r.eap] = r.perc
+        semanaMedida[r.eap] = r.w
+        iRet += 1
+      }
+      percPorSemana.set(w, { perc: { ...percMedido }, semana: { ...semanaMedida } })
+    })
+
+    const regraAgregado = (eap) =>
+      AGREGADO_POR_TEMPO.has(eap) ? 'tempo' : paresResolvidos[eap] ? 'herda' : 'medido'
+    // Percentual do item na semana w, pela regra dele.
+    const percAgregado = (eap, w) => {
+      const regra = regraAgregado(eap)
+      if (regra === 'tempo') {
+        const pos = semanasOrdenadas.indexOf(w) + 1
+        return (Math.min(pos, nSemanas) / nSemanas) * 100
+      }
+      const snap = percPorSemana.get(w) || { perc: {} }
+      if (regra === 'herda') {
+        const pares = paresResolvidos[eap]
+        const peso = pares.reduce((t, c) => t + (custoPorEap[c] || 0), 0)
+        if (peso <= 0) return 0
+        return pares.reduce((t, c) => t + (custoPorEap[c] || 0) * (snap.perc[c] || 0), 0) / peso
+      }
+      return snap.perc[eap] || 0
+    }
+    const agregadoRota = new Map()
+    const agregadoMedido = new Map()
+    semanasOrdenadas.forEach((w) => {
+      let total = 0
+      let medido = 0
+      Object.keys(custoPorEap).forEach((eap) => {
+        const v = (custoPorEap[eap] * percAgregado(eap, w)) / 100
+        total += v
+        if (regraAgregado(eap) !== 'tempo') medido += v
+      })
+      agregadoRota.set(w, total)
+      agregadoMedido.set(w, medido)
+    })
+
     const R = COLS.realizado
     const bcwpAPorSemana = new Map()
+    const bcwpViewCusto = new Map()
     const bcwpABases = new Map()
     const dataFimDaView = new Map()
     realizadoRaw.forEach((row) => {
@@ -257,7 +412,8 @@ export default async function handler(req, res) {
       if (!Number.isFinite(s)) return
       // Em base Hh o BCWP e o avanco em horas convertido para reais pelo peso
       // da parcela A. Em base custo vem pronto da view.
-      const porCusto = num(row[R.bcwpA])
+      bcwpViewCusto.set(s, num(row[R.bcwpA]))
+      const porCusto = agregadoRota.has(s) ? agregadoRota.get(s) : num(row[R.bcwpA])
       const porHh = totalHhEvm > 0 ? (num(row[R.hhAcum]) / totalHhEvm) * totais.a : 0
       bcwpAPorSemana.set(s, BASE_PARCELA_A === 'hh' ? porHh : porCusto)
       bcwpABases.set(s, { custo: porCusto, hh: porHh, hh_acum: num(row[R.hhAcum]) })
@@ -312,8 +468,10 @@ export default async function handler(req, res) {
     // cobrindo semanas sem retrato novo.
     let ultimaSemanaComAvanco = 0
     let anterior = null
+    // Usa so os itens medidos: a verba por tempo cresce toda semana e faria
+    // parecer que houve medicao nova.
     semanasOrdenadas.forEach((s) => {
-      const v = bcwpAPorSemana.get(s)
+      const v = agregadoMedido.has(s) ? agregadoMedido.get(s) : bcwpAPorSemana.get(s)
       if (v == null) return
       if (anterior == null || v > anterior + 0.005) ultimaSemanaComAvanco = s
       anterior = v
@@ -383,10 +541,21 @@ export default async function handler(req, res) {
 
     const tetoPorEap = {}
     const eapGrupo17 = new Set()
+    // Parcela de cada codigo, pelo grupo do orcamento: 1-16 = A, 17 = B, 18 = C.
+    // O ACWP precisa dessa separacao para o CPI da producao existir: somado,
+    // o custo de locacao e funcionarios (CPI 1 por construcao) dilui o indice.
+    const parcelaPorEap = {}
+    const eapEmMaisDeUmaParcela = new Set()
     orcamento.forEach((it) => {
       const eap = it.cod_eap
       if (!eap) return
-      if (Number(it.grupo_numero) === 17) {
+      const g = Number(it.grupo_numero)
+      const parcela = g >= 1 && g <= 16 ? 'a' : g === 17 ? 'b' : g === 18 ? 'c' : null
+      if (parcela && !ehIndireto(eap)) {
+        if (parcelaPorEap[eap] && parcelaPorEap[eap] !== parcela) eapEmMaisDeUmaParcela.add(eap)
+        parcelaPorEap[eap] = parcelaPorEap[eap] || parcela
+      }
+      if (g === 17) {
         eapGrupo17.add(eap)
         tetoPorEap[eap] = (tetoPorEap[eap] || 0) + num(it.preco_total)
       }
@@ -395,7 +564,12 @@ export default async function handler(req, res) {
     // incorridoB[semana][eap] -> valor da semana; acwp[semana] -> direto da semana
     const incorridoBPorSemana = new Map()
     const acwpPorSemana = new Map()
+    // acwpParcelaPorSemana[semana] -> { a, b, c, nc }. nc = lancamento direto
+    // cujo codigo nao esta no orcamento: entra no ACWP total (o card de custo
+    // realizado nao muda), mas nao contamina o CPI de nenhuma parcela.
+    const acwpParcelaPorSemana = new Map()
     const acwpIndiretoPorSemana = new Map()
+    const eapsNaoClassificados = {}
 
     lancamentos
       .filter((l) => l.status === 'Normal')
@@ -417,6 +591,10 @@ export default async function handler(req, res) {
           acwpIndiretoPorSemana.set(s, (acwpIndiretoPorSemana.get(s) || 0) + valor)
         } else {
           acwpPorSemana.set(s, (acwpPorSemana.get(s) || 0) + valor)
+          const parcela = parcelaPorEap[eap] || 'nc'
+          if (!acwpParcelaPorSemana.has(s)) acwpParcelaPorSemana.set(s, { a: 0, b: 0, c: 0, nc: 0 })
+          acwpParcelaPorSemana.get(s)[parcela] += valor
+          if (parcela === 'nc') eapsNaoClassificados[eap || '(vazio)'] = (eapsNaoClassificados[eap || '(vazio)'] || 0) + valor
         }
         if (eapGrupo17.has(eap)) {
           if (!incorridoBPorSemana.has(s)) incorridoBPorSemana.set(s, {})
@@ -430,6 +608,7 @@ export default async function handler(req, res) {
     // -----------------------------------------------------------------------
     const incorridoAcumPorEap = {}
     let acwpAcum = 0
+    const acwpParcelaAcum = { a: 0, b: 0, c: 0, nc: 0 }
     let indiretoPlanAcum = 0
     let indiretoRealAcum = 0
     const curva = []
@@ -454,6 +633,8 @@ export default async function handler(req, res) {
       const bcwpC = p.c
 
       acwpAcum += acwpPorSemana.get(s) || 0
+      const dp = acwpParcelaPorSemana.get(s)
+      if (dp) Object.keys(acwpParcelaAcum).forEach((k) => (acwpParcelaAcum[k] += dp[k]))
       indiretoPlanAcum += indiretoSemanal.get(s) || 0
       indiretoRealAcum += acwpIndiretoPorSemana.get(s) || 0
 
@@ -477,6 +658,10 @@ export default async function handler(req, res) {
         bcwp_c: r2(bcwpC),
         bcwp: r2(bcwpABase + bcwpB + bcwpC),
         acwp: r2(acwpAcum),
+        acwp_a: r2(acwpParcelaAcum.a),
+        acwp_b: r2(acwpParcelaAcum.b),
+        acwp_c: r2(acwpParcelaAcum.c),
+        acwp_nao_classificado: r2(acwpParcelaAcum.nc),
         financeiro_planejado: r2(p.financeiro),
         // Avanco fisico e medido em hora-homem, nao em reais: e a definicao da
         // planilha de planejamento (Hh acumulado / Hh total do projeto). O BCWS
@@ -870,6 +1055,99 @@ export default async function handler(req, res) {
 
     const hhRealDosGrupos = avancoGrupos.reduce((t, g) => t + g.hh_real, 0)
 
+    // -----------------------------------------------------------------------
+    // Memoria de calculo do valor agregado (so com ?memoria=1).
+    //   A  item a item: ultimo percentual medido x custo total do item
+    //   B  locacao: incorrido acumulado ate a semana, limitado ao orcado do item
+    //   C  funcionarios: o planejado da curva ate a semana (tempo decorrido)
+    // A soma da parcela A e conferida contra o bcwp_a_custo da view: se a view
+    // calcular diferente, a diferenca aparece em vez de sumir.
+    // -----------------------------------------------------------------------
+    let memoriaAgregado = null
+    if (req.query.memoria) {
+      const pontoMem = curva.find((x) => x.semana === semanaAtual) || curva[curva.length - 1]
+      const itensA = []
+      orcamento.forEach((it) => {
+        if (!it.entra_evm) return
+        const g = parseInt(it.grupo_numero, 10)
+        const regra = regraAgregado(it.cod_eap)
+        const perc = percAgregado(it.cod_eap, semanaAtual)
+        const snap = percPorSemana.get(semanaAtual) || { semana: {} }
+        const custo = num(it.preco_total)
+        itensA.push({
+          regra,
+          herda_de: regra === 'herda' ? paresResolvidos[it.cod_eap] : null,
+          grupo: g,
+          grupo_nome: it.grupo_nome || it.macrogrupo || ('Grupo ' + g),
+          cod_eap: it.cod_eap,
+          descricao: it.descricao || '',
+          pavimento: it.pavimento || null,
+          custo_total: r2(custo),
+          perc_fisico: r2(perc),
+          medido_na_semana: regra === 'medido' ? snap.semana[it.cod_eap] || null : null,
+          agregado: r2((custo * perc) / 100),
+        })
+      })
+      itensA.sort(
+        (x, y) =>
+          x.grupo - y.grupo ||
+          String(x.cod_eap).localeCompare(String(y.cod_eap), 'pt-BR', { numeric: true }) ||
+          String(x.pavimento || '').localeCompare(String(y.pavimento || ''), 'pt-BR', { numeric: true })
+      )
+      const somaA = itensA.reduce((t, i) => t + i.agregado, 0)
+
+      const incorridoAte = {}
+      incorridoBPorSemana.forEach((bucket, w) => {
+        if (w > semanaAtual) return
+        Object.keys(bucket).forEach((eap) => (incorridoAte[eap] = (incorridoAte[eap] || 0) + bucket[eap]))
+      })
+      const itensB = orcamento
+        .filter((it) => Number(it.grupo_numero) === 17)
+        .map((it) => {
+          const incorrido = incorridoAte[it.cod_eap] || 0
+          const teto = tetoPorEap[it.cod_eap] != null ? tetoPorEap[it.cod_eap] : incorrido
+          return {
+            cod_eap: it.cod_eap,
+            descricao: it.descricao || '',
+            custo_total: r2(num(it.preco_total)),
+            incorrido: r2(incorrido),
+            teto: r2(teto),
+            agregado: r2(Math.min(incorrido, teto)),
+          }
+        })
+      // Varias linhas do grupo 17 podem ter o mesmo codigo: o incorrido e o
+      // teto sao por codigo, entao a linha repetida nao soma de novo.
+      const vistosB = new Set()
+      const itensBUnicos = itensB.filter((i) => (vistosB.has(i.cod_eap) ? false : vistosB.add(i.cod_eap)))
+
+      memoriaAgregado = {
+        semana: semanaAtual,
+        data_fim: pontoMem.data_fim,
+        parcela_a: {
+          criterio: 'percentual do ultimo retrato x custo total do item',
+          itens: itensA,
+          soma: r2(somaA),
+          // A soma tem que bater com o card (mesmo calculo). A view do banco
+          // fica so como referencia: a diferenca e o efeito das regras.
+          dashboard: pontoMem.bcwp_a_custo,
+          diferenca_vs_dashboard: pontoMem.bcwp_a_custo == null ? null : r2(somaA - pontoMem.bcwp_a_custo),
+          view_banco: bcwpViewCusto.has(semanaAtual) ? r2(bcwpViewCusto.get(semanaAtual)) : null,
+        },
+        parcela_b: {
+          criterio: 'custo incorrido ate a semana, limitado ao orcado do item',
+          itens: itensBUnicos,
+          soma: r2(itensBUnicos.reduce((t, i) => t + i.agregado, 0)),
+          curva: pontoMem.bcwp_b,
+        },
+        parcela_c: {
+          criterio: 'tempo decorrido: planejado da curva ate a semana',
+          orcado: r2(totais.c),
+          agregado: pontoMem.bcwp_c,
+        },
+        total: pontoMem.bcwp_a_custo == null ? null : r2(pontoMem.bcwp_a_custo + pontoMem.bcwp_b + pontoMem.bcwp_c),
+      }
+    }
+
     const somaGruposPlan = grupos.reduce((t, g) => t + g.planejado, 0)
     const somaGruposReal = grupos.reduce((t, g) => t + g.realizado, 0)
 
@@ -879,6 +1157,66 @@ export default async function handler(req, res) {
     const ponto = curva.find((x) => x.semana === semanaAtual) || curva[curva.length - 1]
 
     const spi = (bcwp, bcws) => (bcws > 0 && bcwp != null ? bcwp / bcws : null)
+    const cpiDe = (bcwp, acwp) => (acwp > 0 && bcwp != null ? bcwp / acwp : null)
+    const cvDe = (bcwp, acwp) => (bcwp != null ? r2(bcwp - acwp) : null)
+    // O saldo pelo avanco usa sempre a parcela A por custo (percentual x custo
+    // do item), independente de BASE_PARCELA_A: e a definicao em reais que os
+    // diretores pediram — alvenaria de 10 mil a 50% deveria ter custado 5 mil.
+    const bcwpACusto = ponto.bcwp_a_custo
+    const bcwpCustoTotal = bcwpACusto == null ? null : bcwpACusto + ponto.bcwp_b + ponto.bcwp_c
+
+    // -----------------------------------------------------------------------
+    // 5a. Projecao do custo direto no termino, na ultima semana medida.
+    // Agregado e realizado precisam estar na mesma data: projetar na semana
+    // corrente com o fisico parado na ultima medicao compara duas semanas de
+    // gasto a mais contra o mesmo servico executado.
+    // -----------------------------------------------------------------------
+    const semanaRef = Math.min(semanaAtual, ultimaSemanaComAvanco || semanaAtual)
+    const ref = curva.find((x) => x.semana === semanaRef) || ponto
+    const agregadoRef = ref.bcwp_a_custo == null ? null : ref.bcwp_a_custo + ref.bcwp_b + ref.bcwp_c
+    const orcadoDireto = totais.total
+    const indiretoCalendario = indiretos
+      .filter((it) => parseInt(it.mes_desembolso, 10) === 0 && !INDIRETO_FORA_DO_CALENDARIO.has(it.cod_eap))
+      .reduce((t, it) => t + num(it.valor_total), 0)
+    const custoCalendarioTotal = totais.b + totais.c + indiretoCalendario
+    const custoPorSemana = custoCalendarioTotal / (semanasOrdenadas.length || TOTAL_SEMANAS)
+
+    let projecao = null
+    if (agregadoRef != null && ref.acwp > 0 && ref.bcws > 0 && agregadoRef > 0) {
+      const idc = agregadoRef / ref.acwp
+      const idp = agregadoRef / ref.bcws
+      const falta = orcadoDireto - agregadoRef
+      const duracao = semanasOrdenadas.length || TOTAL_SEMANAS
+      // Se o ritmo atual se mantiver, a obra dura duracao / IDP. Obra
+      // adiantada (IDP > 1) nao gera credito de calendario: fica em zero.
+      const semanasExtras = Math.max(duracao / idp - duracao, 0)
+      const otimista = ref.acwp + falta / idc
+      const custoAtraso = custoPorSemana * semanasExtras
+      projecao = {
+        semana_referencia: semanaRef,
+        orcado: r2(orcadoDireto),
+        agregado: r2(agregadoRef),
+        realizado: r2(ref.acwp),
+        planejado: r2(ref.bcws),
+        falta: r2(falta),
+        idc: r3(idc),
+        idp: r3(idp),
+        otimista: r2(otimista),
+        provavel: r2(otimista + custoAtraso),
+        pessimista: r2(ref.acwp + falta / (idc * idp)),
+        semanas_extras: r2(semanasExtras),
+        custo_calendario_semana: r2(custoPorSemana),
+        custo_atraso: r2(custoAtraso),
+        calendario: {
+          locacao_b: r2(totais.b),
+          funcionarios_c: r2(totais.c),
+          indireto: r2(indiretoCalendario),
+          indireto_itens: indiretos
+            .filter((it) => parseInt(it.mes_desembolso, 10) === 0 && !INDIRETO_FORA_DO_CALENDARIO.has(it.cod_eap))
+            .map((it) => ({ cod_eap: it.cod_eap, categoria: it.categoria, valor: r2(num(it.valor_total)) })),
+        },
+      }
+    }
 
     const kpis = {
       semana: ponto.semana,
@@ -898,19 +1236,39 @@ export default async function handler(req, res) {
           bcws: ponto.bcws_a,
           bcwp: ponto.bcwp_a,
           spi: r3(spi(ponto.bcwp_a, ponto.bcws_a)),
+          acwp: ponto.acwp_a,
+          cpi: r3(cpiDe(bcwpACusto, ponto.acwp_a)),
+          cv: cvDe(bcwpACusto, ponto.acwp_a),
         },
         b: {
           criterio: 'custo incorrido limitado ao planejado',
           bcws: ponto.bcws_b,
           bcwp: ponto.bcwp_b,
           spi: r3(spi(ponto.bcwp_b, ponto.bcws_b)),
+          acwp: ponto.acwp_b,
+          cpi: r3(cpiDe(ponto.bcwp_b, ponto.acwp_b)),
+          cv: cvDe(ponto.bcwp_b, ponto.acwp_b),
         },
         c: {
           criterio: 'tempo decorrido',
           bcws: ponto.bcws_c,
           bcwp: ponto.bcwp_c,
           spi: r3(spi(ponto.bcwp_c, ponto.bcws_c)),
+          acwp: ponto.acwp_c,
+          cpi: r3(cpiDe(ponto.bcwp_c, ponto.acwp_c)),
+          cv: cvDe(ponto.bcwp_c, ponto.acwp_c),
         },
+        nao_classificado: { acwp: ponto.acwp_nao_classificado },
+      },
+      projecao,
+      // Saldo proporcional ao avanco = BCWP (por custo) - ACWP. Em reais as
+      // parcelas somam sem distorcao; a diluicao de B e C so afeta o indice.
+      saldo_avanco: {
+        bcwp: bcwpCustoTotal == null ? null : r2(bcwpCustoTotal),
+        acwp: ponto.acwp,
+        cv: cvDe(bcwpCustoTotal, ponto.acwp),
+        cpi: r3(cpiDe(bcwpCustoTotal, ponto.acwp)),
+        nao_executado: bcwpCustoTotal == null ? null : r2(ponto.bcws - bcwpCustoTotal),
       },
     }
 
@@ -942,6 +1300,18 @@ export default async function handler(req, res) {
       indiretos_realizado_soma: r2(somaIndiretoReal),
       indireto_realizado_sem_categoria: r2(realizadoIndiretoSemCategoria),
       grupos_realizado_soma: r2(somaGruposReal),
+      // Deve dar zero: o ACWP por parcela fecha com o ACWP total.
+      acwp_parcelas_vs_total: r2(
+        ponto.acwp_a + ponto.acwp_b + ponto.acwp_c + ponto.acwp_nao_classificado - ponto.acwp
+      ),
+      acwp_nao_classificado_por_eap: Object.fromEntries(
+        Object.entries(eapsNaoClassificados).map(([k, v]) => [k, r2(v)])
+      ),
+      eap_em_mais_de_uma_parcela: Array.from(eapEmMaisDeUmaParcela),
+      agregado_por_tempo: Array.from(AGREGADO_POR_TEMPO),
+      planejado_por_tempo_corrigido: correcaoPlanejadoTempo,
+      agregado_herda: paresResolvidos,
+      agregado_pares_nao_encontrados: paresNaoEncontrados,
       indireto_rateio:
         'mes_desembolso > 0 vai para as semanas do mes; mes_desembolso = 0 dilui pela obra inteira',
       indireto_sem_mes_valido: r2(indiretoSemMes),
@@ -984,6 +1354,7 @@ export default async function handler(req, res) {
         obra: r2(totais.total + indiretoTotal),
       },
       consistencia,
+      memoria_agregado: memoriaAgregado,
       metadata: {
         obra_id,
         total_semanas: semanasOrdenadas.length,
