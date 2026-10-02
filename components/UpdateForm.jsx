@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { DISCIPLINAS, fmtMoeda } from '../lib/constants'
+import { fetchComSenha } from '../lib/fetch-com-senha'
 
 const blank = () => ({
   data: new Date().toISOString().slice(0, 10),
@@ -51,7 +52,7 @@ export default function UpdateForm({ onSaved }) {
       })),
     }
 
-    const res = await fetch('/api/updates', {
+    const res = await fetchComSenha('/api/updates', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),

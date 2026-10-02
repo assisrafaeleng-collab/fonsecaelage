@@ -3,10 +3,12 @@
 // POST -> cria uma nova ocorrência (Diário de Ocorrências)
 
 import { supabase } from '../../../lib/supabase'
+import { senhaOk } from '../../../lib/senha-servidor'
 
 const IMPACTOS_VALIDOS = ['baixo', 'medio', 'alto']
 
 export default async function handler(req, res) {
+  if (req.method !== 'GET' && !senhaOk(req, res)) return
   if (req.method === 'GET') {
     try {
       const limite = parseInt(req.query.limite) || 50

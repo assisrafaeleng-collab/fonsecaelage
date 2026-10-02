@@ -1,6 +1,8 @@
 import { supabase } from '../../../lib/supabase'
+import { senhaOk } from '../../../lib/senha-servidor'
 
 export default async function handler(req, res) {
+  if (req.method !== 'GET' && !senhaOk(req, res)) return
   const { id } = req.query
 
   if (req.method === 'DELETE') {

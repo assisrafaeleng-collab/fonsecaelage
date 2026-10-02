@@ -1,6 +1,7 @@
 // pages/api/avanco-fisico-historico.js
 // Lê e exclui os incrementos do histórico de avanço físico (memória de cálculo)
 import { supabase } from '../../lib/supabase'
+import { senhaOk } from '../../lib/senha-servidor'
 
 const DATA_INICIO = new Date('2026-07-01T00:00:00Z')
 function calcSemana(dataLanc) {
@@ -10,6 +11,7 @@ function calcSemana(dataLanc) {
 }
 
 export default async function handler(req, res) {
+  if (req.method !== 'GET' && !senhaOk(req, res)) return
   const obra_id = req.query.obra_id || 'flats_pampulha'
 
   // GET: lista os lançamentos (incrementos) de um item específico

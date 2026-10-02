@@ -19,3 +19,17 @@ realizado.json
 
 *.bak*
 avanco.json
+
+# automacao: dados locais e saidas (nao versionar)
+automacao/oc/
+automacao/fechamentos/
+automacao/entrada/
+automacao/processados/
+automacao/erros/
+automacao/medicoes/
+automacao/.env
+automacao/lancamentos.csv
+automacao/pendencias.csv
+
+# python
+__pycache__/

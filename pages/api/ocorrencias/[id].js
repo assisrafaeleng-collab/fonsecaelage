@@ -1,8 +1,10 @@
 import { supabase } from '../../../lib/supabase'
+import { senhaOk } from '../../../lib/senha-servidor'
 
 const IMPACTOS_VALIDOS = ['baixo', 'medio', 'alto']
 
 export default async function handler(req, res) {
+  if (req.method !== 'GET' && !senhaOk(req, res)) return
   const { id } = req.query
 
   if (!id) {

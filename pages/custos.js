@@ -5,6 +5,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Head from 'next/head'
+import { fetchComSenha } from '../lib/fetch-com-senha'
 
 // ── Paleta alinhada com o resto do dashboard ──────────────────
 const C = {
@@ -94,7 +95,7 @@ function ImportSection({ onImported }) {
     fd.append('arquivo', file)
     fd.append('competencia', competencia.trim())
     try {
-      const r = await fetch('/api/custos/import?preview=true', { method: 'POST', body: fd })
+      const r = await fetchComSenha('/api/custos/import?preview=true', { method: 'POST', body: fd })
       const d = await r.json()
       if (!r.ok) throw new Error(d.error)
       setPreview(d)
@@ -109,7 +110,7 @@ function ImportSection({ onImported }) {
     fd.append('arquivo', file)
     fd.append('competencia', competencia.trim())
     try {
-      const r = await fetch('/api/custos/import?preview=false', { method: 'POST', body: fd })
+      const r = await fetchComSenha('/api/custos/import?preview=false', { method: 'POST', body: fd })
       const d = await r.json()
       if (!r.ok) throw new Error(d.error)
       setSuccess(`${d.inserted} lançamentos importados — ${fmt(d.total_valor)}`)

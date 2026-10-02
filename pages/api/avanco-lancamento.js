@@ -9,6 +9,7 @@
 // A semana e derivada da data escolhida pelo usuario, nunca de now(): o
 // lancamento pode registrar medicao de uma semana anterior.
 import { supabase } from '../../lib/supabase'
+import { senhaOk } from '../../lib/senha-servidor'
 
 const iso10 = (v) => String(v || '').slice(0, 10)
 
@@ -52,6 +53,7 @@ async function contexto(obra_id, dataISO, codigo_eap) {
 }
 
 export default async function handler(req, res) {
+  if (req.method !== 'GET' && !senhaOk(req, res)) return
   const obra_id = req.body?.obra_id || req.query?.obra_id || 'flats_pampulha'
 
   try {

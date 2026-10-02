@@ -10,15 +10,11 @@
 import formidable from 'formidable'
 import * as XLSX   from 'xlsx'
 import fs          from 'fs'
-import { createClient } from '@supabase/supabase-js'
+import { supabase } from '../../../lib/supabase'
+import { senhaOk } from '../../../lib/senha-servidor'
 
 // Desabilita o bodyParser padrão do Next.js para processar multipart
 export const config = { api: { bodyParser: false } }
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-)
 
 // Converte serial do Excel para Date ISO
 function excelDateToISO(v) {
@@ -114,6 +110,7 @@ export default async function handler(req, res) {
     res.setHeader('Allow', ['POST'])
     return res.status(405).json({ error: 'Método não permitido' })
   }
+  if (!senhaOk(req, res)) return
 
   const preview = req.query.preview !== 'false' // default = preview mode
 

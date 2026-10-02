@@ -2,6 +2,7 @@
 import { useState, useEffect, useMemo, Fragment } from 'react'
 import { useRouter } from 'next/router'
 import { getHHPlanejadoAcumulado, getTotalPlanejadoHH } from '../lib/cronograma-hh'
+import { fetchComSenha } from '../lib/fetch-com-senha'
 
 const PAVS = ['1º','2º','3º','4º','5º','6º/Plat','Edifício']
 const NOMES_MESES = ['jul','ago','set','out','nov','dez','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez','jan','fev']
@@ -104,7 +105,7 @@ function MemoriaCalculo({ codigo_eap, pavimento }) {
     if (!confirm('Excluir este lançamento? O total do item será recalculado.')) return
     setRemovendo(id)
     try {
-      const res = await fetch(`/api/avanco-fisico-historico?id=${id}`, { method: 'DELETE' })
+      const res = await fetchComSenha(`/api/avanco-fisico-historico?id=${id}`, { method: 'DELETE' })
       if (!res.ok) throw new Error('erro')
       carregar()
     } catch { alert('Erro ao excluir lançamento') } finally { setRemovendo(null) }
@@ -118,7 +119,7 @@ function MemoriaCalculo({ codigo_eap, pavimento }) {
 
     setSalvando(id)
     try {
-      const res = await fetch(`/api/avanco-fisico-historico?id=${id}`, {
+      const res = await fetchComSenha(`/api/avanco-fisico-historico?id=${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ data_lancamento: valor })
@@ -321,7 +322,7 @@ export default function AvancoFisicoRealizado() {
         return
       }
 
-      const res = await fetch('/api/avanco-fisico-realizado', {
+      const res = await fetchComSenha('/api/avanco-fisico-realizado', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mes, lancamentos })

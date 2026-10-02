@@ -5,6 +5,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/router'
 import { Line } from 'react-chartjs-2'
 import { fmtMoeda } from '../lib/constants'
+import { fetchComSenha, garantirSenha } from '../lib/fetch-com-senha'
 import DiarioOcorrencias from '../components/DiarioOcorrencias'
 import {
   Chart as ChartJS,
@@ -65,10 +66,6 @@ export default function Semanal() {
   const [mapa, setMapa] = useState(null)
   const [avancoAberto, setAvancoAberto] = useState(null)
   const [itemAberto, setItemAberto] = useState(null)
-  const [autorizado, setAutorizado] = useState(false)
-  const [pedindoSenha, setPedindoSenha] = useState(null)
-  const [senha, setSenha] = useState('')
-  const [senhaErrada, setSenhaErrada] = useState(false)
   const [editando, setEditando] = useState(null)
   const [form, setForm] = useState({ data: '', incremento: '', acumulado: '' })
   const [salvando, setSalvando] = useState(false)
@@ -130,22 +127,16 @@ export default function Semanal() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [semana, dados, recarregar])
 
-  useEffect(() => {
-    if (typeof window !== 'undefined' && sessionStorage.getItem('autenticado') === 'true') {
-      setAutorizado(true)
-    }
-  }, [])
-
-  const exigirSenha = (acao) => {
-    if (autorizado) return acao()
-    setPedindoSenha(() => acao)
+  // Pede a senha de lançamento (conferida no servidor) antes de editar medições.
+  const exigirSenha = async (acao) => {
+    if (await garantirSenha()) acao()
   }
 
   const salvarMedicao = async (cod_eap, id) => {
     setSalvando(true)
     setErroSalvar(null)
     try {
-      const r = await fetch('/api/avanco-lancamento', {
+      const r = await fetchComSenha('/api/avanco-lancamento', {
         method: id ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, codigo_eap: cod_eap, data: form.data, percentual: form.acumulado }),
@@ -166,7 +157,7 @@ export default function Semanal() {
     setSalvando(true)
     setErroSalvar(null)
     try {
-      const r = await fetch('/api/avanco-lancamento', {
+      const r = await fetchComSenha('/api/avanco-lancamento', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id }),
@@ -427,84 +418,6 @@ export default function Semanal() {
 
   return (
     <div className="page">
-      {pedindoSenha && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.7)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-          }}
-        >
-          <div className="form-section" style={{ width: 320 }}>
-            <div className="form-section-title">Área restrita</div>
-            <p style={{ fontSize: 12, color: '#8b919c', marginBottom: 14 }}>
-              Digite a senha para alterar medições de avanço.
-            </p>
-            <input
-              type="password"
-              autoFocus
-              value={senha}
-              onChange={(e) => {
-                setSenha(e.target.value)
-                setSenhaErrada(false)
-              }}
-              onKeyDown={(e) => {
-                if (e.key !== 'Enter') return
-                if (senha === 'fonseca2025') {
-                  sessionStorage.setItem('autenticado', 'true')
-                  setAutorizado(true)
-                  const acao = pedindoSenha
-                  setPedindoSenha(null)
-                  setSenha('')
-                  acao()
-                } else {
-                  setSenhaErrada(true)
-                  setSenha('')
-                }
-              }}
-              placeholder="Senha"
-            />
-            {senhaErrada && (
-              <div style={{ color: 'var(--red-tx)', fontSize: 12, marginTop: 8 }}>Senha incorreta.</div>
-            )}
-            <div className="btn-row" style={{ marginTop: 14 }}>
-              <button
-                className="btn-primary"
-                onClick={() => {
-                  if (senha === 'fonseca2025') {
-                    sessionStorage.setItem('autenticado', 'true')
-                    setAutorizado(true)
-                    const acao = pedindoSenha
-                    setPedindoSenha(null)
-                    setSenha('')
-                    acao()
-                  } else {
-                    setSenhaErrada(true)
-                    setSenha('')
-                  }
-                }}
-              >
-                Entrar
-              </button>
-              <button
-                className="btn-secondary"
-                onClick={() => {
-                  setPedindoSenha(null)
-                  setSenha('')
-                  setSenhaErrada(false)
-                }}
-              >
-                Cancelar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="header">
         <div className="header-top">
           <div>

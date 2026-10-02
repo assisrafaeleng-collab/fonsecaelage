@@ -2,8 +2,10 @@
 // API com integração automática de custos
 
 import { supabase } from '../../../lib/supabase'
+import { senhaOk } from '../../../lib/senha-servidor'
 
 export default async function handler(req, res) {
+  if (req.method !== 'GET' && !senhaOk(req, res)) return
   if (req.method === 'GET') {
     try {
       // Buscar todas as atualizações

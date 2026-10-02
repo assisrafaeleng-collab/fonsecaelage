@@ -1,81 +1,10 @@
 import { useState, useEffect } from 'react'
 import Dashboard from '../components/Dashboard'
 import { normalizeCompetencia } from '../lib/competencia'
-
-const SENHA_CORRETA = 'fonseca2025'
-
-function ModalSenha({ destino, onClose }) {
-  const [senha, setSenha] = useState('')
-  const [erro, setErro] = useState(false)
-
-  function handleConfirmar() {
-    if (senha === SENHA_CORRETA) {
-      sessionStorage.setItem('autenticado', 'true')
-      window.location.href = destino
-    } else {
-      setErro(true)
-      setSenha('')
-    }
-  }
-
-  return (
-    <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
-    }}>
-      <div style={{
-        background: '#1b1b20', border: '1px solid rgba(255,255,255,0.14)', borderRadius: 12,
-        padding: 32, width: 320, boxShadow: '0 8px 32px rgba(0,0,0,0.5)'
-      }}>
-        <div style={{ fontSize: 16, fontWeight: 700, color: '#eeeef2', marginBottom: 8 }}>
-          Área Restrita
-        </div>
-        <div style={{ fontSize: 12, color: '#9a9aa6', marginBottom: 20 }}>
-          Digite a senha para acessar esta área.
-        </div>
-        <input
-          type="password"
-          value={senha}
-          onChange={e => { setSenha(e.target.value); setErro(false) }}
-          onKeyDown={e => e.key === 'Enter' && handleConfirmar()}
-          placeholder="Senha"
-          autoFocus
-          style={{
-            width: '100%', padding: '10px 14px', borderRadius: 6, fontSize: 14,
-            background: '#131316', border: `1px solid ${erro ? '#d6453c' : 'rgba(255,255,255,0.14)'}`,
-            color: '#eeeef2', outline: 'none', marginBottom: 8, boxSizing: 'border-box'
-          }}
-        />
-        {erro && <div style={{ color: '#d6453c', fontSize: 12, marginBottom: 8 }}>Senha incorreta. Tente novamente.</div>}
-        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-          <button
-            onClick={handleConfirmar}
-            style={{
-              flex: 1, background: '#e0a93b', color: '#131316', border: 'none',
-              borderRadius: 6, padding: '10px', fontSize: 14, fontWeight: 700, cursor: 'pointer'
-            }}
-          >
-            Entrar
-          </button>
-          <button
-            onClick={onClose}
-            style={{
-              flex: 1, background: 'transparent', color: '#9a9aa6',
-              border: '1px solid rgba(255,255,255,0.14)', borderRadius: 6, padding: '10px',
-              fontSize: 14, cursor: 'pointer'
-            }}
-          >
-            Cancelar
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
+import { garantirSenha } from '../lib/fetch-com-senha'
 
 export default function Home() {
   const [mesAtual, setMesAtual] = useState(null)
-  const [modal, setModal] = useState(null)
 
   // Obra: Jul/2026 a Fev/2028 (20 meses)
   const NOMES_MESES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez']
@@ -121,12 +50,8 @@ export default function Home() {
       .catch(() => setMesAtual(20))
   }, [])
 
-  function handleNavRestrita(destino) {
-    if (sessionStorage.getItem('autenticado') === 'true') {
-      window.location.href = destino
-    } else {
-      setModal(destino)
-    }
+  async function handleNavRestrita(destino) {
+    if (await garantirSenha()) window.location.href = destino
   }
 
   if (mesAtual === null) {
@@ -135,8 +60,6 @@ export default function Home() {
 
   return (
     <div className="page">
-      {modal && <ModalSenha destino={modal} onClose={() => setModal(null)} />}
-
       <div className="header">
         <div className="header-top">
           <div>

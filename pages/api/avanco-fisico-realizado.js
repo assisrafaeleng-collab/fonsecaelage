@@ -1,11 +1,13 @@
 // pages/api/avanco-fisico-realizado.js
 import { supabase } from '../../lib/supabase'
+import { senhaOk } from '../../lib/senha-servidor'
 
 // A semana NAO e calculada aqui. O banco deriva semana_numero a partir de
 // data_lancamento, via gatilho tg_semana_avanco (05-avanco-semanal.sql).
 // Assim data e semana nunca divergem, nem quando a data e editada depois.
 
 export default async function handler(req, res) {
+  if (req.method !== 'GET' && !senhaOk(req, res)) return
   const obra_id = req.query.obra_id || 'flats_pampulha'
 
   if (req.method === 'GET') {

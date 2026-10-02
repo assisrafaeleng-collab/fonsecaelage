@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { fmtMoeda } from '../lib/constants'
+import { fetchComSenha } from '../lib/fetch-com-senha'
 
 export default function History({ updates, onDelete, onView }) {
   const [delId, setDelId] = useState(null)
 
   const confirmDelete = async (id) => {
-    const res = await fetch(`/api/updates/${id}`, { method: 'DELETE' })
+    const res = await fetchComSenha(`/api/updates/${id}`, { method: 'DELETE' })
     if (res.ok) { onDelete(); setDelId(null) }
   }
 

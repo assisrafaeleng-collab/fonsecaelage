@@ -1,10 +1,10 @@
 // components/DiarioOcorrencias.jsx
 // Card colapsável no final do dashboard: lista as ocorrências mais recentes
-// da obra e permite registrar uma nova (protegido pela mesma senha do app).
+// da obra e permite registrar uma nova (protegido pela senha de lançamento,
+// conferida no servidor).
 
 import { useEffect, useState } from 'react'
-
-const SENHA_CORRETA = 'fonseca2025'
+import { fetchComSenha, garantirSenha } from '../lib/fetch-com-senha'
 
 const CATEGORIAS = [
   'Atraso de fornecedor',
@@ -30,74 +30,6 @@ const blank = () => ({
   dias_atraso_estimado: '',
   descricao: '',
 })
-
-function ModalSenha({ onConfirmar, onClose }) {
-  const [senha, setSenha] = useState('')
-  const [erro, setErro] = useState(false)
-
-  function confirmar() {
-    if (senha === SENHA_CORRETA) {
-      onConfirmar()
-    } else {
-      setErro(true)
-      setSenha('')
-    }
-  }
-
-  return (
-    <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
-    }}>
-      <div style={{
-        background: '#1b1b20', border: '1px solid rgba(255,255,255,0.14)', borderRadius: 12,
-        padding: 32, width: 320, boxShadow: '0 8px 32px rgba(0,0,0,0.5)'
-      }}>
-        <div style={{ fontSize: 16, fontWeight: 700, color: '#eeeef2', marginBottom: 8 }}>
-          Área Restrita
-        </div>
-        <div style={{ fontSize: 12, color: '#9a9aa6', marginBottom: 20 }}>
-          Digite a senha para registrar uma ocorrência.
-        </div>
-        <input
-          type="password"
-          value={senha}
-          onChange={e => { setSenha(e.target.value); setErro(false) }}
-          onKeyDown={e => e.key === 'Enter' && confirmar()}
-          placeholder="Senha"
-          autoFocus
-          style={{
-            width: '100%', padding: '10px 14px', borderRadius: 6, fontSize: 14,
-            background: '#131316', border: `1px solid ${erro ? '#d6453c' : 'rgba(255,255,255,0.14)'}`,
-            color: '#eeeef2', outline: 'none', marginBottom: 8, boxSizing: 'border-box'
-          }}
-        />
-        {erro && <div style={{ color: '#d6453c', fontSize: 12, marginBottom: 8 }}>Senha incorreta. Tente novamente.</div>}
-        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-          <button
-            onClick={confirmar}
-            style={{
-              flex: 1, background: '#e0a93b', color: '#131316', border: 'none',
-              borderRadius: 6, padding: '10px', fontSize: 14, fontWeight: 700, cursor: 'pointer'
-            }}
-          >
-            Entrar
-          </button>
-          <button
-            onClick={onClose}
-            style={{
-              flex: 1, background: 'transparent', color: '#9a9aa6',
-              border: '1px solid rgba(255,255,255,0.14)', borderRadius: 6, padding: '10px',
-              fontSize: 14, cursor: 'pointer'
-            }}
-          >
-            Cancelar
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 function FormOcorrencia({ onSaved, onCancelar, initialData = null }) {
   const [form, setForm] = useState(() => {
@@ -149,7 +81,7 @@ function FormOcorrencia({ onSaved, onCancelar, initialData = null }) {
     const url = initialData?.id ? `/api/ocorrencias/${initialData.id}` : '/api/ocorrencias'
     const method = initialData?.id ? 'PATCH' : 'POST'
 
-    const res = await fetch(url, {
+    const res = await fetchComSenha(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -262,8 +194,6 @@ export default function DiarioOcorrencias() {
   const [carregando, setCarregando] = useState(false)
   const [erroLista, setErroLista] = useState(null)
   const [mostrarForm, setMostrarForm] = useState(false)
-  const [mostrarSenha, setMostrarSenha] = useState(false)
-  const [pendingAction, setPendingAction] = useState(null)
   const [ocorrenciaEditando, setOcorrenciaEditando] = useState(null)
   const [ocorrenciaExcluir, setOcorrenciaExcluir] = useState(null)
   const [excluindo, setExcluindo] = useState(false)
@@ -289,15 +219,8 @@ export default function DiarioOcorrencias() {
     }
   }
 
-  function exigirAutenticacao(action) {
-    const autenticado = typeof window !== 'undefined' && sessionStorage.getItem('autenticado') === 'true'
-    if (autenticado) {
-      action()
-      return
-    }
-
-    setPendingAction(() => action)
-    setMostrarSenha(true)
+  async function exigirAutenticacao(action) {
+    if (await garantirSenha()) action()
   }
 
   function handleNovaOcorrencia() {
@@ -320,22 +243,12 @@ export default function DiarioOcorrencias() {
     })
   }
 
-  function handleSenhaConfirmada() {
-    sessionStorage.setItem('autenticado', 'true')
-    setMostrarSenha(false)
-    if (pendingAction) {
-      const action = pendingAction
-      setPendingAction(null)
-      action()
-    }
-  }
-
   async function confirmarExclusao() {
     if (!ocorrenciaExcluir) return
 
     setExcluindo(true)
     try {
-      const res = await fetch(`/api/ocorrencias/${ocorrenciaExcluir.id}`, {
+      const res = await fetchComSenha(`/api/ocorrencias/${ocorrenciaExcluir.id}`, {
         method: 'DELETE',
       })
 
@@ -363,16 +276,6 @@ export default function DiarioOcorrencias() {
 
   return (
     <div className="card">
-      {mostrarSenha && (
-        <ModalSenha
-          onConfirmar={handleSenhaConfirmada}
-          onClose={() => {
-            setMostrarSenha(false)
-            setPendingAction(null)
-          }}
-        />
-      )}
-
       {ocorrenciaExcluir && (
         <div style={{
           position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
