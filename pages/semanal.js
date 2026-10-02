@@ -248,7 +248,12 @@ export default function Semanal() {
   const baseTotal = (agregado || 0) + indiretoPlan
   const pctTotal = saldoTotal == null || baseTotal <= 0 ? null : (saldoTotal / baseTotal) * 100
   const idc = agregado != null && comprometido > 0 ? agregado / comprometido : null
-  const idp = agregado != null && pRef.bcws > 0 ? agregado / pRef.bcws : null
+  // IDP pelo avanço físico em Hh, as duas pontas na mesma semana (a da última
+  // medição). Em reais, locação (gasto) e funcionários (tempo) entrariam como
+  // "avanço" e distorceriam o índice de prazo.
+  const fisPlanRef = pRef.avanco_plan_hh
+  const fisRealRef = pRef.avanco_real_hh
+  const idp = fisPlanRef > 0 && fisRealRef != null ? fisRealRef / fisPlanRef : null
 
   // Projeção do custo direto no término (mesma conta da rota, na semana de
   // referência da tela).
@@ -601,17 +606,12 @@ export default function Semanal() {
         <div
           className="kpi kpi-clickable"
           onClick={() => setAbrirProjecao((v) => !v)}
-          title={
-            `Orçado do custo direto: ${fmtMoeda(dados.totais.custo_direto)}\n` +
-            (agregado == null ? '' : `− Valor agregado até ${sRef}: ${fmtMoeda(agregado)}\n= Falta executar: ${fmtMoeda(dados.totais.custo_direto - agregado)}\n\n`) +
-            (abrirProjecao ? 'Clique para recolher as projeções' : 'Clique para ver as projeções')
-          }
+          title={abrirProjecao ? 'Clique para recolher' : 'Clique para ver IDC, IDP e os três cenários'}
         >
-          <div className="kpi-label">Custo Direto Orçado {abrirProjecao ? '▴' : '▾'}</div>
-          <div className="kpi-value" style={{ fontSize: abrirProjecao ? '18px' : '20px', lineHeight: '1.2', color: PLAN }}>
-            {fmtMoeda(dados.totais.custo_direto)}
+          <div className="kpi-label">Projeções de Custo Final {abrirProjecao ? '▴' : '▾'}</div>
+          <div className="kpi-sub" style={{ marginTop: 8 }}>
+            {abrirProjecao ? `Custo direto no término · base ${sRef}` : 'Clique para ver as projeções'}
           </div>
-          <div className="kpi-sub">{abrirProjecao ? `Base das projeções · até ${sRef}` : 'Clique para ver as projeções'}</div>
         </div>
 
         {abrirProjecao && (
@@ -639,8 +639,9 @@ export default function Semanal() {
               title={
                 idp == null
                   ? ''
-                  : `IDP = valor agregado ÷ valor planejado\n` +
-                    `= ${fmtMoeda(agregado)} ÷ ${fmtMoeda(pRef.bcws)}\n` +
+                  : `IDP = avanço físico realizado ÷ avanço físico planejado\n` +
+                    `(hora-homem, ambos em ${sRef}, a última medição)\n` +
+                    `= ${fmtPc2(fisRealRef)} ÷ ${fmtPc2(fisPlanRef)}\n` +
                     `= ${fmtIdx(idp)}\n\n` +
                     'Acima de 1: obra adiantada.\nAbaixo de 1: obra atrasada.'
               }
@@ -659,6 +660,7 @@ export default function Semanal() {
                 projecao &&
                   `Realizado + falta ÷ IDC\n` +
                     `= ${fmtMoeda(comprometido)} + ${fmtMoeda(projecao.falta)} ÷ ${fmtIdx(idc)}\n` +
+                    `(falta = orçado ${fmtMoeda(projecao.orcado)} − agregado ${fmtMoeda(agregado)})\n` +
                     `= ${fmtMoeda(projecao.otimista)}\n\n` +
                     'Mantém a eficiência de custo atual até o fim.',
               ],
@@ -670,6 +672,7 @@ export default function Semanal() {
                     `= ${fmtMoeda(projecao.otimista)} + ${projecao.semanasExtras.toFixed(1).replace('.', ',')} sem × ${fmtMoeda(projecao.porSemana)}\n` +
                     `= ${fmtMoeda(projecao.provavel)}\n\n` +
                     `Semanas extras = ${dados.curva.length} ÷ IDP − ${dados.curva.length} (zero se adiantado).\n` +
+                    (projecao.semanasExtras === 0 ? 'IDP ≥ 1: sem semanas extras, por isso fica igual ao otimista.\n' : '') +
                     'Custo de calendário = locação + funcionários + indireto que corre a obra toda, por semana.',
               ],
               [
@@ -679,10 +682,12 @@ export default function Semanal() {
                   `Realizado + falta ÷ (IDC × IDP)\n` +
                     `= ${fmtMoeda(comprometido)} + ${fmtMoeda(projecao.falta)} ÷ (${fmtIdx(idc)} × ${fmtIdx(Math.min(idp, 1))})\n` +
                     `= ${fmtMoeda(projecao.pessimista)}\n\n` +
-                    'Custo e prazo pesam juntos. Adiantamento não barateia: o IDP entra no máximo como 1.',
+                    (idp > 1
+                      ? `O IDP real é ${fmtIdx(idp)}, mas entra como 1,000: adiantamento não barateia a obra.\nPor isso, adiantado, o pessimista fica igual ao otimista.`
+                      : 'Custo e prazo pesam juntos: o atraso encarece o que falta.'),
               ],
             ].map(([nome, chave, formula]) => (
-              <div key={chave} className="kpi" title={formula || ''}>
+              <div key={chave} className="kpi" title={formula ? `${formula}\n\nOrçado do custo direto: ${fmtMoeda(projecao.orcado)}` : ''}>
                 <div className="kpi-label">{nome}</div>
                 <div
                   className="kpi-value"
