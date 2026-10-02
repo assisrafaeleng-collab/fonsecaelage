@@ -1,0 +1,239 @@
+﻿eap,descricao,und,qt,mat,mo,orcado,grupo
+1.1.1,Locação convencional de obra (gabarito + pranchões),m²,231.1,8.2,14.5,5245.969999999999,1. SERVIÇOS PRELIMINARES E GERAIS
+1.1.2,Barracão de obra em chapa compensada (escritório+almox+vestiário),m²,35,150.0,165.0,11025.0,1. SERVIÇOS PRELIMINARES E GERAIS
+1.1.3,"Placa de obra em chapa galvanizada 4,00 × 2,00 m",m²,2,165.0,28.5,387.0,1. SERVIÇOS PRELIMINARES E GERAIS
+1.1.4,"Ligação provisória de água, energia e esgoto",vb,1,2500.0,1188.0,3688.0,1. SERVIÇOS PRELIMINARES E GERAIS
+1.1.5,Instalações sanitárias provisórias (sanitário químico + lavatório),mes,1,1500.0,1100.0,2600.0,1. SERVIÇOS PRELIMINARES E GERAIS
+1.1.6,Limpeza periódica + EPI + ferramental + consumo de água/luz,,18,1850.0,0.0,33300.0,1. SERVIÇOS PRELIMINARES E GERAIS
+2.1.1,Escavação Mecanizada - Terraplanagem,viagem,17,0.0,500.0,8500.0,2. MOVIMENTO DE TERRA E FUNDAÇÕES
+2.1.2,Caminhão de Terra,,13,,500.0,6500.0,2. MOVIMENTO DE TERRA E FUNDAÇÕES
+2.1.3,Retroescavadeira - Movimentação de Terra da Helice,dia,6,,,8400.0,2. MOVIMENTO DE TERRA E FUNDAÇÕES
+2.1.4,Estaca hélice contínua ø40 cm  e 50 cm,m,336,,,52351.43,2. MOVIMENTO DE TERRA E FUNDAÇÕES
+2.1.5,"Concreto usinado fck 25 MPa estrutural, bombeado, slump 100±20",m³,67.5,540.0,,36450.0,2. MOVIMENTO DE TERRA E FUNDAÇÕES
+2.1.6,Aço Estaca - Comprado pronto,vb,1,,,21660.12,2. MOVIMENTO DE TERRA E FUNDAÇÕES
+2.1.7,Arrasamento de estacas,ml,52,,160.0,8320.0,2. MOVIMENTO DE TERRA E FUNDAÇÕES
+2.1.8,"Escavação manual em material 1ª categoria (até 1,50 m)",m³,81.07499999999999,0.0,180.0,14593.499999999998,2. MOVIMENTO DE TERRA E FUNDAÇÕES
+2.1.9,Bloco de coroamento concreto armado fck 25 MPa,m³,33.31,473.1202666666667,366.9266666666667,28714.783349333335,2. MOVIMENTO DE TERRA E FUNDAÇÕES
+2.1.10,"Viga baldrame de concreto armado fck 25 MPa, seção 20×40 cm",m³,20.74,505.50933333333336,477.73333333333335,20765.77290666667,2. MOVIMENTO DE TERRA E FUNDAÇÕES
+2.1.11,"Lastro de concreto magro fck 10 MPa, e=5 cm",m²,170,28.5,14.2,7259.000000000001,2. MOVIMENTO DE TERRA E FUNDAÇÕES
+2.1.12,Impermeabilização baldrame com emulsão asfáltica (2 demãos),m²,64,8.5,12.0,1312.0,2. MOVIMENTO DE TERRA E FUNDAÇÕES
+2.1.13,Material Forma - (Apenas Material) - 3 Utililizações - Bloco e Vigas,m²,94.36,37.0,0.0,3491.32,2. MOVIMENTO DE TERRA E FUNDAÇÕES
+2.1.14,Aço Blocos e Vigas - (Apenas Material) - Bloco e Viga,kg,3218.177,6.73,0.0,21658.331210000004,2. MOVIMENTO DE TERRA E FUNDAÇÕES
+3.1.1,"Armação aço CA-50 incl. corte, dobra, montagem e perdas",kg,1144.08,0.0,5.0,5720.4,"3. ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO)"
+3.1.2,"Concreto usinado fck 25 MPa estrutural, bombeado, slump 100±20",m³,14.301,453.2,0.0,6481.2132,"3. ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO)"
+3.1.3,"Lançamento, adensamento e acabamento de concreto estrutural",m³,14.301,0.0,24.5,350.3745,"3. ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO)"
+3.1.4,"Forma de chapa compensada plastificada 18 mm, 4 utilizações",m²,138.83100000000002,0.0,64.0,8885.184000000001,"3. ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO)"
+3.1.5,Execução Escadas,m²,9,255.0,728.0,8847.0,"3. ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO)"
+3.1.6,Material Forma - (Apenas Material) - 3 Utililizações - Pilares- Escada 1ºPAV,m²,184.955,20.44,0.0,3780.4802000000004,"3. ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO)"
+3.1.7,Aço  - (Apenas Material) - Pilares- Escada 1ºPAV,kg,1864.08,6.5,0.0,12116.52,"3. ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO)"
+3.2.1,"Armação aço CA-50 incl. corte, dobra, montagem e perdas",kg,7109.445,0.0,5.0,35547.225,"3. ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO)"
+3.2.2,"Concreto usinado fck 25 MPa estrutural, bombeado, slump 100±20",m³,63.0735,453.2,0.0,28584.910200000002,"3. ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO)"
+3.2.3,"Lançamento, adensamento e acabamento de concreto estrutural",m³,63.0735,0.0,24.5,1545.30075,"3. ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO)"
+3.2.4,"Forma de chapa compensada plastificada 18 mm, 4 utilizações",m²,596.5365,0.0,64.0,38178.336,"3. ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO)"
+3.2.5,Execução Escadas,m²,9,255.0,688.0,8487.0,"3. ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO)"
+3.2.6,Material Forma - (Apenas Material) - 3 Utililizações - Vigas-Pilares-Lajes 2ºPAV,m²,1350,20.44,0.0,27594.0,"3. ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO)"
+3.2.7,Aço  - (Apenas Material) - Vigas-Pilares-Lajes 2ºPAV,kg,7829.45,6.5,0.0,50891.424999999996,"3. ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO)"
+3.3.1,"Armação aço CA-50 incl. corte, dobra, montagem e perdas - Apenas MO",kg,2237.55,0.0,5.0,11187.75,"3. ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO)"
+3.3.2,"Concreto usinado fck 25 MPa estrutural, bombeado, slump 100±20 - Apenas Material",m³,29.8305,453.2,0.0,13519.1826,"3. ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO)"
+3.3.3,"Lançamento, adensamento e acabamento de concreto estrutural - Apenas MO",m³,29.8305,0.0,24.5,730.84725,"3. ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO)"
+3.3.5,"Forma de chapa compensada plastificada 18 mm, 4 utilizações - Apenas MO",m²,368.298,0.0,64.0,23571.072,"3. ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO)"
+3.3.6,Execução Escadas - Concreto + MO,m²,9,220.0,688.0,8172.0,"3. ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO)"
+3.3.7,Material Forma - (Apenas Material) - 3 Utililizações - Vigas-Pilares-Lajes 3ºPAV,m²,408.8,20.44,0.0,8355.872000000001,"3. ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO)"
+3.3.8,Aço  - (Apenas Material) - Vigas-Pilares-Lajes 3ºPAV,kg,2957.55,6.5,0.0,19224.075,"3. ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO)"
+3.4.1,"Armação aço CA-50 incl. corte, dobra, montagem e perdas - Apenas MO",kg,2068.5,0.0,5.0,10342.5,"3. ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO)"
+3.4.2,"Concreto usinado fck 25 MPa estrutural, bombeado, slump 100±20 - Apenas Material",m³,28.2555,453.2,0.0,12805.392600000001,"3. ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO)"
+3.4.3,"Lançamento, adensamento e acabamento de concreto estrutural - Apenas MO",m³,28.2555,0.0,24.5,692.25975,"3. ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO)"
+3.4.5,"Forma de chapa compensada plastificada 18 mm, 4 utilizações - Apenas MO",m²,353.29350000000005,0.0,64.0,22610.784000000003,"3. ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO)"
+3.4.6,Execução Escadas - Concreto + MO,m²,9,220.0,688.0,8172.0,"3. ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO)"
+3.4.7,Material Forma - (Apenas Material) - 3 Utililizações - Vigas-Pilares-Lajes 4ºPAV,m²,393.79,20.44,0.0,8049.067600000001,"3. ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO)"
+3.4.8,Aço  - (Apenas Material) - Vigas-Pilares-Lajes 4ºPAV,kg,2788.5,6.5,0.0,18125.25,"3. ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO)"
+3.5.1,"Armação aço CA-50 incl. corte, dobra, montagem e perdas - Apenas MO",kg,2330.3700000000003,0.0,5.0,11651.850000000002,"3. ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO)"
+3.5.2,"Concreto usinado fck 25 MPa estrutural, bombeado, slump 100±20 - Apenas Material",m³,30.786,453.2,0.0,13952.2152,"3. ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO)"
+3.5.3,"Lançamento, adensamento e acabamento de concreto estrutural - Apenas MO",m³,30.786,0.0,24.5,754.2570000000001,"3. ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO)"
+3.5.4,"Forma de chapa compensada plastificada 18 mm, 4 utilizações - Apenas MO",m²,369.2955,0.0,64.0,23634.912,"3. ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO)"
+3.5.5,Execução Escadas - Concreto + MO,m²,9,220.0,688.0,8172.0,"3. ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO)"
+3.5.6,Material Forma - (Apenas Material) - 3 Utililizações - Vigas-Pilares-Lajes 5ºPAV,m²,409.7955,20.44,0.0,8376.22002,"3. ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO)"
+3.5.7,Aço  - (Apenas Material) - Vigas-Pilares-Lajes 5ºPAV,kg,3050.3700000000003,6.5,0.0,19827.405000000002,"3. ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO)"
+3.6.1,"Armação aço CA-50 incl. corte, dobra, montagem e perdas",kg,2272.2000000000003,0.0,5.0,11361.000000000002,"3. ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO)"
+3.6.2,"Concreto usinado fck 25 MPa estrutural, bombeado, slump 100±20",m³,28.5915,453.2,0.0,12957.6678,"3. ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO)"
+3.6.3,"Lançamento, adensamento e acabamento de concreto estrutural",m³,28.5915,0.0,24.5,700.49175,"3. ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO)"
+3.6.4,"Forma de chapa compensada plastificada 18 mm, 4 utilizações",m²,328.1775,0.0,64.0,21003.36,"3. ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO)"
+3.6.5,Material Forma - (Apenas Material) - 3 Utililizações - Vigas-Pilares-Lajes 6ºPAV,m²,328.1775,20.44,0.0,6707.9481000000005,"3. ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO)"
+3.6.6,Aço  - (Apenas Material) - Vigas-Pilares-Lajes 6ºPAV,kg,2272.2000000000003,6.5,0.0,14769.300000000001,"3. ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO)"
+3.7.1,"Armação aço CA-50 incl. corte, dobra, montagem e perdas",kg,2015.3700000000001,0.0,5.0,10076.85,"3. ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO)"
+3.7.2,"Concreto usinado fck 25 MPa estrutural, bombeado, slump 100±20",m³,25.273500000000002,453.2,0.0,11453.950200000001,"3. ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO)"
+3.7.3,"Lançamento, adensamento e acabamento de concreto estrutural",m³,25.273500000000002,0.0,24.5,619.2007500000001,"3. ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO)"
+3.7.4,"Forma de chapa compensada plastificada 18 mm, 4 utilizações",m²,309.72900000000004,0.0,64.0,19822.656000000003,"3. ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO)"
+3.7.5,Material Forma - (Apenas Material) - 3 Utililizações - Vigas-Pilares- 7ºPAV,m²,309.72900000000004,20.44,0.0,6330.860760000001,"3. ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO)"
+3.7.6,Aço  - (Apenas Material) - Vigas-Pilares 7ºPAV,kg,2015.3700000000001,6.5,0.0,13099.905,"3. ESTRUTURA (CONCRETO, FORMAS, ARMAÇÃO)"
+4.1.1,"Alvenaria de vedação bloco cerâmico 14×19×29 cm, e=14 cm — externa/divisórias entre flats",m²,231.15,52.04,43.0,21968.496,4. ALVENARIA E FECHAMENTOS
+4.1.2,Execução de Verga e Contra-Verga,m,49.12,19.66,,965.6991999999999,4. ALVENARIA E FECHAMENTOS
+4.2.1,"Alvenaria de vedação bloco cerâmico 14×19×29 cm, e=14 cm — externa/divisórias entre flats",m²,346.032,52.04,43.0,32886.881279999994,4. ALVENARIA E FECHAMENTOS
+4.2.2,Execução de Verga e Contra-Verga,m,49.12,19.66,,965.6991999999999,4. ALVENARIA E FECHAMENTOS
+4.3.1,"Alvenaria de vedação bloco cerâmico 14×19×29 cm, e=14 cm — externa/divisórias entre flats",m²,324.4,52.04,43.0,30830.975999999995,4. ALVENARIA E FECHAMENTOS
+4.3.2,Execução de Verga e Contra-Verga,m,49.12,19.66,,965.6991999999999,4. ALVENARIA E FECHAMENTOS
+4.4.1,"Alvenaria de vedação bloco cerâmico 14×19×29 cm, e=14 cm — externa/divisórias entre flats",m²,324.4,52.04,43.0,30830.975999999995,4. ALVENARIA E FECHAMENTOS
+4.4.2,Execução de Verga e Contra-Verga,m,49.12,19.66,,965.6991999999999,4. ALVENARIA E FECHAMENTOS
+4.5.1,"Alvenaria de vedação bloco cerâmico 14×19×29 cm, e=14 cm — externa/divisórias entre flats",m²,321.84,52.04,43.0,30587.673599999995,4. ALVENARIA E FECHAMENTOS
+4.5.2,Execução de Verga e Contra-Verga,m,49.12,19.66,,965.6991999999999,4. ALVENARIA E FECHAMENTOS
+4.6.1,"Alvenaria de vedação bloco cerâmico 14×19×29 cm, e=14 cm — externa/divisórias entre flats",m²,266.04,52.04,43.0,25284.4416,4. ALVENARIA E FECHAMENTOS
+4.6.2,Execução de Verga e Contra-Verga,m,49.12,19.66,,965.6991999999999,4. ALVENARIA E FECHAMENTOS
+4.7.1,"Alvenaria de vedação bloco cerâmico 14×19×29 cm, e=14 cm — externa/divisórias entre flats",m²,95.925,52.04,43.0,9116.712,4. ALVENARIA E FECHAMENTOS
+4.7.2,Execução de Verga e Contra-Verga,m,49.12,19.66,,965.6991999999999,4. ALVENARIA E FECHAMENTOS
+5.1.1,Chapisco para alvenaria (cimento+areia 1:3) — todas as faces,m²,2031.178,3.73,0.0,7576.2939400000005,5. REBOCO / EMBOÇO
+5.1.2,Emboço,m²,906.91,10.56,45.0,50387.9196,5. REBOCO / EMBOÇO
+5.1.3,"Reboco externo ) e=2,0 cm — áreas externas e ÁM",m²,1225.82,10.56,50.0,74235.6592,5. REBOCO / EMBOÇO
+6.1.1,Cisterna de concreto armado 10.000 L (inferior),un,1,12500.0,8500.0,21000.0,6. INSTALAÇÕES HIDROSSANITÁRIAS
+6.1.2,Caixa de gordura coletiva alvenaria 60×60 cm + tampa,un,4,285.0,320.0,2420.0,6. INSTALAÇÕES HIDROSSANITÁRIAS
+6.1.3,Caixa de inspeção alvenaria 60×60 cm + tampa concreto,un,6,285.0,320.0,3630.0,6. INSTALAÇÕES HIDROSSANITÁRIAS
+6.1.4,Ramal de ligação à rede pública (água + esgoto),vb,1,4200.0,2800.0,7000.0,6. INSTALAÇÕES HIDROSSANITÁRIAS
+6.1.5,Ponto de água quente — PPR DN20/25,pt,36,195.0,92.0,10332.0,6. INSTALAÇÕES HIDROSSANITÁRIAS
+6.1.6,Infra para Hidraulica,por andar,8,,,0.0,6. INSTALAÇÕES HIDROSSANITÁRIAS
+6.1.7,Ponto de água fria — tubulação PVC soldável DN20/25/32 + conexões,pt,103,145.0,88.5,24050.5,6. INSTALAÇÕES HIDROSSANITÁRIAS
+6.1.8,Ponto de esgoto primário — PVC série normal DN40/50/75/100 + caixas,pt,103,168.0,92.0,26780.0,6. INSTALAÇÕES HIDROSSANITÁRIAS
+6.1.9,Ponto de águas pluviais — PVC série reforçada DN75/100/150,pt,8,285.0,178.0,3704.0,6. INSTALAÇÕES HIDROSSANITÁRIAS
+6.1.10,Coluna de prumada (esgoto) PVC DN100 — incluindo conexões,m,74,38.5,22.5,4514.0,6. INSTALAÇÕES HIDROSSANITÁRIAS
+6.1.11,Coluna de prumada (água fria) PVC DN32 — incluindo conexões,m,110,18.5,18.2,4037.0000000000005,6. INSTALAÇÕES HIDROSSANITÁRIAS
+6.1.12,"Conjunto moto-bomba de recalque 5 CV, Q=20 m³/h",cj,2,6850.0,480.0,14660.0,6. INSTALAÇÕES HIDROSSANITÁRIAS
+6.1.13,Hidrômetro individual + caixa de proteção,un,20,285.0,95.0,7600.0,6. INSTALAÇÕES HIDROSSANITÁRIAS
+6.1.14,Reservatório superior em fibra de vidro 20.000 L com acessórios,un,1,14800.0,1850.0,16650.0,6. INSTALAÇÕES HIDROSSANITÁRIAS
+6.1.15,Reservatório de combate a incêndio 2.000 L em fibra de vidro,un,1,2850.0,480.0,3330.0,6. INSTALAÇÕES HIDROSSANITÁRIAS
+7.1.1,Infra para Eletrica,por andar,8,,,0.0,7. INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES
+7.1.2,Ponto de iluminação (eletroduto+caixa+condutor+luminária simples),pt,58,78.0,62.0,8120.0,7. INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES
+7.1.3,Ponto de tomada 2P+T 10A (eletroduto+caixa+condutor+tomada),pt,52,92.0,68.0,8320.0,7. INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES
+7.1.4,Ponto de interruptor simples/paralelo (eletroduto+caixa+condutor+interruptor),pt,19,62.0,48.0,2090.0,7. INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES
+7.1.5,"Quadro de distribuição (QDL) embutido, 12 a 24 disjuntores",un,20,285.0,145.0,8600.0,7. INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES
+7.1.6,Disjuntor termomagnético DIN unipolar 10 a 32A,un,192,18.5,8.5,5184.0,7. INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES
+7.1.7,"Eletroduto PVC rígido Ø 3/4"" (incluindo conexões)",m,4900,4.8,5.2,49000.0,7. INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES
+7.1.8,"Cabeamento de cobre flexível #2,5 mm² 750V",m,9800,4.8,0.0,47040.0,7. INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES
+7.1.9,"Cabeamento de cobre flexível #1,5 mm² 750V",m,6100,3.2,0.0,19520.0,7. INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES
+7.1.10,Padrão de entrada CEMIG trifásico (caixa + medidor + ramal),cj,1,8500.0,3200.0,11700.0,7. INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES
+7.1.11,Ponto de telefone/dados (cabeamento estruturado Cat6),pt,22,78.0,42.0,2640.0,7. INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES
+7.1.12,Ponto de TV/antena coletiva,pt,20,65.0,38.0,2060.0,7. INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES
+7.1.13,Sistema de interfone com vídeo porteiro central,cj,1,5800.0,1850.0,7650.0,7. INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES
+7.1.14,Sistema de controle de acesso facial + câmeras de segurança,cj,1,18500.0,4200.0,22700.0,7. INSTALAÇÕES ELÉTRICAS E TELECOMUNICAÇÕES
+8.1.1,Central GLP P-13 com abrigo ventilado térreo,cj,1,9800.0,2500.0,12300.0,8. INSTALAÇÕES ESPECIAIS
+8.1.2,Tubulação de gás em cobre rígido tipo L Ø 22mm,m,140,38.5,22.0,8470.0,8. INSTALAÇÕES ESPECIAIS
+8.1.3,Medidor de gás individual,un,19,285.0,78.0,6897.0,8. INSTALAÇÕES ESPECIAIS
+8.1.4,Ponto de gás (cozinha),pt,19,92.0,48.0,2660.0,8. INSTALAÇÕES ESPECIAIS
+8.1.5,Hidrante de parede completo (mangotinho + abrigo + registro),un,6,1850.0,480.0,13980.0,8. INSTALAÇÕES ESPECIAIS
+8.1.6,"Tubulação de incêndio aço galvanizado Ø 65 mm (2½"")",m,30,145.0,95.0,7200.0,8. INSTALAÇÕES ESPECIAIS
+8.1.7,Sistema SPDA — captor Franklin + malha + descidas + aterramento,cj,1,8500.0,4500.0,13000.0,8. INSTALAÇÕES ESPECIAIS
+8.1.8,Porta corta-fogo P-90 (escada),un,6,1850.0,285.0,12810.0,8. INSTALAÇÕES ESPECIAIS
+8.1.9,Bomba de incêndio + acessórios,cj,1,8800.0,1850.0,10650.0,8. INSTALAÇÕES ESPECIAIS
+8.1.10,Extintor PQS 6 kg,un,8,165.0,28.0,1544.0,8. INSTALAÇÕES ESPECIAIS
+8.1.11,Extintor CO2 6 kg,un,2,285.0,28.0,626.0,8. INSTALAÇÕES ESPECIAIS
+8.1.12,Iluminação de emergência em bloco autônomo LED,un,30,145.0,38.0,5490.0,8. INSTALAÇÕES ESPECIAIS
+8.1.13,Sinalização fotoluminescente (placas),un,40,28.5,18.0,1860.0,8. INSTALAÇÕES ESPECIAIS
+8.1.14,Sistema de alarme/detecção de incêndio (central + acionadores + sirene),cj,1,12500.0,3800.0,16300.0,8. INSTALAÇÕES ESPECIAIS
+8.1.15,Infraestrutura split (ponto elétrico + dreno + suporte condensadora),un,19,285.0,145.0,8170.0,8. INSTALAÇÕES ESPECIAIS
+8.1.16,"Elevador de passageiros 6 pessoas, 6 paradas (T+5)",cj,1,,,230000.0,8. INSTALAÇÕES ESPECIAIS
+9.1.1,Impermeabilização laje cobertura — manta asfáltica 4 mm,m²,255.29,41.318,20.0,15653.87222,9. COBERTURA E IMPERMEABILIZAÇÃO
+9.1.2,Impermeabilização banheiros (Viaplus 1000 sobre emboço),m²,345.7588,34.525,17.52,17995.016746,9. COBERTURA E IMPERMEABILIZAÇÃO
+9.1.3,Impermeabilização cozinhas e área de serviço (Viaplus 1000),m²,113.25,34.525,17.52,5894.0962500000005,9. COBERTURA E IMPERMEABILIZAÇÃO
+9.1.4,Impermeabilização reservatórios (Viaplus 5000),m²,68,69.15,24.39,6360.72,9. COBERTURA E IMPERMEABILIZAÇÃO
+9.1.5,"Calha em chapa galvanizada #24, desenvolvimento 50 cm",m,50,42.0,28.0,3500.0,9. COBERTURA E IMPERMEABILIZAÇÃO
+9.1.6,"Rufo em chapa galvanizada #24, desenvolvimento 25 cm",m,55,28.5,22.0,2777.5,9. COBERTURA E IMPERMEABILIZAÇÃO
+9.1.7,Condutor de águas pluviais — tubo PVC DN100,m,72,38.5,18.0,4068.0,9. COBERTURA E IMPERMEABILIZAÇÃO
+10.1.1,Revestimento de gesso liso em parede interna seca (gesso pasta+desempeno),m²,1978.306,25.0,,49457.65,10. APLICAÇÃO DE GESSO
+10.1.2,Forro de gesso rebaixado em placas — flats e áreas comuns,m²,550.475,75.0,,41285.625,10. APLICAÇÃO DE GESSO
+11.1.1,Peitoris de granito Verde Ubatuba,m,72.36,87.75,15.04,7437.884399999999,11. PISOS E RODAPÉS
+11.1.2,"Contrapiso autonivelante e=3 cm, todas as áreas internas",m²,1132.47,24.6127,32.5,64678.419369,11. PISOS E RODAPÉS
+11.1.3,"Azulejo cerâmico 30×40 cm — paredes  h=2,70 m",m²,863.729,39.78,65.0,90501.52462000001,11. PISOS E RODAPÉS
+11.1.4,"Porcelanato 60×60 cm retificado, cor clara — áreas sociais/cozinhas/halls",m²,419.53,61.3125,65.0,52991.88312499999,11. PISOS E RODAPÉS
+11.1.5,Soleira de granito Verde Ubatuba e=2 cm,m,59.52,87.75,15.04,6118.0608,11. PISOS E RODAPÉS
+11.1.6,Piso Polido,m²,105,38.36,35.0,7702.8,11. PISOS E RODAPÉS
+11.1.7,Laminado de madeira AC4 c/ rodape de 5cm — quartos/dormitórios dos flats(Material e MO),m²,279.16,159.9,0.0,44637.68400000001,11. PISOS E RODAPÉS
+11.1.8,Rodapé porcelanato h=7 cm — sobre piso porcelanato,m,162,18.5,12.0,4941.0,11. PISOS E RODAPÉS
+11.1.9,Piso tátil direcional/alerta — passeio público,m²,12,75.57,45.0,1446.84,11. PISOS E RODAPÉS
+12.1.1,Kit porta de madeira 80×210 cm (entrada apto) — folha+marco+alizar+ferragem+pintura,un,26,825.0,145.0,25220.0,"12. ESQUADRIAS (PORTAS, JANELAS, VIDROS)"
+12.1.2,Kit porta de madeira 60×210 cm,un,1,685.0,132.0,817.0,"12. ESQUADRIAS (PORTAS, JANELAS, VIDROS)"
+12.1.3,Kit porta de madeira 85×210 cm,un,6,825.0,145.0,5820.0,"12. ESQUADRIAS (PORTAS, JANELAS, VIDROS)"
+12.1.4,Porta 90×210 cm  - Blindex- Correr,un,6,709.12,0.0,4254.72,"12. ESQUADRIAS (PORTAS, JANELAS, VIDROS)"
+12.1.5,Porta 100x250 cm - Blindex,un,1,937.99,0.0,937.99,"12. ESQUADRIAS (PORTAS, JANELAS, VIDROS)"
+12.1.6,Porta 205x250 cm - Blindex,un,1,1922.88,0.0,1922.88,"12. ESQUADRIAS (PORTAS, JANELAS, VIDROS)"
+12.1.7,Porta 270x250 cm - Blindex,un,1,2532.57,0.0,2532.57,"12. ESQUADRIAS (PORTAS, JANELAS, VIDROS)"
+12.1.8,Porta 350x250 cm - Blindex,un,1,3282.96,0.0,3282.96,"12. ESQUADRIAS (PORTAS, JANELAS, VIDROS)"
+12.1.9,Porta 220x250 cm - Blindex,un,1,2063.58,0.0,2063.58,"12. ESQUADRIAS (PORTAS, JANELAS, VIDROS)"
+12.1.10,Porta basculante metálica (loja) — pintura esmalte  - 696x294,m²,20.4624,581.56,0.0,11900.113343999998,"12. ESQUADRIAS (PORTAS, JANELAS, VIDROS)"
+12.1.11,Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 100x140,und,5,525.27,0.0,2626.35,"12. ESQUADRIAS (PORTAS, JANELAS, VIDROS)"
+12.1.12,Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 100x50,und,1,187.6,0.0,187.6,"12. ESQUADRIAS (PORTAS, JANELAS, VIDROS)"
+12.1.13,Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 150x140,und,4,787.91,0.0,3151.64,"12. ESQUADRIAS (PORTAS, JANELAS, VIDROS)"
+12.1.14,Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 165x140,und,7,866.7,0.0,6066.900000000001,"12. ESQUADRIAS (PORTAS, JANELAS, VIDROS)"
+12.1.15,Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 200x140,und,3,1050.55,0.0,3151.6499999999996,"12. ESQUADRIAS (PORTAS, JANELAS, VIDROS)"
+12.1.16,Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 300x140,und,4,1575.82,0.0,6303.28,"12. ESQUADRIAS (PORTAS, JANELAS, VIDROS)"
+12.1.17,Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 60x80,und,4,180.09,0.0,720.36,"12. ESQUADRIAS (PORTAS, JANELAS, VIDROS)"
+12.1.18,Janela de alumínio anodizado linha veneziana + vidro temperado 6 mm — 80x80,und,12,240.13,0.0,2881.56,"12. ESQUADRIAS (PORTAS, JANELAS, VIDROS)"
+12.1.19,Vidro Fixo 632x250,und,1,5928.09,0.0,5928.09,"12. ESQUADRIAS (PORTAS, JANELAS, VIDROS)"
+12.1.20,Vidro Fixo 553x250,und,1,5187.08,0.0,5187.08,"12. ESQUADRIAS (PORTAS, JANELAS, VIDROS)"
+12.1.21,Vidro Fixo 160x250,und,1,1500.78,0.0,1500.78,"12. ESQUADRIAS (PORTAS, JANELAS, VIDROS)"
+12.1.22,Vidro Guarda Corpo - 6º Nivel 405cm x 50cm,m²,2.025,375.2,0.0,759.78,"12. ESQUADRIAS (PORTAS, JANELAS, VIDROS)"
+12.1.23,Box de banheiro em vidro temperado 8 mm incolor,un,49.14,375.2,0.0,18437.328,"12. ESQUADRIAS (PORTAS, JANELAS, VIDROS)"
+12.1.24,"Guarda-corpo em ferro circular h=1,10m (sacadas/escadas)",m,90,285.0,0.0,25650.0,"12. ESQUADRIAS (PORTAS, JANELAS, VIDROS)"
+12.1.25,Escada marinheiro,vb,1,,,216.0,"12. ESQUADRIAS (PORTAS, JANELAS, VIDROS)"
+12.1.26,Alçapão metálico de acesso à cobertura,un,1,216.0,0.0,216.0,"12. ESQUADRIAS (PORTAS, JANELAS, VIDROS)"
+13.1.1,Massa corrida PVA sobre gesso (2 demãos),m²,550.475,24.5,0.0,13486.6375,13. PINTURA
+13.1.2,"Pintura látex PVA (selador + 2 demãos), cor branca/clara — interna",m²,2528.781,25.5,0.0,64483.915499999996,13. PINTURA
+13.1.3,Pintura esmalte sintético — portas metálicas e basculantes,m²,118,32.0,0.0,3776.0,13. PINTURA
+13.1.4,Textura rolada acrílica + selador — fachadas (3 faces não-frontais),m²,1167.449,45.8,0.0,53469.1642,13. PINTURA
+13.1.5,Pintura esmalte sintético — corrimão,ml,65,18.0,0.0,1170.0,13. PINTURA
+14.1.1,Bacia sanitária branca com caixa acoplada — padrão R8 (linha econômica),cj,26,425.0,95.0,13520.0,"14. LOUÇAS, METAIS E BANCADAS"
+14.1.2,Lavatório com coluna ou cuba de embutir — padrão R8,un,26,550.0,78.0,16328.0,"14. LOUÇAS, METAIS E BANCADAS"
+14.1.3,Tanque de PVC 40 cm (área de serviço),un,18,165.0,68.0,4194.0,"14. LOUÇAS, METAIS E BANCADAS"
+14.1.4,Cuba inox 40×34×17 cm para bancada — cozinhas,un,20,1000.0,95.0,21900.0,"14. LOUÇAS, METAIS E BANCADAS"
+14.1.5,Torneira de lavatório padrão R8,un,26,78.0,28.0,2756.0,"14. LOUÇAS, METAIS E BANCADAS"
+14.1.6,Torneira de cozinha padrão R8,un,20,95.0,28.0,2460.0,"14. LOUÇAS, METAIS E BANCADAS"
+14.1.7,Torneira de tanque padrão R8,un,18,48.0,22.0,1260.0,"14. LOUÇAS, METAIS E BANCADAS"
+14.1.8,Registro de gaveta + chuveiro padrão R8 (conjunto chuveiro),cj,18,185.0,48.0,4194.0,"14. LOUÇAS, METAIS E BANCADAS"
+14.1.9,Sifão PVC + ligação flexível (kit),cj,90,18.5,12.0,2745.0,"14. LOUÇAS, METAIS E BANCADAS"
+14.1.10,Acessórios para BWC padrão R8 (papeleira+saboneteira+cabide+toalheiro),cj,24,165.0,38.0,4872.0,"14. LOUÇAS, METAIS E BANCADAS"
+14.1.11,Bancada de granito Verde Ubatuba — banheiros (lavatório embutido),m²,11,450.0,88.0,5918.0,"14. LOUÇAS, METAIS E BANCADAS"
+14.1.12,Bancada de granito Verde Ubatuba — cozinhas,m²,29,450.0,88.0,15602.0,"14. LOUÇAS, METAIS E BANCADAS"
+15.1.1,Drenagem externa — canaleta pré-moldada + caixa de areia,m,25,145.0,95.0,6000.0,"15. URBANIZAÇÃO, PAISAGISMO E SERVIÇOS EXTERNOS"
+15.1.2,Iluminação externa LED 20W em luminárias padrão,un,6,285.0,85.0,2220.0,"15. URBANIZAÇÃO, PAISAGISMO E SERVIÇOS EXTERNOS"
+16.1.1,Revestimento de fachada em ACM (placas alumínio composto 4 mm) — fachada frontal,m²,60,320.0,145.0,27900.0,16. SERVIÇOS FINAIS
+16.1.2,Brise Metalico,m²,30,320.0,,9600.0,16. SERVIÇOS FINAIS
+16.1.3,Limpeza geral final de obra,m²,1223.76,2.8,4.5,8933.448,16. SERVIÇOS FINAIS
+16.1.4,Passeio Externo,m²,120,49.5,,5940.0,16. SERVIÇOS FINAIS
+16.1.5,Grama,m²,87,13.5,,1174.5,16. SERVIÇOS FINAIS
+17.1.1,Locação Caçamba,un,36,,0.0,17640.0,17. LOCAÇÃO DE EQUIPAMENTOS
+17.1.2,Locação Guincho,un,36,,0.0,17640.0,17. LOCAÇÃO DE EQUIPAMENTOS
+17.1.3,Locação Travamento e Escoraramtento- (2 orçamentos),un,18,6666.67,,120000.06,17. LOCAÇÃO DE EQUIPAMENTOS
+17.1.4,Locação de Martelete,mês,10,,,3000.0,17. LOCAÇÃO DE EQUIPAMENTOS
+17.1.5,Locação Betoneira,un,18,,,7200.0,17. LOCAÇÃO DE EQUIPAMENTOS
+17.1.6,Locação Gerador,mês,1,,0.0,400.0,17. LOCAÇÃO DE EQUIPAMENTOS
+17.1.7,Locação Serra Circular,mês,10,,,800.0,17. LOCAÇÃO DE EQUIPAMENTOS
+17.1.8,Locação Vibrador,mês,8,,,1200.0,17. LOCAÇÃO DE EQUIPAMENTOS
+17.1.9,Locação Balancinho,mês,8,,,9600.0,17. LOCAÇÃO DE EQUIPAMENTOS
+17.1.10,Locação Bandeja,vb,1,,,41887.0,17. LOCAÇÃO DE EQUIPAMENTOS
+17.1.11,Locação Carro,mês,20,,,46000.0,17. LOCAÇÃO DE EQUIPAMENTOS
+17.1.12,Combustivel Carro,mês,20,,,20000.0,17. LOCAÇÃO DE EQUIPAMENTOS
+17.1.13,Material Misselania,mês,18,1000.0,,18000.0,17. LOCAÇÃO DE EQUIPAMENTOS
+17.1.14,Custo de Visitas,vb,1,,10000.0,10000.0,17. LOCAÇÃO DE EQUIPAMENTOS
+18.1.1,Mão de Obra Direta,mes,20,,17838.8,356776.0,18. FUNCIONÁRIO DIRETO
+19.1.1,AVCB (Auto de Vistoria CBMMG) — taxa e vistoria,vb,1,4800.0,0.0,4800.0,19. CUSTO INDIRETO
+19.1.2,Serviços Sondagem,vb,1,0.0,1950.0,1950.0,19. CUSTO INDIRETO
+19.1.3,Projeto Arquitetonico,vb,1,0.0,12000.0,12000.0,19. CUSTO INDIRETO
+19.1.4,Projeto Estrutural,vb,1,0.0,12000.0,12000.0,19. CUSTO INDIRETO
+19.1.5,Projeto Eletrico,vb,1,0.0,12640.0,12640.0,19. CUSTO INDIRETO
+19.1.6,Projeto Padrão,vb,1,0.0,6000.0,6000.0,19. CUSTO INDIRETO
+19.1.7,Projeto Hidrossanitario,vb,1,0.0,2500.0,2500.0,19. CUSTO INDIRETO
+19.1.8,Projeto SPDA,vb,1,0.0,3500.0,3500.0,19. CUSTO INDIRETO
+19.1.9,Projeto Combate de Incendio,vb,1,0.0,1800.0,1800.0,19. CUSTO INDIRETO
+19.1.10,Registro de Incorporação+Averbação da Construção,vb,1,0.0,35779.66,35779.66,19. CUSTO INDIRETO
+19.1.11,Custo de ITBI,vb,1,0.0,41100.0,41100.0,19. CUSTO INDIRETO
+19.1.12,Custo de Registro Lote,vb,1,0.0,8330.21,8330.21,19. CUSTO INDIRETO
+19.1.13,Custo de  Escritura,vb,1,0.0,8365.08,8365.08,19. CUSTO INDIRETO
+19.1.14,Taxa de Aprovação Prefeitura - Projeto,vb,1,0.0,4024.0,4024.0,19. CUSTO INDIRETO
+19.1.15,Alvará Tráfego de Terra e Entulho,vb,1,,371.74,371.74,19. CUSTO INDIRETO
+19.1.16,Taxa Arpovação Corpo de Bombeiro,vb,1,0.0,750.0,750.0,19. CUSTO INDIRETO
+19.1.17,Laudo Cautelares,vb,1,0.0,2700.0,2700.0,19. CUSTO INDIRETO
+19.1.18,Serviços Contabeis,mês,18,,1621.0,29178.0,19. CUSTO INDIRETO
+19.1.19,Serviçso Advocaticios,vb,1,0.0,17000.0,17000.0,19. CUSTO INDIRETO
+19.1.20,Valor do Terreno,vb,1,0.0,1370000.0,1370000.0,19. CUSTO INDIRETO
+19.1.21,IPTU Terreno,mês,18,0.0,514.38,9258.84,19. CUSTO INDIRETO
+19.1.22,Art e Taxas,vbb,1,0.0,500.0,500.0,19. CUSTO INDIRETO
+19.1.23,Administração local da obra (engenheiro),mes,20,0.0,23500.0,470000.0,19. CUSTO INDIRETO
+19.1.24,Taxa ADM - Estou considerando o ADM apenas relacionado a custo direto,%,12%,,,444047.8650468,19. CUSTO INDIRETO
+19.1.25,Restaurante,mês,20,,3080.0,61600.0,19. CUSTO INDIRETO
+19.1.26,Padaria,mês,20,,900.0,18000.0,19. CUSTO INDIRETO

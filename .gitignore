@@ -30,6 +30,11 @@ automacao/medicoes/
 automacao/.env
 automacao/lancamentos.csv
 automacao/pendencias.csv
+# regras com CPF de pessoas e valores pessoais: so no computador local
+automacao/regras.csv
+automacao/regras_manuais.csv
+automacao/regras_parcelas.csv
+automacao/decisoes_pontuais.csv
 
 # python
 __pycache__/
