@@ -61,6 +61,7 @@ export default function Semanal() {
   const [semana, setSemana] = useState(null)
   const [base, setBase] = useState('custo')
   const [abrirGrupos, setAbrirGrupos] = useState(false)
+  const [abrirProjecao, setAbrirProjecao] = useState(false)
   const [abrirIndiretos, setAbrirIndiretos] = useState(false)
   const [abrirAvanco, setAbrirAvanco] = useState(false)
   const [avancoGrupos, setAvancoGrupos] = useState(null)
@@ -575,120 +576,133 @@ export default function Semanal() {
           </div>
         )}
 
-        <div className="kpi" title="Contas a pagar do TOTVS (direto + indireto). Zerado até automatizarmos o relatório.">
-          <div className="kpi-label">A Pagar</div>
-          <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2', color: '#c9a45c' }}>
-            {fmtMoeda(aPagarDireto + aPagarIndireto)}
+        {base === 'custo' && (
+          <div className="kpi" title="Contas a pagar do TOTVS (direto + indireto). Zerado até automatizarmos o relatório.">
+            <div className="kpi-label">A Pagar</div>
+            <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2', color: '#c9a45c' }}>
+              {fmtMoeda(aPagarDireto + aPagarIndireto)}
+            </div>
+            <div className="kpi-sub">Aguardando relatório do TOTVS</div>
           </div>
-          <div className="kpi-sub">Aguardando relatório do TOTVS</div>
-        </div>
+        )}
       </div>
 
-      {/* Linha 3 — projeção do custo direto no término, três cenários */}
+      {/* Linha 3 — projeção do custo direto no término. Fechada: só o orçado;
+          aberta: índices e os três cenários. Fórmulas no passar do mouse. */}
       <div
         className="kpi-grid"
-        style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '16px', marginTop: '-10px' }}
+        style={{
+          display: 'grid',
+          gridTemplateColumns: abrirProjecao ? 'repeat(6, 1fr)' : 'repeat(5, 1fr)',
+          gap: '16px',
+          marginTop: '-10px',
+        }}
       >
-        <div className="kpi" title="Referência das projeções">
-          <div className="kpi-label">Custo Direto Orçado</div>
-          <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2', color: PLAN }}>
+        <div
+          className="kpi kpi-clickable"
+          onClick={() => setAbrirProjecao((v) => !v)}
+          title={
+            `Orçado do custo direto: ${fmtMoeda(dados.totais.custo_direto)}\n` +
+            (agregado == null ? '' : `− Valor agregado até ${sRef}: ${fmtMoeda(agregado)}\n= Falta executar: ${fmtMoeda(dados.totais.custo_direto - agregado)}\n\n`) +
+            (abrirProjecao ? 'Clique para recolher as projeções' : 'Clique para ver as projeções')
+          }
+        >
+          <div className="kpi-label">Custo Direto Orçado {abrirProjecao ? '▴' : '▾'}</div>
+          <div className="kpi-value" style={{ fontSize: abrirProjecao ? '18px' : '20px', lineHeight: '1.2', color: PLAN }}>
             {fmtMoeda(dados.totais.custo_direto)}
           </div>
-          <div className="kpi-sub">Base das projeções · até {sRef}</div>
-          <div style={{ font: "500 10px 'IBM Plex Mono', monospace", color: '#8b919c', marginTop: 8, lineHeight: 1.5 }}>
-            falta = orçado − valor agregado
-            {projecao != null && (
-              <>
-                <br />
-                IDC {fmtIdx(idc)} · IDP {fmtIdx(idp)}
-              </>
-            )}
-          </div>
+          <div className="kpi-sub">{abrirProjecao ? `Base das projeções · até ${sRef}` : 'Clique para ver as projeções'}</div>
         </div>
 
-        <div className="kpi">
-          <div className="kpi-label">Projeção Otimista</div>
-          <div
-            className="kpi-value"
-            style={{
-              fontSize: '20px',
-              lineHeight: '1.2',
-              color: projecao == null ? REAL : projecao.otimista <= projecao.orcado ? VERDE : VERMELHO,
-            }}
-          >
-            {projecao == null ? '—' : fmtMoeda(projecao.otimista)}
-          </div>
-          <div className="kpi-sub">
-            {projecao == null
-              ? 'Sem medição'
-              : `${projecao.otimista <= projecao.orcado ? 'Abaixo' : 'Acima'} do orçado em ${fmtMoeda(Math.abs(projecao.otimista - projecao.orcado))}`}
-          </div>
-          <div style={{ font: "500 10px 'IBM Plex Mono', monospace", color: '#8b919c', marginTop: 8, lineHeight: 1.5 }}>
-            Realizado + falta ÷ IDC
-            {projecao != null && (
-              <>
-                <br />
-                {`${fmtMoeda(comprometido)} + ${fmtMoeda(projecao.falta)} ÷ ${fmtIdx(idc)}`}
-              </>
-            )}
-          </div>
-        </div>
+        {abrirProjecao && (
+          <>
+            <div
+              className="kpi"
+              title={
+                idc == null
+                  ? ''
+                  : `IDC = valor agregado ÷ (realizado + a pagar)\n` +
+                    `= ${fmtMoeda(agregado)} ÷ (${fmtMoeda(realizadoRef)} + ${fmtMoeda(aPagarDireto)})\n` +
+                    `= ${fmtIdx(idc)}\n\n` +
+                    'Acima de 1: o executado custou menos que o orçado.\nAbaixo de 1: custou mais.'
+              }
+            >
+              <div className="kpi-label">IDC · Eficiência de Custo</div>
+              <div className="kpi-value" style={{ fontSize: '18px', lineHeight: '1.2', color: idc == null ? REAL : idc >= 1 ? VERDE : VERMELHO }}>
+                {fmtIdx(idc)}
+              </div>
+              <div className="kpi-sub">{idc == null ? 'Sem medição' : idc >= 1 ? 'Abaixo do orçado' : 'Acima do orçado'} · até {sRef}</div>
+            </div>
 
-        <div className="kpi">
-          <div className="kpi-label">Projeção Realista</div>
-          <div
-            className="kpi-value"
-            style={{
-              fontSize: '20px',
-              lineHeight: '1.2',
-              color: projecao == null ? REAL : projecao.provavel <= projecao.orcado ? VERDE : VERMELHO,
-            }}
-          >
-            {projecao == null ? '—' : fmtMoeda(projecao.provavel)}
-          </div>
-          <div className="kpi-sub">
-            {projecao == null
-              ? 'Sem medição'
-              : `${projecao.provavel <= projecao.orcado ? 'Abaixo' : 'Acima'} do orçado em ${fmtMoeda(Math.abs(projecao.provavel - projecao.orcado))}`}
-          </div>
-          <div style={{ font: "500 10px 'IBM Plex Mono', monospace", color: '#8b919c', marginTop: 8, lineHeight: 1.5 }}>
-            Otimista + semanas extras × custo de calendário
-            {projecao != null && (
-              <>
-                <br />
-                {`${fmtMoeda(projecao.otimista)} + ${projecao.semanasExtras.toFixed(1).replace('.', ',')} sem × ${fmtMoeda(projecao.porSemana)}`}
-              </>
-            )}
-          </div>
-        </div>
+            <div
+              className="kpi"
+              title={
+                idp == null
+                  ? ''
+                  : `IDP = valor agregado ÷ valor planejado\n` +
+                    `= ${fmtMoeda(agregado)} ÷ ${fmtMoeda(pRef.bcws)}\n` +
+                    `= ${fmtIdx(idp)}\n\n` +
+                    'Acima de 1: obra adiantada.\nAbaixo de 1: obra atrasada.'
+              }
+            >
+              <div className="kpi-label">IDP · Eficiência de Prazo</div>
+              <div className="kpi-value" style={{ fontSize: '18px', lineHeight: '1.2', color: idp == null ? REAL : idp >= 1 ? VERDE : VERMELHO }}>
+                {fmtIdx(idp)}
+              </div>
+              <div className="kpi-sub">{idp == null ? 'Sem medição' : idp >= 1 ? 'Adiantado' : 'Atrasado'} · até {sRef}</div>
+            </div>
 
-        <div className="kpi">
-          <div className="kpi-label">Projeção Pessimista</div>
-          <div
-            className="kpi-value"
-            style={{
-              fontSize: '20px',
-              lineHeight: '1.2',
-              color: projecao == null ? REAL : projecao.pessimista <= projecao.orcado ? VERDE : VERMELHO,
-            }}
-          >
-            {projecao == null ? '—' : fmtMoeda(projecao.pessimista)}
-          </div>
-          <div className="kpi-sub">
-            {projecao == null
-              ? 'Sem medição'
-              : `${projecao.pessimista <= projecao.orcado ? 'Abaixo' : 'Acima'} do orçado em ${fmtMoeda(Math.abs(projecao.pessimista - projecao.orcado))}`}
-          </div>
-          <div style={{ font: "500 10px 'IBM Plex Mono', monospace", color: '#8b919c', marginTop: 8, lineHeight: 1.5 }}>
-            Realizado + falta ÷ (IDC × IDP)
-            {projecao != null && (
-              <>
-                <br />
-                {`${fmtMoeda(comprometido)} + ${fmtMoeda(projecao.falta)} ÷ (${fmtIdx(idc)} × ${fmtIdx(Math.min(idp, 1))})`}
-              </>
-            )}
-          </div>
-        </div>
+            {[
+              [
+                'Projeção Otimista',
+                'otimista',
+                projecao &&
+                  `Realizado + falta ÷ IDC\n` +
+                    `= ${fmtMoeda(comprometido)} + ${fmtMoeda(projecao.falta)} ÷ ${fmtIdx(idc)}\n` +
+                    `= ${fmtMoeda(projecao.otimista)}\n\n` +
+                    'Mantém a eficiência de custo atual até o fim.',
+              ],
+              [
+                'Projeção Realista',
+                'provavel',
+                projecao &&
+                  `Otimista + semanas extras × custo de calendário\n` +
+                    `= ${fmtMoeda(projecao.otimista)} + ${projecao.semanasExtras.toFixed(1).replace('.', ',')} sem × ${fmtMoeda(projecao.porSemana)}\n` +
+                    `= ${fmtMoeda(projecao.provavel)}\n\n` +
+                    `Semanas extras = ${dados.curva.length} ÷ IDP − ${dados.curva.length} (zero se adiantado).\n` +
+                    'Custo de calendário = locação + funcionários + indireto que corre a obra toda, por semana.',
+              ],
+              [
+                'Projeção Pessimista',
+                'pessimista',
+                projecao &&
+                  `Realizado + falta ÷ (IDC × IDP)\n` +
+                    `= ${fmtMoeda(comprometido)} + ${fmtMoeda(projecao.falta)} ÷ (${fmtIdx(idc)} × ${fmtIdx(Math.min(idp, 1))})\n` +
+                    `= ${fmtMoeda(projecao.pessimista)}\n\n` +
+                    'Custo e prazo pesam juntos. Adiantamento não barateia: o IDP entra no máximo como 1.',
+              ],
+            ].map(([nome, chave, formula]) => (
+              <div key={chave} className="kpi" title={formula || ''}>
+                <div className="kpi-label">{nome}</div>
+                <div
+                  className="kpi-value"
+                  style={{
+                    fontSize: '18px',
+                    lineHeight: '1.2',
+                    color: projecao == null ? REAL : projecao[chave] <= projecao.orcado ? VERDE : VERMELHO,
+                  }}
+                >
+                  {projecao == null ? '—' : fmtMoeda(projecao[chave])}
+                </div>
+                <div className="kpi-sub">
+                  {projecao == null
+                    ? 'Sem medição'
+                    : `${projecao[chave] <= projecao.orcado ? 'Abaixo' : 'Acima'} do orçado em ${fmtMoeda(Math.abs(projecao[chave] - projecao.orcado))}`}
+                </div>
+              </div>
+            ))}
+          </>
+        )}
       </div>
 
       {abrirGrupos && (
