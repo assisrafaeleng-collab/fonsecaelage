@@ -1564,9 +1564,9 @@ function CurvaS({ curva, semana, ultMed, base, onPick }) {
   const series = [
     { id: 'fp', nome: 'Físico planejado', cor: '#5B9BD5', campo: 'fp', esc: yPct, dash: '5,4', tipo: 'pct' },
     { id: 'fr', nome: 'Físico realizado', cor: '#4D9B6A', campo: 'fr', esc: yPct, dash: null, tipo: 'pct' },
-    { id: 'vp', nome: 'Valor planejado (VP)', cor: '#C8860A', campo: 'vp', esc: yFin, dash: '5,4', tipo: 'rs' },
-    { id: 'va', nome: 'Valor agregado (VA)', cor: '#A98BE0', campo: 'va', esc: yFin, dash: null, tipo: 'rs' },
-    { id: 'cr', nome: 'Custo realizado (CR)', cor: '#E91E8C', campo: 'cr', esc: yFin, dash: null, tipo: 'rs' },
+    { id: 'vp', nome: 'Valor planejado (VP)', cor: '#C9B38A', campo: 'vp', esc: yFin, dash: '5,4', tipo: 'rs' },
+    { id: 'va', nome: 'Valor agregado (VA)', cor: '#E8B04B', campo: 'va', esc: yFin, dash: null, tipo: 'rs' },
+    { id: 'cr', nome: 'Custo realizado (CR)', cor: '#D9734E', campo: 'cr', esc: yFin, dash: null, tipo: 'rs' },
   ]
   const visiveis = series.filter((sr) => !ocultas[sr.id])
 
