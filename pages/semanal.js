@@ -275,15 +275,18 @@ export default function Semanal() {
       otimista,
       provavel: otimista + porSemana * semanasExtras,
       // Adiantamento não barateia a obra: no pessimista o IDP fica até 1.
-      pessimista: comprometido + falta / (idc * Math.min(idp, 1)),
+      pessimista: comprometido + falta / (idc * idp),
       semanasExtras,
       porSemana,
       custoAtraso: porSemana * semanasExtras,
     }
   })()
   // O alternador escolhe a régua do avanço físico: hora-homem ou custo.
-  const avancoPlan = base === 'hh' ? p.avanco_plan_hh : p.avanco_plan_custo
-  const avancoReal = base === 'hh' ? p.avanco_real_hh : p.avanco_real_custo
+  // Planejado e realizado na mesma semana: a da ultima medicao (ou a
+  // selecionada, se for anterior). Depois da medicao o realizado so repete o
+  // ultimo valor, e o planejado continuaria andando.
+  const avancoPlan = base === 'hh' ? pRef.avanco_plan_hh : pRef.avanco_plan_custo
+  const avancoReal = base === 'hh' ? pRef.avanco_real_hh : pRef.avanco_real_custo
   const inicioSem = menos6(p.data_fim)
   const primeira = menos6(dados.curva[0].data_fim)
   const ultima = dados.curva[dados.curva.length - 1].data_fim
@@ -458,7 +461,7 @@ export default function Semanal() {
           <div className="kpi">
             <div className="kpi-label">{nomeAvanco} · Planejado</div>
             <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2' }}>{fmtPerc(avancoPlan)}</div>
-            <div className="kpi-sub">Hh planejado ÷ Hh do projeto</div>
+            <div className="kpi-sub">Hh planejado ÷ Hh do projeto · em {sRef}</div>
           </div>
         )}
 
@@ -496,7 +499,7 @@ export default function Semanal() {
             {avancoReal == null ? '—' : `${avancoReal >= avancoPlan ? '+' : ''}${(avancoReal - avancoPlan).toFixed(1)}%`}
           </div>
           <div className="kpi-sub">
-            {avancoReal != null && avancoReal >= avancoPlan ? 'Adiantado' : 'Atrasado'} · p.p. do projeto
+            {avancoReal != null && avancoReal >= avancoPlan ? 'Adiantado' : 'Atrasado'} · p.p. do projeto · em {sRef}
           </div>
         </div>
         )}
@@ -680,10 +683,10 @@ export default function Semanal() {
                 'pessimista',
                 projecao &&
                   `Realizado + falta ÷ (IDC × IDP)\n` +
-                    `= ${fmtMoeda(comprometido)} + ${fmtMoeda(projecao.falta)} ÷ (${fmtIdx(idc)} × ${fmtIdx(Math.min(idp, 1))})\n` +
+                    `= ${fmtMoeda(comprometido)} + ${fmtMoeda(projecao.falta)} ÷ (${fmtIdx(idc)} × ${fmtIdx(idp)})\n` +
                     `= ${fmtMoeda(projecao.pessimista)}\n\n` +
                     (idp > 1
-                      ? `O IDP real é ${fmtIdx(idp)}, mas entra como 1,000: adiantamento não barateia a obra.\nPor isso, adiantado, o pessimista fica igual ao otimista.`
+                      ? 'Custo e prazo pesam juntos, com o IDP real.\nAdiantado (IDP > 1), este cenário fica abaixo do otimista.'
                       : 'Custo e prazo pesam juntos: o atraso encarece o que falta.'),
               ],
             ].map(([nome, chave, formula]) => (
