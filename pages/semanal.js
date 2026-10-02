@@ -210,7 +210,12 @@ export default function Semanal() {
   const indiretoTotal = dados.totais.indireto || 0
   const indiretoPlan = p.indireto_planejado || 0
   const indiretoReal = p.indireto_realizado
-  const saldoIndireto = indiretoReal == null ? null : indiretoPlan - indiretoReal
+  // Contas a pagar: zerado ate chegar o relatorio do TOTVS. Quando tiver,
+  // trocar estes dois valores pelos do relatorio (direto e indireto).
+  const aPagarDireto = 0
+  const aPagarIndireto = 0
+  const saldoIndireto = indiretoReal == null ? null : indiretoPlan - indiretoReal - aPagarIndireto
+  const pctIndireto = saldoIndireto == null || indiretoPlan <= 0 ? null : (saldoIndireto / indiretoPlan) * 100
   const bcwpA = base === 'hh' ? p.bcwp_a_hh : p.bcwp_a_custo
   const bcwp = bcwpA == null ? null : bcwpA + (p.bcwp_b || 0) + (p.bcwp_c || 0)
   const spi = p.bcws > 0 && bcwp != null ? bcwp / p.bcws : null
@@ -231,18 +236,17 @@ export default function Semanal() {
   const agregado =
     pRef.bcwp_a_custo == null ? null : pRef.bcwp_a_custo + (pRef.bcwp_b || 0) + (pRef.bcwp_c || 0)
   const realizadoRef = pRef.acwp
-  // O realizado é o que foi pago. Item em aberto entra no saldo pelo menor
-  // entre agregado e pago; o que foi executado e ainda não pago fica em
-  // "aguardando pagamento" e não conta como economia.
-  const aguardando = pRef.aguardando_pagamento || 0
-  const agregadoSaldo =
-    pRef.bcwp_a_saldo == null ? null : pRef.bcwp_a_saldo + (pRef.bcwp_b || 0) + (pRef.bcwp_c || 0)
-  const saldoDireto = agregadoSaldo == null ? null : agregadoSaldo - realizadoRef
-  // Eficiência de custo só dos itens encerrados (resultado real). Item em
-  // aberto só mostra estouro e puxaria o índice para baixo. Sem nenhum item
-  // encerrado, fica 1,00: projeta pelo orçado.
-  const idcBase = pRef.pago_encerrado > 0 ? 'itens encerrados' : 'sem item encerrado'
-  const idc = agregadoSaldo == null ? null : pRef.pago_encerrado > 0 ? pRef.agregado_encerrado / pRef.pago_encerrado : 1
+  // Saldo do direto = valor agregado − pago − a pagar. O a pagar fecha a
+  // conta do que foi executado e ainda nao foi pago; zerado, o saldo tende a
+  // mostrar economia que e so conta em aberto.
+  const comprometido = realizadoRef + aPagarDireto
+  const saldoDireto = agregado == null ? null : agregado - comprometido
+  const pctDireto = saldoDireto == null || !(agregado > 0) ? null : (saldoDireto / agregado) * 100
+  // Total: soma dos dois saldos sobre a soma das duas bases.
+  const saldoTotal = saldoDireto == null || saldoIndireto == null ? null : saldoDireto + saldoIndireto
+  const baseTotal = (agregado || 0) + indiretoPlan
+  const pctTotal = saldoTotal == null || baseTotal <= 0 ? null : (saldoTotal / baseTotal) * 100
+  const idc = agregado != null && comprometido > 0 ? agregado / comprometido : null
   const idp = agregado != null && pRef.bcws > 0 ? agregado / pRef.bcws : null
 
   // Projeção do custo direto no término (mesma conta da rota, na semana de
@@ -251,21 +255,21 @@ export default function Semanal() {
   //   provável   = otimista + custo de calendário × semanas extras
   //   pessimista = realizado + falta ÷ (IDC × IDP)
   const projecao = (() => {
-    if (idc == null || idp == null || idc <= 0 || idp <= 0 || agregadoSaldo == null) return null
+    if (idc == null || idp == null || idc <= 0 || idp <= 0 || agregado == null) return null
     const orcado = dados.totais.custo_direto
-    // Falta = o que não foi executado + o executado ainda não pago.
-    const falta = orcado - agregadoSaldo
+    // Falta = o que ainda nao foi executado, a preco de orcamento.
+    const falta = orcado - agregado
     const duracao = dados.curva.length
     const semanasExtras = Math.max(duracao / idp - duracao, 0)
     const porSemana = (dados.kpis.projecao && dados.kpis.projecao.custo_calendario_semana) || 0
-    const otimista = realizadoRef + falta / idc
+    const otimista = comprometido + falta / idc
     return {
       orcado,
       falta,
       otimista,
       provavel: otimista + porSemana * semanasExtras,
       // Adiantamento não barateia a obra: no pessimista o IDP fica até 1.
-      pessimista: realizadoRef + falta / (idc * Math.min(idp, 1)),
+      pessimista: comprometido + falta / (idc * Math.min(idp, 1)),
       semanasExtras,
       porSemana,
       custoAtraso: porSemana * semanasExtras,
@@ -378,7 +382,6 @@ export default function Semanal() {
           <div className="kpi-sub">
             Executado até {sRef}
             {refAtrasada ? ' · última medição' : ''}
-            {aguardando > 0 ? ` · ${fmtMoeda(aguardando)} a pagar` : ''}
           </div>
         </div>
 
@@ -403,11 +406,10 @@ export default function Semanal() {
             saldoDireto == null
               ? ''
               : `Executado (valor agregado): ${fmtMoeda(agregado)}\n` +
-                `− Executado ainda não pago: ${fmtMoeda(aguardando)}\n` +
-                `= Executado e pago: ${fmtMoeda(agregadoSaldo)}\n` +
                 `− Pago: ${fmtMoeda(realizadoRef)}\n` +
+                `− A pagar: ${fmtMoeda(aPagarDireto)}\n` +
                 `= Saldo: ${fmtMoeda(saldoDireto)}\n\n` +
-                'Item em aberto só mostra estouro. Economia aparece quando o item é marcado como encerrado (custo_encerrado).'
+                'Enquanto o a pagar estiver zerado, parte da economia pode ser só conta ainda não paga.'
           }
         >
           <div className="kpi-label">Saldo Custo Direto</div>
@@ -424,18 +426,59 @@ export default function Semanal() {
           <div className="kpi-sub">
             {saldoDireto == null
               ? 'Sem medição'
-              : `${saldoDireto >= 0 ? 'Economia' : 'Acima'} · eficiência ${fmtIdx(idc)} (${idcBase})`}
+              : `${saldoDireto >= 0 ? 'Economia' : 'Acima'} · eficiência ${fmtIdx(idc)}`}
           </div>
         </div>
 
-        <div className="kpi">
-          <div className="kpi-label">{nomeAvanco} · Planejado</div>
-          <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2' }}>{fmtPerc(avancoPlan)}</div>
-          <div className="kpi-sub">{base === 'hh' ? 'Hh planejado ÷ Hh do projeto' : 'Planejado da produção ÷ orçado da produção'}</div>
-        </div>
+        {base === 'custo' ? (
+          <div
+            className="kpi"
+            title={
+              pctDireto == null
+                ? ''
+                : `(Valor agregado − realizado − a pagar) ÷ valor agregado\n` +
+                  `(${fmtMoeda(agregado)} − ${fmtMoeda(realizadoRef)} − ${fmtMoeda(aPagarDireto)}) ÷ ${fmtMoeda(agregado)}`
+            }
+          >
+            <div className="kpi-label">% Desvio do Custo Direto</div>
+            <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2', color: pctDireto == null ? REAL : pctDireto >= 0 ? VERDE : VERMELHO }}>
+              {pctDireto == null ? '—' : `${pctDireto >= 0 ? '+' : ''}${fmtPerc(pctDireto)}`}
+            </div>
+            <div className="kpi-sub">
+              {pctDireto == null ? 'Sem medição' : `${pctDireto >= 0 ? 'Economia' : 'Acima'} sobre o valor agregado · até ${sRef}`}
+            </div>
+          </div>
+        ) : (
+          <div className="kpi">
+            <div className="kpi-label">{nomeAvanco} · Planejado</div>
+            <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2' }}>{fmtPerc(avancoPlan)}</div>
+            <div className="kpi-sub">Hh planejado ÷ Hh do projeto</div>
+          </div>
+        )}
 
+        {base === 'custo' ? (
+          <div
+            className="kpi"
+            title={
+              saldoTotal == null
+                ? ''
+                : `Saldo do direto: ${fmtMoeda(saldoDireto)}\n` +
+                  `+ Saldo do indireto: ${fmtMoeda(saldoIndireto)}\n` +
+                  `= Saldo total: ${fmtMoeda(saldoTotal)}\n\n` +
+                  `% = saldo total ÷ (valor agregado + indireto planejado)`
+            }
+          >
+            <div className="kpi-label">Saldo Total da Obra</div>
+            <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2', color: saldoTotal == null ? REAL : saldoTotal >= 0 ? VERDE : VERMELHO }}>
+              {saldoTotal == null ? '—' : fmtMoeda(saldoTotal)}
+            </div>
+            <div className="kpi-sub" style={{ color: pctTotal == null ? undefined : pctTotal >= 0 ? VERDE : VERMELHO }}>
+              {pctTotal == null ? 'Sem medição' : `${pctTotal >= 0 ? '+' : ''}${fmtPerc(pctTotal)} · direto + indireto`}
+            </div>
+          </div>
+        ) : (
         <div className="kpi">
-          <div className="kpi-label">{base === 'hh' ? 'Desvio Físico' : 'Desvio Ponderado por Custo'}</div>
+          <div className="kpi-label">Desvio Físico</div>
           <div
             className="kpi-value"
             style={{
@@ -450,6 +493,7 @@ export default function Semanal() {
             {avancoReal != null && avancoReal >= avancoPlan ? 'Adiantado' : 'Atrasado'} · p.p. do projeto
           </div>
         </div>
+        )}
       </div>
 
       {/* Linha 2 — custo indireto e avanço físico realizado */}
@@ -494,37 +538,49 @@ export default function Semanal() {
           <div className="kpi-sub">{saldoIndireto == null ? '—' : saldoIndireto >= 0 ? 'Economia' : 'Acima'}</div>
         </div>
 
-        <div
-          className="kpi kpi-clickable"
-          onClick={() => setAbrirAvanco((v) => !v)}
-          title="Ver avanço por grupo"
-        >
-          <div className="kpi-label">
-            {nomeAvanco} · Realizado {abrirAvanco ? '▴' : '▾'}
+        {base === 'custo' ? (
+          <div
+            className="kpi"
+            title={
+              pctIndireto == null
+                ? ''
+                : `(Indireto planejado − realizado − a pagar) ÷ indireto planejado\n` +
+                  `(${fmtMoeda(indiretoPlan)} − ${fmtMoeda(indiretoReal)} − ${fmtMoeda(aPagarIndireto)}) ÷ ${fmtMoeda(indiretoPlan)}`
+            }
+          >
+            <div className="kpi-label">% Desvio do Custo Indireto</div>
+            <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2', color: pctIndireto == null ? REAL : pctIndireto >= 0 ? VERDE : VERMELHO }}>
+              {pctIndireto == null ? '—' : `${pctIndireto >= 0 ? '+' : ''}${fmtPerc(pctIndireto)}`}
+            </div>
+            <div className="kpi-sub">
+              {pctIndireto == null ? '—' : `${pctIndireto >= 0 ? 'Economia' : 'Acima'} sobre o planejado · até S${String(p.semana).padStart(2, '0')}`}
+            </div>
           </div>
-          <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2' }}>
-            {avancoReal == null ? '—' : fmtPerc(avancoReal)}
+        ) : (
+          <div
+            className="kpi kpi-clickable"
+            onClick={() => setAbrirAvanco((v) => !v)}
+            title="Ver avanço por grupo"
+          >
+            <div className="kpi-label">
+              {nomeAvanco} · Realizado {abrirAvanco ? '▴' : '▾'}
+            </div>
+            <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2' }}>
+              {avancoReal == null ? '—' : fmtPerc(avancoReal)}
+            </div>
+            <div className="kpi-sub">
+              Hh executado ÷ Hh do projeto · medido até S
+              {String(dados.ultima_semana_com_avanco).padStart(2, '0')}
+            </div>
           </div>
-          <div className="kpi-sub">
-            {base === 'hh' ? 'Hh executado ÷ Hh do projeto' : 'Agregado da produção ÷ orçado da produção'} · medido até S
-            {String(dados.ultima_semana_com_avanco).padStart(2, '0')}
-          </div>
-        </div>
+        )}
 
-        <div
-          className="kpi kpi-clickable"
-          onClick={() => router.push(`/valor-agregado?semana=${semRef}&filtro=a-pagar`)}
-          title="Serviço executado cujo custo ainda não foi pago. Clique para ver a lista por item."
-        >
-          <div className="kpi-label">A Pagar ↗</div>
+        <div className="kpi" title="Contas a pagar do TOTVS (direto + indireto). Zerado até automatizarmos o relatório.">
+          <div className="kpi-label">A Pagar</div>
           <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2', color: '#c9a45c' }}>
-            {pRef.aguardando_pagamento == null ? '—' : fmtMoeda(pRef.aguardando_pagamento)}
+            {fmtMoeda(aPagarDireto + aPagarIndireto)}
           </div>
-          <div className="kpi-sub">
-            {pRef.itens_a_pagar == null
-              ? 'Sem medição'
-              : `Executado sem pagamento · ${pRef.itens_a_pagar} ${pRef.itens_a_pagar === 1 ? 'item' : 'itens'} · até ${sRef}`}
-          </div>
+          <div className="kpi-sub">Aguardando relatório do TOTVS</div>
         </div>
       </div>
 
@@ -540,11 +596,11 @@ export default function Semanal() {
           </div>
           <div className="kpi-sub">Base das projeções · até {sRef}</div>
           <div style={{ font: "500 10px 'IBM Plex Mono', monospace", color: '#8b919c', marginTop: 8, lineHeight: 1.5 }}>
-            falta = orçado − executado e pago
+            falta = orçado − valor agregado
             {projecao != null && (
               <>
                 <br />
-                IDC {fmtIdx(idc)} ({idcBase}) · IDP {fmtIdx(idp)}
+                IDC {fmtIdx(idc)} · IDP {fmtIdx(idp)}
               </>
             )}
           </div>
@@ -572,7 +628,7 @@ export default function Semanal() {
             {projecao != null && (
               <>
                 <br />
-                {`${fmtMoeda(realizadoRef)} + ${fmtMoeda(projecao.falta)} ÷ ${fmtIdx(idc)}`}
+                {`${fmtMoeda(comprometido)} + ${fmtMoeda(projecao.falta)} ÷ ${fmtIdx(idc)}`}
               </>
             )}
           </div>
@@ -628,7 +684,7 @@ export default function Semanal() {
             {projecao != null && (
               <>
                 <br />
-                {`${fmtMoeda(realizadoRef)} + ${fmtMoeda(projecao.falta)} ÷ (${fmtIdx(idc)} × ${fmtIdx(Math.min(idp, 1))})`}
+                {`${fmtMoeda(comprometido)} + ${fmtMoeda(projecao.falta)} ÷ (${fmtIdx(idc)} × ${fmtIdx(Math.min(idp, 1))})`}
               </>
             )}
           </div>
