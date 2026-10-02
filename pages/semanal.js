@@ -77,7 +77,6 @@ export default function Semanal() {
   const [abertura, setAbertura] = useState(null)
   const [somas, setSomas] = useState(null)
   const [carregandoGrupos, setCarregandoGrupos] = useState(false)
-  const [series, setSeries] = useState({ finPlan: true, finAgreg: true, finReal: true, fisPlan: true, fisReal: true })
 
   useEffect(() => {
     fetch('/api/dashboard-semanal')
@@ -190,191 +189,6 @@ export default function Semanal() {
     return g
   }, [dados])
 
-  const chart = useMemo(() => {
-    if (!dados) return null
-    const total = dados.totais.custo_direto
-    const bcwpDe = (c) => {
-      const a = base === 'hh' ? c.bcwp_a_hh : c.bcwp_a_custo
-      return a == null ? null : a + (c.bcwp_b || 0) + (c.bcwp_c || 0)
-    }
-
-    // Valor agregado sempre na regua de custo, igual ao card. So ate a ultima
-    // semana com medicao fisica: depois dela o agregado ficaria parado e a
-    // linha pareceria uma obra sem producao.
-    const ultMed = dados.ultima_semana_com_avanco || dados.semana_atual
-    const agregadoDe = (c) =>
-      c.semana > ultMed || c.bcwp_a_custo == null ? null : c.bcwp_a_custo + (c.bcwp_b || 0) + (c.bcwp_c || 0)
-
-    const labels = dados.curva.map((c) => `S${String(c.semana).padStart(2, '0')} · ${dm(menos6(c.data_fim))}`)
-    const datasets = []
-
-    if (series.finPlan)
-      datasets.push({
-        label: 'Valor planejado (VP)',
-        data: dados.curva.map((c) => (c.bcws != null ? c.bcws / 1000 : null)),
-        borderColor: FIN_PLAN,
-        fill: false,
-        borderWidth: 1.5,
-        borderDash: [5, 4],
-        // 87 semanas contra 20 meses: com marcador em todas, as bolinhas se
-        // encostam e o tracejado some. Marcador a cada 3 semanas; o hover
-        // continua pegando todas.
-        pointRadius: (ctx) => (ctx.dataIndex % 3 === 0 ? 3 : 0),
-        pointStyle: 'circle',
-        pointBackgroundColor: 'transparent',
-        pointHoverRadius: 5,
-        yAxisID: 'y-financeiro',
-        tension: 0.3,
-      })
-
-    if (series.finAgreg)
-      datasets.push({
-        label: 'Valor agregado (VA)',
-        data: dados.curva.map((c) => {
-          const v = agregadoDe(c)
-          return v == null ? null : v / 1000
-        }),
-        borderColor: FIN_AGREG,
-        fill: false,
-        borderWidth: 2.5,
-        pointRadius: 4,
-        pointStyle: 'rectRot',
-        pointBackgroundColor: FIN_AGREG,
-        pointHoverRadius: 6,
-        yAxisID: 'y-financeiro',
-        tension: 0.35,
-      })
-
-    if (series.finReal)
-      datasets.push({
-        label: 'Custo realizado (CR)',
-        data: dados.curva.map((c) => (c.medido ? c.acwp / 1000 : null)),
-        borderColor: FIN_REAL,
-        backgroundColor: (context) => {
-          const { chart } = context
-          const { ctx, chartArea } = chart
-          if (!chartArea) return 'rgba(127,176,138,0.12)'
-          const g = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom)
-          g.addColorStop(0, 'rgba(127,176,138,0.18)')
-          g.addColorStop(1, 'rgba(127,176,138,0)')
-          return g
-        },
-        fill: true,
-        borderWidth: 2.5,
-        pointRadius: 4,
-        pointStyle: 'circle',
-        pointBackgroundColor: FIN_REAL,
-        pointHoverRadius: 6,
-        yAxisID: 'y-financeiro',
-        tension: 0.35,
-      })
-
-    if (series.fisPlan)
-      datasets.push({
-        label: 'Físico Planejado',
-        data: dados.curva.map((c) => (base === 'hh' ? c.avanco_plan_hh : c.avanco_plan_custo)),
-        borderColor: FIS_PLAN,
-        fill: false,
-        borderWidth: 1.5,
-        borderDash: [5, 4],
-        pointRadius: (ctx) => (ctx.dataIndex % 3 === 0 ? 3 : 0),
-        pointStyle: 'circle',
-        pointBackgroundColor: 'transparent',
-        pointHoverRadius: 5,
-        yAxisID: 'y-fisico',
-        tension: 0.3,
-      })
-
-    if (series.fisReal)
-      datasets.push({
-        label: 'Físico Realizado',
-        data: dados.curva.map((c) => (c.medido ? (base === 'hh' ? c.avanco_real_hh : c.avanco_real_custo) : null)),
-        borderColor: FIS_REAL,
-        fill: false,
-        borderWidth: 2.5,
-        pointRadius: 4,
-        pointStyle: 'circle',
-        pointBackgroundColor: FIS_REAL,
-        pointHoverRadius: 6,
-        yAxisID: 'y-fisico',
-        tension: 0.35,
-      })
-
-    return { labels, datasets }
-  }, [dados, base, series])
-
-  const chartOptions = useMemo(
-    () => ({
-      responsive: true,
-      maintainAspectRatio: false,
-      interaction: { mode: 'index', intersect: false },
-      onClick: (_evt, elements) => {
-        if (elements?.length && dados) setSemana(dados.curva[elements[0].index].semana)
-      },
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: 'rgba(27,30,36,0.97)',
-          titleColor: '#e8eaed',
-          bodyColor: '#c3c9d2',
-          borderColor: 'rgba(255,255,255,0.14)',
-          borderWidth: 1,
-          padding: 12,
-          boxPadding: 5,
-          displayColors: true,
-          callbacks: {
-            title: (ctx) => {
-              const c = dados.curva[ctx[0].dataIndex]
-              return `Semana ${c.semana} · ${dm(menos6(c.data_fim))} a ${dm(c.data_fim)}`
-            },
-            label: (ctx) => {
-              const v = ctx.parsed.y
-              if (v == null) return null
-              if (ctx.dataset.yAxisID === 'y-financeiro') return `${ctx.dataset.label}: R$ ${v.toFixed(0)}k`
-              return `${ctx.dataset.label}: ${v.toFixed(1)}%`
-            },
-            footer: (ctx) => {
-              const c = dados.curva[ctx[0].dataIndex]
-              const ultMed = dados.ultima_semana_com_avanco || dados.semana_atual
-              if (c.semana > ultMed || c.bcwp_a_custo == null || !(c.acwp > 0)) return ''
-              const va = c.bcwp_a_custo + (c.bcwp_b || 0) + (c.bcwp_c || 0)
-              const saldo = va - c.acwp
-              const k = (x) => `R$ ${(x / 1000).toFixed(0)}k`
-              return [
-                `Saldo (VA − CR): ${saldo >= 0 ? '+' : '−'}${k(Math.abs(saldo))}`,
-                `Eficiência de custo (IDC): ${(va / c.acwp).toFixed(3).replace('.', ',')}`,
-                c.bcws > 0 ? `Eficiência de prazo (IDP): ${(va / c.bcws).toFixed(3).replace('.', ',')}` : '',
-              ].filter(Boolean)
-            },
-          },
-        },
-      },
-      scales: {
-        'y-financeiro': {
-          type: 'linear',
-          position: 'left',
-          title: { display: true, text: 'Financeiro (R$ mil)', color: '#8b919c', font: { size: 11 } },
-          ticks: { color: '#8b919c', font: { size: 10 }, callback: (v) => `R$ ${v}k` },
-          grid: { color: 'rgba(255,255,255,0.06)' },
-        },
-        'y-fisico': {
-          type: 'linear',
-          position: 'right',
-          min: 0,
-          max: 100,
-          title: { display: true, text: 'Físico (%)', color: '#8b919c', font: { size: 11 } },
-          ticks: { color: '#8b919c', font: { size: 10 }, callback: (v) => `${v}%` },
-          grid: { drawOnChartArea: false },
-        },
-        x: {
-          ticks: { color: '#8b919c', font: { size: 10 }, maxRotation: 45, minRotation: 45, autoSkip: true, maxTicksLimit: 18 },
-          grid: { color: 'rgba(255,255,255,0.06)' },
-        },
-      },
-    }),
-    [dados]
-  )
-
   if (erro)
     return (
       <div className="page">
@@ -463,14 +277,6 @@ export default function Semanal() {
   const inicioSem = menos6(p.data_fim)
   const primeira = menos6(dados.curva[0].data_fim)
   const ultima = dados.curva[dados.curva.length - 1].data_fim
-
-  const legendas = [
-    ['finReal', 'Custo realizado (CR)', FIN_REAL, 'solid'],
-    ['finAgreg', 'Valor agregado (VA)', FIN_AGREG, 'solid'],
-    ['finPlan', 'Valor planejado (VP)', FIN_PLAN, 'dashed'],
-    ['fisReal', 'Físico realizado', FIS_REAL, 'solid'],
-    ['fisPlan', 'Físico planejado', FIS_PLAN, 'dashed'],
-  ]
 
   return (
     <div className="page">
@@ -1565,44 +1371,14 @@ export default function Semanal() {
       )}
 
       <div className="card">
-        <div className="card-title">Curva S — Acompanhamento Físico-Financeiro</div>
-        <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', margin: '10px 0 6px', alignItems: 'center' }}>
-          {legendas.map(([chave, nome, cor, traco]) => (
-            <button
-              key={chave}
-              onClick={() => setSeries((v) => ({ ...v, [chave]: !v[chave] }))}
-              onDoubleClick={() =>
-                setSeries({ finPlan: false, finAgreg: false, finReal: false, fisPlan: false, fisReal: false, [chave]: true })
-              }
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '7px',
-                font: "500 11px 'IBM Plex Sans'",
-                color: series[chave] ? '#e8eaed' : '#5c6169',
-                background: 'transparent',
-                border: 'none',
-                padding: 0,
-                cursor: 'pointer',
-              }}
-              title="Clique para ocultar · duplo clique para ver só esta"
-            >
-              <span
-                style={{
-                  width: '18px',
-                  height: 0,
-                  borderTop: `2px ${traco} ${cor}`,
-                  opacity: series[chave] ? 1 : 0.3,
-                }}
-              />
-              {nome}
-            </button>
-          ))}
-          <span style={{ marginLeft: 'auto', font: "500 11px 'IBM Plex Sans'", color: '#8b919c' }}>
-            Clique na legenda para ocultar · duplo clique isola uma linha · clique no gráfico para ir à semana
-          </span>
-        </div>
-        <div style={{ height: '400px', position: 'relative' }}>{chart && <Line data={chart} options={chartOptions} />}</div>
+        <div className="card-title">Curva S — físico e financeiro</div>
+        <CurvaS
+          curva={dados.curva}
+          semana={p.semana}
+          ultMed={dados.ultima_semana_com_avanco || p.semana}
+          base={base}
+          onPick={setSemana}
+        />
       </div>
 
       {mapa && (
@@ -1751,6 +1527,219 @@ export default function Semanal() {
       )}
 
       <DiarioOcorrencias />
+    </div>
+  )
+}
+
+/* ─── CURVA S SEMANAL (mesmo layout do Sirius 60) ───────────── */
+const fmtK = (v) =>
+  v >= 1e6 ? `R$ ${(v / 1e6).toFixed(2).replace('.', ',')}M` : `R$ ${Math.round(v / 1000)}k`
+const fmtPc2 = (v) => `${v.toFixed(2).replace('.', ',')}%`
+
+function CurvaS({ curva, semana, ultMed, base, onPick }) {
+  const porHora = base === 'hh'
+  const W = 900, H = 340, PADL = 52, PADR = 66, PADT = 26, PADB = 40
+  const n = curva.length
+  const [hover, setHover] = useState(null)
+  const [ocultas, setOcultas] = useState({})
+
+  // Valor agregado na regua de custo, igual ao card, so ate a ultima medicao.
+  const va = (c) =>
+    c.semana > ultMed || c.bcwp_a_custo == null ? null : c.bcwp_a_custo + (c.bcwp_b || 0) + (c.bcwp_c || 0)
+  const pontos = curva.map((c) => ({
+    semana: c.semana,
+    data_fim: c.data_fim,
+    fp: porHora ? c.avanco_plan_hh : c.avanco_plan_custo,
+    fr: c.medido ? (porHora ? c.avanco_real_hh : c.avanco_real_custo) : null,
+    vp: c.bcws,
+    va: va(c),
+    cr: c.medido ? c.acwp : null,
+  }))
+
+  const maxFin = Math.max(...pontos.map((m) => Math.max(m.vp || 0, m.va || 0, m.cr || 0)), 1)
+  const x = (i) => PADL + (i / (n - 1)) * (W - PADL - PADR)
+  const yPct = (v) => H - PADB - (v / 100) * (H - PADT - PADB)
+  const yFin = (v) => H - PADB - (v / maxFin) * (H - PADT - PADB)
+
+  const series = [
+    { id: 'fp', nome: 'Físico planejado', cor: '#5B9BD5', campo: 'fp', esc: yPct, dash: '5,4', tipo: 'pct' },
+    { id: 'fr', nome: 'Físico realizado', cor: '#4D9B6A', campo: 'fr', esc: yPct, dash: null, tipo: 'pct' },
+    { id: 'vp', nome: 'Valor planejado (VP)', cor: '#C8860A', campo: 'vp', esc: yFin, dash: '5,4', tipo: 'rs' },
+    { id: 'va', nome: 'Valor agregado (VA)', cor: '#A98BE0', campo: 'va', esc: yFin, dash: null, tipo: 'rs' },
+    { id: 'cr', nome: 'Custo realizado (CR)', cor: '#E91E8C', campo: 'cr', esc: yFin, dash: null, tipo: 'rs' },
+  ]
+  const visiveis = series.filter((sr) => !ocultas[sr.id])
+
+  const linha = (campo, esc) => {
+    let d = ''
+    pontos.forEach((m, i) => {
+      const v = m[campo]
+      if (v == null) return
+      d += (d === '' ? 'M' : 'L') + x(i).toFixed(1) + ',' + esc(v).toFixed(1)
+    })
+    return d
+  }
+
+  function alternar(id) {
+    const nova = { ...ocultas, [id]: !ocultas[id] }
+    if (series.every((sr) => nova[sr.id])) return // nunca deixa o grafico vazio
+    setOcultas(nova)
+  }
+  const mostrarSo = (ids) => {
+    const o = {}
+    series.forEach((sr) => {
+      if (!ids.includes(sr.id)) o[sr.id] = true
+    })
+    setOcultas(o)
+  }
+
+  const indiceDo = (e) => {
+    const r = e.currentTarget.getBoundingClientRect()
+    const px = ((e.clientX - r.left) / r.width) * W
+    if (px < PADL - 10 || px > W - PADR + 10) return null
+    const i = Math.round(((px - PADL) / (W - PADL - PADR)) * (n - 1))
+    return Math.max(0, Math.min(i, n - 1))
+  }
+
+  const iSel = Math.max(0, pontos.findIndex((m) => m.semana === semana))
+  const h = hover != null ? pontos[hover] : null
+  const saldo = h && h.va != null && h.cr != null ? h.va - h.cr : null
+
+  return (
+    <div>
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        style={{ width: '100%', height: 'auto', cursor: 'pointer' }}
+        onMouseMove={(e) => setHover(indiceDo(e))}
+        onMouseLeave={() => setHover(null)}
+        onClick={(e) => {
+          const i = indiceDo(e)
+          if (i != null && onPick) onPick(pontos[i].semana)
+        }}
+      >
+        {[0, 25, 50, 75, 100].map((pc) => (
+          <g key={pc}>
+            <line x1={PADL} y1={yPct(pc)} x2={W - PADR} y2={yPct(pc)} stroke="var(--border)" strokeWidth="1" />
+            <text x={PADL - 8} y={yPct(pc) + 3} fill="var(--text3)" fontSize="9" textAnchor="end">
+              {pc}%
+            </text>
+            <text x={W - PADR + 8} y={yPct(pc) + 3} fill="var(--text3)" fontSize="9">
+              {fmtK((maxFin * pc) / 100)}
+            </text>
+          </g>
+        ))}
+        {pontos.map(
+          (m, i) =>
+            (m.semana % 8 === 0 || m.semana === 1) && (
+              <text key={i} x={x(i)} y={H - PADB + 15} fill="var(--text3)" fontSize="8" textAnchor="middle">
+                S{m.semana}
+              </text>
+            )
+        )}
+
+        <line x1={x(iSel)} y1={PADT - 10} x2={x(iSel)} y2={H - PADB}
+              stroke="var(--accent)" strokeWidth="1.5" strokeDasharray="5,4" />
+        <text x={x(iSel)} y={PADT - 14} fill="var(--accent)" fontSize="9" textAnchor="middle" fontWeight="bold">
+          S{semana}
+        </text>
+
+        {visiveis.map((sr) => (
+          <path key={sr.id} d={linha(sr.campo, sr.esc)} fill="none" stroke={sr.cor} strokeWidth="2"
+                strokeDasharray={sr.dash || 'none'} opacity={sr.dash ? 0.62 : 1}
+                strokeLinejoin="round" strokeLinecap="round" />
+        ))}
+
+        {h && (
+          <g>
+            <line x1={x(hover)} y1={PADT - 10} x2={x(hover)} y2={H - PADB}
+                  stroke="var(--text3)" strokeWidth="1" opacity=".55" />
+            {visiveis.map((sr) =>
+              h[sr.campo] == null ? null : (
+                <circle key={sr.id} cx={x(hover)} cy={sr.esc(h[sr.campo])} r="3.5"
+                        fill={sr.cor} stroke="var(--bg)" strokeWidth="1.5" />
+              )
+            )}
+          </g>
+        )}
+      </svg>
+
+      {/* leitura da semana sob o cursor */}
+      <div style={{ minHeight: 62, marginTop: 4 }}>
+        {h ? (
+          <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap', alignItems: 'center', padding: '10px 14px',
+                        background: 'var(--bg3)', borderRadius: 9, border: '1px solid var(--border)' }}>
+            <div style={{ font: '600 12px var(--mono)', color: 'var(--accent)' }}>
+              S{String(h.semana).padStart(2, '0')} · {dm(menos6(h.data_fim))} a {dm(h.data_fim)}
+            </div>
+            {visiveis.map((sr) => (
+              <div key={sr.id}>
+                <div className="kpi-sub">{sr.nome}</div>
+                <div style={{ font: '600 13px var(--mono)', color: sr.cor }}>
+                  {h[sr.campo] == null ? '—' : sr.tipo === 'pct' ? fmtPc2(h[sr.campo]) : fmtMoeda(h[sr.campo])}
+                </div>
+              </div>
+            ))}
+            {saldo != null && (
+              <div>
+                <div className="kpi-sub">Saldo (VA − CR)</div>
+                <div style={{ font: '600 13px var(--mono)', color: saldo >= 0 ? VERDE : VERMELHO }}>
+                  {fmtMoeda(saldo)}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="kpi-sub" style={{ textAlign: 'center', padding: '14px 0' }}>
+            Passe o mouse sobre o gráfico para ver os valores de cada semana · clique para ir à semana.
+          </div>
+        )}
+      </div>
+
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10, justifyContent: 'center' }}>
+        {series.map((sr) => {
+          const off = ocultas[sr.id]
+          return (
+            <button key={sr.id} onClick={() => alternar(sr.id)}
+              title={off ? 'clique para mostrar' : 'clique para ocultar'}
+              style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 11, padding: '5px 11px',
+                       borderRadius: 7, cursor: 'pointer',
+                       background: off ? 'transparent' : 'var(--bg3)',
+                       border: '1px solid ' + (off ? 'var(--border)' : 'var(--border2)'),
+                       color: off ? 'var(--text3)' : 'var(--text2)', opacity: off ? 0.5 : 1 }}>
+              <svg width="20" height="3">
+                <line x1="0" y1="1.5" x2="20" y2="1.5" stroke={off ? 'var(--text3)' : sr.cor}
+                      strokeWidth="2.5" strokeDasharray={sr.dash || 'none'} />
+              </svg>
+              {sr.nome}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* atalhos de comparacao */}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10, justifyContent: 'center' }}>
+        {[
+          ['Todas', ['fp', 'fr', 'vp', 'va', 'cr']],
+          ['Só físico', ['fp', 'fr']],
+          ['Só financeiro', ['vp', 'va', 'cr']],
+          ['Agregado × realizado', ['va', 'cr']],
+          ['Só planejado', ['fp', 'vp']],
+          ['Só realizado', ['fr', 'cr']],
+        ].map(([l, ids]) => {
+          const ativo = series.every((sr) => (ids.includes(sr.id) ? !ocultas[sr.id] : !!ocultas[sr.id]))
+          return (
+            <button key={l} className="btn-sm" onClick={() => mostrarSo(ids)}
+              style={ativo ? { color: 'var(--text)', borderColor: 'var(--accent)' } : null}>
+              {l}
+            </button>
+          )
+        })}
+      </div>
+
+      <div className="kpi-sub" style={{ marginTop: 12, textAlign: 'center' }}>
+        Eixo esquerdo: avanço físico. Eixo direito: custo direto acumulado. O valor agregado vai até a última
+        medição (S{ultMed}); a distância entre ele e o custo realizado é o saldo do card.
+      </div>
     </div>
   )
 }
