@@ -27,10 +27,16 @@ Desenvolvido com Next.js + Supabase + Vercel.
 
 ## Passo 2 — Pegar as credenciais do Supabase
 
-1. No menu lateral do Supabase, clique em **Project Settings** → **API**
+1. No menu lateral do Supabase, clique em **Project Settings** → **API Keys**
 2. Copie os valores de:
    - **Project URL** → será o `NEXT_PUBLIC_SUPABASE_URL`
-   - **anon public key** → será o `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - **Secret key** (começa com `sb_secret_`) → será o `SUPABASE_SECRET_KEY`
+3. Escolha uma senha longa para os lançamentos → será o `DASHBOARD_SENHA`
+
+O dashboard acessa o banco **só pelo servidor** (rotas em `pages/api`), com a
+chave secreta. A chave pública (anon / `sb_publishable_`) não é usada, e todas as
+tabelas têm RLS ativo sem políticas de acesso público. Nunca coloque a chave
+secreta nem a senha em variável com prefixo `NEXT_PUBLIC_` nem no código.
 
 ---
 
@@ -57,7 +63,8 @@ Desenvolvido com Next.js + Supabase + Vercel.
 3. Selecione o repositório `obra-dashboard`
 4. Antes de clicar em Deploy, expanda **Environment Variables** e adicione:
    - `NEXT_PUBLIC_SUPABASE_URL` → cole a URL do Supabase
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` → cole a chave anon
+   - `SUPABASE_SECRET_KEY` → cole a chave secreta (`sb_secret_...`)
+   - `DASHBOARD_SENHA` → a senha de lançamento
 5. Clique em **Deploy**
 6. Em ~2 minutos o site estará no ar com uma URL como `obra-dashboard.vercel.app`
 
