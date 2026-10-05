@@ -15,10 +15,12 @@
 
 ## Regras de fechamento (decisão out/26)
 1. Fonte oficial do mês = relatório TOTVS de títulos PAGOS no mês (ex.: entrada/setembro-26.xlsx).
-   Título sem pagamento não entra; entra no mês em que constar como pago.
+   Título sem pagamento não entra; entra no mês em que constar como pago. O classificador confere:
+   título sem VALOR PAGO, sem Valor Baixado e sem Data de Baixa vai para nao_custo.csv como
+   "sem pagamento no relatório" (só quando o relatório tem a coluna VALOR PAGO; sem ela, avisa).
 2. Taxa ADM da Fonseca & Lage: a do mês M sempre entra no mês M+1 (a Taxa ADM de agosto entra em
-   setembro), mesmo que não apareça como paga no relatório. Acrescente a linha dela (tirada do TOTVS
-   da obra toda) ao relatório de pagos antes de rodar o classificador.
+   setembro). Ela vem no relatório de custos do mês e o classificador a inclui mesmo sem marcação
+   de pago. No máximo uma por mês: a prévia avisa se vier mais de uma, ou se não vier nenhuma.
 3. Não são custo: "Prev. Financ." (OC sem NF), APORTE e NF já paga por adiantamento (marcada em
    decisoes_pontuais.csv com eap = NAO_CUSTO). Vão para nao_custo.csv.
 

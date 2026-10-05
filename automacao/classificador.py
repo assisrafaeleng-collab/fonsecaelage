@@ -27,6 +27,8 @@ SINONIMOS = {
     'cnpj':       ['cnpj/cpf'],
     'baixa':      ['data de baixa'],
     'prev_baixa': ['data de previsao de baixa', 'previsao de baixa', 'previsaobaixa'],
+    'pago':       ['valor pago'],
+    'baixado':    ['valor baixado'],
 }
 OBRIGATORIAS = ['documento', 'nome', 'vencimento', 'cc', 'liquido', 'cnpj']
 
@@ -59,7 +61,37 @@ def ler_totvs(path):
         'vencimento': pd.to_datetime(t['vencimento'], errors='coerce').dt.date,
         'valor_original': t['original'].astype(float) if 'original' in t else None,
         'valor': t['liquido'].astype(float).round(2),
+        'pago': pago(t),
     }).reset_index(drop=True)
+
+def pago(t):
+    """True/False por título; None se o relatório não tem a coluna VALOR PAGO (não dá para conferir)"""
+    if 'pago' not in t:
+        return None
+    p = pd.to_numeric(t['pago'], errors='coerce').fillna(0) > 0
+    if 'baixado' in t:
+        p |= pd.to_numeric(t['baixado'], errors='coerce').fillna(0) > 0
+    if 'baixa' in t:
+        p |= pd.to_datetime(t['baixa'], errors='coerce').notna()
+    return p
+
+# Taxa ADM da Fonseca & Lage (decisão out/26): entra no mês do relatório mesmo sem marcação de pago;
+# no máximo uma por mês — a prévia avisa se vier nenhuma ou mais de uma.
+CNPJ_TAXA_ADM = '03556279'
+def e_taxa_adm(tit):
+    texto = tit.documento.str.upper() + ' ' + tit.historico.astype(str)
+    return (tit.cnpj == CNPJ_TAXA_ADM) & texto.str.contains(r'TAXA\s*ADM', regex=True)
+
+def avisos_taxa_adm(tit):
+    tx = tit[e_taxa_adm(tit)]
+    if len(tx) == 0:
+        print('AVISO: nenhuma Taxa ADM da Fonseca & Lage no relatório — confira (a do mês anterior entra neste mês)')
+    elif len(tx) > 1:
+        print(f'AVISO: {len(tx)} Taxas ADM no relatório (deveria ser no máximo uma): '
+              + '; '.join(f'{r.documento} R$ {r.valor:,.2f}' for r in tx.itertuples()))
+    for r in tx.itertuples():
+        if r.pago is not None and not r.pago:
+            print(f'Taxa ADM incluída sem marcação de pago: {r.documento} R$ {r.valor:,.2f}')
 
 # não são custo (decisão out/26): previsão financeira de OC ainda sem NF e aporte de sócio.
 # Saem da classificação e vão para nao_custo.csv (base do futuro card de contas a pagar).
@@ -77,6 +109,11 @@ def separar_nao_custo(tit):
             tipo[(tipo == '') & (tit.cnpj == r.cnpj) & (tit.documento == r.documento)] = r.obs or 'decisão: não é custo'
     except FileNotFoundError:
         pass
+    # só entra como custo o que consta como pago no relatório (decisão out/26), exceto a Taxa ADM
+    if tit.pago.notna().all():
+        tipo[(tipo == '') & (tit.pago == False) & ~e_taxa_adm(tit)] = 'sem pagamento no relatório'
+    else:
+        print('AVISO: relatório sem a coluna VALOR PAGO — não foi possível conferir o pagamento dos títulos')
     fora = tit[tipo != ''].assign(tipo=tipo[tipo != ''])
     return tit[tipo == ''].reset_index(drop=True), fora.reset_index(drop=True)
 
@@ -283,6 +320,7 @@ if __name__ == '__main__':
     totvs, pasta_oc = sys.argv[1], sys.argv[2]
     tit, ocs, regras = ler_totvs(totvs), ler_ocs(pasta_oc), carregar_regras()
     total_totvs = round(tit.valor.sum(), 2)
+    avisos_taxa_adm(tit)
     tit, nao_custo = separar_nao_custo(tit)
     nao_custo.to_csv('nao_custo.csv', index=False, encoding='utf-8-sig')
     for tp, g in nao_custo.groupby('tipo'):
