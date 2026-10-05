@@ -13,12 +13,23 @@
     decisoes_pontuais.csv decisão para UM título específico (cnpj + documento → EAP)
     oc/                TODOS os relatórios de OC, nomeados OC_AAAA-MM.xls (ex.: OC_2026-09.xls)
 
+## Regras de fechamento (decisão out/26)
+1. Fonte oficial do mês = relatório TOTVS de títulos PAGOS no mês (ex.: entrada/setembro-26.xlsx).
+   Título sem pagamento não entra; entra no mês em que constar como pago.
+2. Taxa ADM da Fonseca & Lage: a do mês M sempre entra no mês M+1 (a Taxa ADM de agosto entra em
+   setembro), mesmo que não apareça como paga no relatório. Acrescente a linha dela (tirada do TOTVS
+   da obra toda) ao relatório de pagos antes de rodar o classificador.
+3. Não são custo: "Prev. Financ." (OC sem NF), APORTE e NF já paga por adiantamento (marcada em
+   decisoes_pontuais.csv com eap = NAO_CUSTO). Vão para nao_custo.csv.
+
 ## Uso mensal
     pip install pandas openpyxl xlrd
-    python classificador.py "Custos TOTS - Setembro - 2026.XLSX" oc
+    python classificador.py "setembro-26.xlsx" oc
 Competência = Data de Baixa; se vazia, Data de Previsão de Baixa; por último, Vencimento.
-Gera lancamentos.csv (classificados) e pendencias.csv (precisam de decisão).
+Gera lancamentos.csv (classificados), pendencias.csv (precisam de decisão) e nao_custo.csv.
 Para com erro se a soma não fechar ao centavo com o TOTVS.
+Gravação: node ferramentas/fechamento/importar.js --classificador lancamentos.csv (prévia) e depois
+com --confirmar; a carga substitui a competência inteira e pode ser desfeita com --desfazer <id>.
 
 ## Depois de fechar o mês manualmente
     python comparar.py "Custos Flats BH - Fechamento Setembro.xlsx"      # mede o acerto
@@ -38,6 +49,9 @@ Para com erro se a soma não fechar ao centavo com o TOTVS.
 - padrao_item = 'CONTEM:X'  → item que contém a palavra X (ex.: locação de VIBRADOR)
 - vigente_desde = AAAA-MM-DD → a regra só vale para títulos com competência a partir dessa data
 - tipo = pendente          → fornecedor que já foi para várias EAPs: sempre vai para a fila
+- eap = '19.1.7=0.581;19.1.9=0.419' → rateio fixo entre EAPs (fecha ao centavo na última)
+- etapa.csv tem vigente_desde: a EAP da etapa é a vigente na competência do título
+- decisoes_pontuais.csv com eap = NAO_CUSTO → o título sai do custo (ex.: NF já paga por adiantamento)
 
 ## Próximos passos (Claude Code)
 1. Gravar lancamentos no Supabase (upsert por documento + fornecedor)
