@@ -16,7 +16,7 @@ EXCLUIR_DOCS = {'000000229/01'}          # títulos que você retira do fechamen
 
 # nomes de coluna variam entre exportações do TOTVS: mapeia por sinônimo, não por posição
 SINONIMOS = {
-    'documento':  ['numero do documento'],
+    'documento':  ['numero do documento', 'numero documento'],
     'nome':       ['nome'],
     'historico':  ['historico'],
     'emissao':    ['data de emissao', 'emissao'],
@@ -56,9 +56,29 @@ def ler_totvs(path):
         'historico': t['historico'].map(norm) if 'historico' in t else '',
         'emissao': pd.to_datetime(t['emissao']).dt.date if 'emissao' in t else None,
         'competencia': competencia(t),   # Data de Baixa > Previsão de Baixa > Vencimento (decisão set/26)
+        'vencimento': pd.to_datetime(t['vencimento'], errors='coerce').dt.date,
         'valor_original': t['original'].astype(float) if 'original' in t else None,
         'valor': t['liquido'].astype(float).round(2),
     }).reset_index(drop=True)
+
+# não são custo (decisão out/26): previsão financeira de OC ainda sem NF e aporte de sócio.
+# Saem da classificação e vão para nao_custo.csv (base do futuro card de contas a pagar).
+NAO_CUSTO = {'previsão financeira': r'PREV\.?\s*FINANC', 'aporte': r'\bAPORTE\b'}
+
+def separar_nao_custo(tit):
+    tipo = pd.Series('', index=tit.index)
+    for nome, padrao in NAO_CUSTO.items():
+        tipo[(tipo == '') & tit.historico.str.contains(padrao, regex=True)] = nome
+    # título que você marcou em decisoes_pontuais.csv com eap = NAO_CUSTO (ex.: NF já paga por adiantamento)
+    try:
+        dp = pd.read_csv('decisoes_pontuais.csv', dtype={'cnpj': str, 'documento': str, 'eap': str}).fillna('')
+        dp = dp[dp.eap == 'NAO_CUSTO']
+        for r in dp.itertuples():
+            tipo[(tipo == '') & (tit.cnpj == r.cnpj) & (tit.documento == r.documento)] = r.obs or 'decisão: não é custo'
+    except FileNotFoundError:
+        pass
+    fora = tit[tipo != ''].assign(tipo=tipo[tipo != ''])
+    return tit[tipo == ''].reset_index(drop=True), fora.reset_index(drop=True)
 
 SIN_OC = {
     'oc': ['no oc'], 'cnpj': ['cnpj'], 'fornecedor': ['razao social'], 'item': ['nome prod'],
@@ -161,26 +181,42 @@ def _aplicar(regras, cnpj, fornecedor, item, valor, competencia=None):
     return h.eap, f'regra por {tipo}', h.get('alerta', '')
 
 try:
-    ETAPA = dict(pd.read_csv('etapa.csv', dtype=str)[['categoria', 'eap']].values)
+    # uma linha por categoria e etapa; vigente_desde vazio = desde o início da obra
+    ETAPA = pd.read_csv('etapa.csv', dtype=str).fillna('')
+    if 'vigente_desde' not in ETAPA:
+        ETAPA['vigente_desde'] = ''
 except FileNotFoundError:
-    ETAPA = {}
+    ETAPA = pd.DataFrame(columns=['categoria', 'eap', 'vigente_desde'])
 
-def resolver_etapa(eap, alerta):
-    """EAP 'ETAPA:ACO_MATERIAL' -> linha do pavimento em execução definida em etapa.csv"""
+def resolver_etapa(eap, alerta, competencia=None):
+    """EAP 'ETAPA:ACO_MATERIAL' -> linha do pavimento em execução na competência do título (etapa.csv)"""
     if eap and eap.startswith('ETAPA:'):
         cat = eap.split(':', 1)[1]
-        if cat not in ETAPA:
+        e = ETAPA[ETAPA.categoria == cat]
+        if competencia is not None:
+            e = e[(e.vigente_desde == '') | (e.vigente_desde <= str(competencia))]
+        if len(e) == 0:
             return None, f'categoria {cat} sem EAP em etapa.csv'
-        return ETAPA[cat], (alerta + ' | ' if alerta else '') + f'EAP pela etapa atual ({cat})'
+        e = e.sort_values('vigente_desde').iloc[-1]
+        return e.eap, (alerta + ' | ' if alerta else '') + f'EAP pela etapa ({cat} = {e.eap})'
     return eap, alerta
 
 def aplicar_regra(regras, cnpj, fornecedor, item, valor, competencia=None):
     manuais, geradas = regras
     eap, motivo, alerta = _aplicar(manuais, cnpj, fornecedor, item, valor, competencia)
     if eap:
-        eap, alerta = resolver_etapa(eap, alerta)
+        eap, alerta = resolver_etapa(eap, alerta, competencia)
         return eap, motivo.replace('regra por', 'decisão sua por'), alerta
     return _aplicar(geradas, cnpj, fornecedor, item, valor)
+
+def ratear(eap, valor, competencia=None):
+    """regra com rateio: eap = '19.1.7=0.581;19.1.9=0.419' -> [(eap, valor), ...] fechando ao centavo na última"""
+    if not eap or '=' not in eap:
+        return [(eap, valor)]
+    partes = [p.split('=') for p in eap.split(';') if p.strip()]
+    vals = [round(valor * float(pr), 2) for _, pr in partes]
+    vals[-1] = round(vals[-1] + valor - sum(vals), 2)
+    return [(resolver_etapa(e.strip(), '', competencia)[0], v) for (e, _), v in zip(partes, vals)]
 
 def classificar(tit, ocs, regras):
     lanc, pend = [], []
@@ -199,7 +235,7 @@ def classificar(tit, ocs, regras):
             vals = [round(t.valor * float(p), 2) for p in dp.proporcao]
             vals[-1] = round(vals[-1] + t.valor - sum(vals), 2)
             for r, v in zip(dp.fillna('').itertuples(), vals):
-                eap_r, _ = resolver_etapa(r.eap, '')
+                eap_r, _ = resolver_etapa(r.eap, '', t.competencia)
                 r = r._replace(eap=eap_r or '')
                 row = dict(documento=t.documento, fornecedor=t.fornecedor, item=r.obs, oc='',
                            competencia=t.competencia, valor=v, eap=r.eap, vinculo_oc='decisão pontual',
@@ -235,16 +271,22 @@ def classificar(tit, ocs, regras):
             partes = [(t.historico, t.valor, '')]
         for item, valor, oc in partes:
             eap, motivo, alerta = aplicar_regra(regras, t.cnpj, t.fornecedor, item, t.valor if len(partes) == 1 else valor, t.competencia)
-            row = dict(documento=t.documento, fornecedor=t.fornecedor, item=item, oc=oc,
-                       competencia=t.competencia, valor=valor, eap=eap or '',
-                       vinculo_oc=conf or 'sem OC', regra=motivo, alerta=alerta,
-                       data_emissao=t.emissao, cnpj=t.cnpj)
-            (lanc if eap else pend).append(row)
+            for eap_r, valor_r in ratear(eap, valor, t.competencia):
+                row = dict(documento=t.documento, fornecedor=t.fornecedor, item=item, oc=oc,
+                           competencia=t.competencia, valor=valor_r, eap=eap_r or '',
+                           vinculo_oc=conf or 'sem OC', regra=motivo, alerta=alerta,
+                           data_emissao=t.emissao, cnpj=t.cnpj)
+                (lanc if eap_r else pend).append(row)
     return pd.DataFrame(lanc), pd.DataFrame(pend)
 
 if __name__ == '__main__':
     totvs, pasta_oc = sys.argv[1], sys.argv[2]
     tit, ocs, regras = ler_totvs(totvs), ler_ocs(pasta_oc), carregar_regras()
+    total_totvs = round(tit.valor.sum(), 2)
+    tit, nao_custo = separar_nao_custo(tit)
+    nao_custo.to_csv('nao_custo.csv', index=False, encoding='utf-8-sig')
+    for tp, g in nao_custo.groupby('tipo'):
+        print(f'Ignorado (não é custo) — {tp}: {len(g)} título(s) | R$ {g.valor.sum():,.2f}  -> nao_custo.csv')
     lanc, pend = classificar(tit, ocs, regras)
     total = round(tit.valor.sum(), 2)
     soma = round(lanc.valor.sum() + (pend.valor.sum() if len(pend) else 0), 2)
@@ -259,6 +301,7 @@ if __name__ == '__main__':
         pass
     lanc.to_csv('lancamentos.csv', index=False, encoding='utf-8-sig')
     (pend if len(pend) else pd.DataFrame(columns=list(lanc.columns))).to_csv('pendencias.csv', index=False, encoding='utf-8-sig')
+    print(f'TOTVS: R$ {total_totvs:,.2f} = custo R$ {total:,.2f} + não custo R$ {nao_custo.valor.sum():,.2f}')
     print(f'{len(tit)} títulos | R$ {total:,.2f}')
     print(f'Classificados automaticamente: {len(lanc)} lançamentos | R$ {lanc.valor.sum():,.2f}')
     print(f'Pendências: {len(pend)} | R$ {pend.valor.sum() if len(pend) else 0:,.2f}')

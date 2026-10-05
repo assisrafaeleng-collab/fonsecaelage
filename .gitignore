@@ -27,6 +27,10 @@ automacao/entrada/
 automacao/processados/
 automacao/erros/
 automacao/medicoes/
+# projetos do cliente: nao vao para o GitHub
+automacao/projetos/
+# previas e conferencias do fechamento (fornecedores e valores)
+automacao/setembro_2026/
 automacao/.env
 automacao/lancamentos.csv
 automacao/pendencias.csv
