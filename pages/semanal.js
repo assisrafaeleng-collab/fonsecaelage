@@ -37,6 +37,7 @@ const FIS_PLAN = '#5e7d99'
 const FIS_REAL = '#7fa8d4'
 
 const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
+const MESES_EXT = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro']
 
 const fmtPerc = (v) => (v == null ? '-' : `${v.toFixed(1)}%`)
 const fmtIdx = (v) => (v == null ? '-' : v.toFixed(3).replace('.', ','))
@@ -251,7 +252,19 @@ export default function Semanal() {
   const saldoTotal = saldoDireto == null || saldoIndireto == null ? null : saldoDireto + saldoIndireto
   const baseTotal = (agregado || 0) + indiretoPlan
   const pctTotal = saldoTotal == null || baseTotal <= 0 ? null : (saldoTotal / baseTotal) * 100
-  const idc = agregado != null && comprometido > 0 ? agregado / comprometido : null
+  // IPC mensal (decisão out/26): na semana de fechamento (a que termina no
+  // último dia do mês), o IPC daquele mês; nas semanas do meio, o do último
+  // mês fechado. Avanço e custo até o último dia do mês + contas a pagar do
+  // fechamento. Vem pronto da rota (kpis.ipc_mes).
+  const ipcMes = dados.kpis.ipc_mes || null
+  const idc = ipcMes && ipcMes.ipc != null ? ipcMes.ipc : null
+  const nomeMesIpc = ipcMes ? MESES_EXT[Number(ipcMes.mes.slice(5, 7)) - 1] : ''
+  const rotuloIpc = !ipcMes ? 'IPC' : ipcMes.semana_de_fechamento ? `IPC do mês · ${nomeMesIpc}` : `IPC de ${nomeMesIpc}`
+  const corteIpc = ipcMes ? dm(ipcMes.data_corte) : ''
+  // A projeção usa o IPC do mês, então agregado e comprometido também são os
+  // do fechamento (mesma data); o IDP continua o da semana.
+  const agregadoIpc = ipcMes ? ipcMes.agregado : null
+  const comprometidoIpc = ipcMes ? ipcMes.realizado_direto + ipcMes.a_pagar_direto : null
   // IDP pelo avanço físico em Hh, as duas pontas na mesma semana (a da última
   // medição). Em reais, locação (gasto) e funcionários (tempo) entrariam como
   // "avanço" e distorceriam o índice de prazo.
@@ -265,15 +278,15 @@ export default function Semanal() {
   //   provável   = otimista + custo de calendário × semanas extras
   //   pessimista = realizado + falta ÷ (IDC × IDP), com o IDP limitado a 1
   const projecao = (() => {
-    if (idc == null || idp == null || idc <= 0 || idp <= 0 || agregado == null) return null
+    if (idc == null || idp == null || idc <= 0 || idp <= 0 || agregadoIpc == null) return null
     const orcado = dados.totais.custo_direto
     // Falta = o que ainda nao foi executado, a preco de orcamento.
-    const falta = orcado - agregado
+    const falta = orcado - agregadoIpc
     // Prazo em semanas de 7 dias (o mesmo da rota)
     const duracao = (dados.kpis.projecao && dados.kpis.projecao.duracao_semanas) || dados.curva.length
     const semanasExtras = Math.max(duracao / idp - duracao, 0)
     const porSemana = (dados.kpis.projecao && dados.kpis.projecao.custo_calendario_semana) || 0
-    const otimista = comprometido + falta / idc
+    const otimista = comprometidoIpc + falta / idc
     return {
       orcado,
       falta,
@@ -281,7 +294,7 @@ export default function Semanal() {
       provavel: otimista + porSemana * semanasExtras,
       // Adiantamento não barateia a obra: no pessimista o IDP fica até 1
       // (decisão out/26, mesma regra da rota).
-      pessimista: comprometido + falta / (idc * Math.min(idp, 1)),
+      pessimista: comprometidoIpc + falta / (idc * Math.min(idp, 1)),
       semanasExtras,
       porSemana,
       custoAtraso: porSemana * semanasExtras,
@@ -440,7 +453,7 @@ export default function Semanal() {
           <div className="kpi-sub">
             {saldoDireto == null
               ? 'Sem medição'
-              : `${saldoDireto >= 0 ? 'Economia' : 'Acima'} · eficiência ${fmtIdx(idc)}`}
+              : `${saldoDireto >= 0 ? 'Economia' : 'Acima'} · até ${sRef}`}
           </div>
         </div>
 
@@ -629,7 +642,7 @@ export default function Semanal() {
         >
           <div className="kpi-label">Projeções de Custo Final {abrirProjecao ? '▴' : '▾'}</div>
           <div className="kpi-sub" style={{ marginTop: 8 }}>
-            {abrirProjecao ? `Custo direto no término · base ${sRef}` : 'Clique para ver as projeções'}
+            {abrirProjecao ? `Custo direto no término · ${rotuloIpc} · IDP ${sRef}` : 'Clique para ver as projeções'}
           </div>
         </div>
 
@@ -640,17 +653,22 @@ export default function Semanal() {
               title={
                 idc == null
                   ? ''
-                  : `IDC = valor agregado ÷ (realizado + a pagar)\n` +
-                    `= ${fmtMoeda(agregado)} ÷ (${fmtMoeda(realizadoRef)} + ${fmtMoeda(aPagarDireto)})\n` +
+                  : `${rotuloIpc}: avanço e custo até ${corteIpc}\n` +
+                    `IPC = valor agregado ÷ (realizado + a pagar do fechamento)\n` +
+                    `= ${fmtMoeda(agregadoIpc)} ÷ (${fmtMoeda(ipcMes.realizado_direto)} + ${fmtMoeda(ipcMes.a_pagar_direto)})\n` +
                     `= ${fmtIdx(idc)}\n\n` +
+                    (ipcMes.semana_de_fechamento
+                      ? 'Semana de fechamento: IPC do mês.\n'
+                      : 'Semana do meio do mês: IPC do último fechamento.\n') +
+                    (ipcMes.sem_contas_a_pagar ? 'Mês sem contas a pagar carregado: só o realizado.\n' : '') +
                     'Acima de 1: o executado custou menos que o orçado.\nAbaixo de 1: custou mais.'
               }
             >
-              <div className="kpi-label">IDC · Eficiência de Custo</div>
+              <div className="kpi-label">{rotuloIpc}</div>
               <div className="kpi-value" style={{ fontSize: '18px', lineHeight: '1.2', color: idc == null ? REAL : idc >= 1 ? VERDE : VERMELHO }}>
                 {fmtIdx(idc)}
               </div>
-              <div className="kpi-sub">{idc == null ? 'Sem medição' : idc >= 1 ? 'Abaixo do orçado' : 'Acima do orçado'} · até {sRef}</div>
+              <div className="kpi-sub">{idc == null ? 'Sem medição' : idc >= 1 ? 'Abaixo do orçado' : 'Acima do orçado'} · até {corteIpc}</div>
             </div>
 
             <div
@@ -678,8 +696,8 @@ export default function Semanal() {
                 'otimista',
                 projecao &&
                   `Realizado + falta ÷ IDC\n` +
-                    `= ${fmtMoeda(comprometido)} + ${fmtMoeda(projecao.falta)} ÷ ${fmtIdx(idc)}\n` +
-                    `(falta = orçado ${fmtMoeda(projecao.orcado)} − agregado ${fmtMoeda(agregado)})\n` +
+                    `= ${fmtMoeda(comprometidoIpc)} + ${fmtMoeda(projecao.falta)} ÷ ${fmtIdx(idc)}\n` +
+                    `(falta = orçado ${fmtMoeda(projecao.orcado)} − agregado ${fmtMoeda(agregadoIpc)}, em ${corteIpc})\n` +
                     `= ${fmtMoeda(projecao.otimista)}\n\n` +
                     'Mantém a eficiência de custo atual até o fim.',
               ],
@@ -699,7 +717,7 @@ export default function Semanal() {
                 'pessimista',
                 projecao &&
                   `Realizado + falta ÷ (IDC × IDP, limitado a 1)\n` +
-                    `= ${fmtMoeda(comprometido)} + ${fmtMoeda(projecao.falta)} ÷ (${fmtIdx(idc)} × ${fmtIdx(Math.min(idp, 1))})\n` +
+                    `= ${fmtMoeda(comprometidoIpc)} + ${fmtMoeda(projecao.falta)} ÷ (${fmtIdx(idc)} × ${fmtIdx(Math.min(idp, 1))})\n` +
                     `= ${fmtMoeda(projecao.pessimista)}\n\n` +
                     (idp > 1
                       ? `IDP real ${fmtIdx(idp)}: adiantamento não barateia a obra, então aqui o IDP fica em 1.\nCom IDP ≥ 1, este cenário fica igual ao otimista.`

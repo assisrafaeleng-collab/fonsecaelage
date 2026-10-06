@@ -1,5 +1,5 @@
 import { supabase } from '../../lib/supabase'
-import { carregarContasAPagar, resumirContas } from '../../lib/contas-a-pagar'
+import { carregarContasAPagar, resumirContas, listarFechamentos } from '../../lib/contas-a-pagar'
 import { carregarCalendario, addDias } from '../../lib/calendario'
 
 // ---------------------------------------------------------------------------
@@ -1427,21 +1427,27 @@ export default async function handler(req, res) {
     }
 
     // -----------------------------------------------------------------------
-    // 5b. IPC do fechamento (decisao out/26): mensal, cortado no ULTIMO DIA do
-    // mes do ultimo fechamento de contas a pagar, por data e nao por semana.
-    //   avanco: ultimo retrato de cada item com data_lancamento ate o corte
+    // 5b. IPC do mes (decisao out/26): mensal, cortado no ULTIMO DIA do mes do
+    // fechamento, por data e nao por semana.
+    //   avanco: ultimo retrato de cada item lancado ate o corte (dia de BH)
     //   custo: realizado do direto pago ate o corte + a pagar do fechamento
     //   material: pago ate o corte + a pagar, limitado ao orcado (regra acima)
     //   B: locacao paga ate o corte, com teto; C: planejado da curva no corte
-    // O planejado no corte e interpolado por dias dentro da semana.
+    // O planejado no corte e interpolado por dias dentro da semana (com o
+    // calendario alinhado ao mes, o corte e sempre o fim de uma semana).
     // -----------------------------------------------------------------------
-    let ipcFechamento = null
-    if (contas.disponivel && contas.fechamento) {
-      const [fy, fm] = contas.fechamento.split('-').map(Number)
-      const corte = new Date(Date.UTC(fy, fm, 0)).toISOString().slice(0, 10)
+    const diaBH = (ts) =>
+      new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' })
+        .format(new Date(ts))
+    const fimDoMes = (mes) => {
+      const [fy, fm] = mes.split('-').map(Number)
+      return new Date(Date.UTC(fy, fm, 0)).toISOString().slice(0, 10)
+    }
+    const calcIpcMes = (mes, apPorEap, apDireto) => {
+      const corte = fimDoMes(mes)
       const percCorte = {}
       retratosOrd
-        .filter((r) => r.d && r.d.slice(0, 10) <= corte)
+        .filter((r) => r.d && diaBH(r.d) <= corte)
         .forEach((r) => (percCorte[r.eap] = r.perc))
       // Fracao da obra decorrida no corte e planejado interpolado
       const iFim = semanasOrdenadas.findIndex((w) => plan.get(w).data_fim >= corte)
@@ -1486,7 +1492,7 @@ export default async function handler(req, res) {
         const heranca = (orc * percItemCorte(eap)) / 100
         if (!MATERIAL_AGREGADO.has(eap)) return (agA += heranca)
         const pago = pagoCorte[eap] || 0
-        const aPagar = aPagarPorEap[eap] || 0
+        const aPagar = apPorEap[eap] || 0
         const ag = Math.max(heranca, Math.min(pago + aPagar, orc))
         agA += ag
         linhasMaterial.push({
@@ -1515,9 +1521,9 @@ export default async function handler(req, res) {
       const avancoReal = totalHhEvm > 0 ? (hhReal / totalHhEvm) * 100 : null
       const avancoPlan = interp('perc_hh')
       const agregadoTotal = agA + agB + agC
-      const comprometido = realizadoDireto + aPagarDireto
-      ipcFechamento = {
-        mes: contas.fechamento,
+      const comprometido = realizadoDireto + apDireto
+      return {
+        mes,
         data_corte: corte,
         semana_do_corte: wFim,
         fracao_da_semana: r3(fr),
@@ -1529,16 +1535,58 @@ export default async function handler(req, res) {
         agregado_b: r2(agB),
         agregado_c: r2(agC),
         realizado_direto: r2(realizadoDireto),
-        a_pagar_direto: r2(aPagarDireto),
+        a_pagar_direto: r2(apDireto),
         ipc: comprometido > 0 ? r3(agregadoTotal / comprometido) : null,
         linhas_material: linhasMaterial.sort((a, b) =>
           String(a.cod_eap).localeCompare(String(b.cod_eap), 'pt-BR', { numeric: true })
         ),
       }
     }
+    // Ultimo fechamento de contas a pagar (o card e a conferencia usam este)
+    const ipcFechamento = contas.disponivel && contas.fechamento ? calcIpcMes(contas.fechamento, aPagarPorEap, aPagarDireto) : null
+
+    // IPC mostrado na semana selecionada (decisao out/26): na semana de
+    // fechamento (a que termina no ultimo dia do mes), o IPC daquele mes; nas
+    // semanas do meio, o do ultimo mes fechado ("IPC de <mes>"). So vale mes
+    // com contas a pagar carregado: sem ele, fica o fechamento anterior mais
+    // recente. Antes do primeiro fechamento com contas a pagar, o IPC sai sem
+    // o a pagar e com aviso.
+    let ipcMes = null
+    {
+      const fimSel = plan.get(semanaAtual) ? plan.get(semanaAtual).data_fim : null
+      if (fimSel) {
+        const mesSel = fimSel.slice(0, 7)
+        const semanaDeFechamento = fimSel === fimDoMes(mesSel)
+        const [sy, sm] = mesSel.split('-').map(Number)
+        const mesAnterior = new Date(Date.UTC(sy, sm - 2, 1)).toISOString().slice(0, 7)
+        const alvo = semanaDeFechamento ? mesSel : mesAnterior
+        const fechamentos = contas.disponivel ? await listarFechamentos(supabase, obra_id) : []
+        const fech = fechamentos.filter((f) => f <= alvo).pop() || null
+        // Primeiro mes da obra = o da primeira semana do mes 1 (jul/2026)
+        const s1 = semanasOrdenadas.find((w) => plan.get(w).mes === 1)
+        const inicioObra = s1 ? plan.get(s1).data_fim.slice(0, 7) : inicioDaObra ? inicioDaObra.slice(0, 7) : null
+        let calc = null
+        if (inicioObra && alvo < inicioObra) calc = null
+        else if (fech === contas.fechamento) calc = ipcFechamento
+        else if (fech) {
+          const c = await carregarContasAPagar(supabase, obra_id, fech)
+          const rc = resumirContas(c.linhas)
+          calc = calcIpcMes(fech, rc.por_eap_direto, rc.totais.ipc_direto)
+        } else calc = calcIpcMes(alvo, {}, 0)
+        if (calc) {
+          const { linhas_material, ...resto } = calc
+          ipcMes = {
+            ...resto,
+            semana_de_fechamento: semanaDeFechamento && calc.mes === mesSel,
+            sem_contas_a_pagar: !fech,
+          }
+        }
+      }
+    }
 
     const kpis = {
       ipc_fechamento: ipcFechamento,
+      ipc_mes: ipcMes,
       semana: ponto.semana,
       data_fim: ponto.data_fim,
       bcws: ponto.bcws,
