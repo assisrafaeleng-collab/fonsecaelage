@@ -2,13 +2,7 @@
 // Lê e exclui os incrementos do histórico de avanço físico (memória de cálculo)
 import { supabase } from '../../lib/supabase'
 import { senhaOk } from '../../lib/senha-servidor'
-
-const DATA_INICIO = new Date('2026-07-01T00:00:00Z')
-function calcSemana(dataLanc) {
-  const d = dataLanc ? new Date(dataLanc) : new Date()
-  const diffDias = Math.floor((d - DATA_INICIO) / (1000 * 60 * 60 * 24))
-  return Math.max(1, Math.floor(diffDias / 7) + 1)
-}
+import { carregarCalendario, semanaDoCalendario } from '../../lib/calendario'
 
 export default async function handler(req, res) {
   if (req.method !== 'GET' && !senhaOk(req, res)) return
@@ -56,11 +50,15 @@ export default async function handler(req, res) {
     const data = new Date(data_lancamento)
     if (Number.isNaN(data.getTime())) return res.status(400).json({ error: 'data_lancamento inválida' })
 
-    const semana = calcSemana(data)
+    // Semana e mes pelo calendario da obra (o mesmo do lancamento de avanco)
+    const cal = await carregarCalendario(supabase, obra_id)
+    const sem = semanaDoCalendario(cal, data_lancamento)
+    if (!sem) return res.status(400).json({ error: 'data_lancamento fora do calendário de semanas da obra' })
+    const semana = sem.semana
 
     const { error } = await supabase
       .from('avanco_fisico_historico')
-      .update({ data_lancamento, semana_numero: semana })
+      .update({ data_lancamento, semana_numero: semana, mes_numero: sem.mes })
       .eq('id', id)
       .eq('obra_id', obra_id)
 

@@ -1,5 +1,6 @@
 import { supabase } from '../../lib/supabase'
 import { carregarContasAPagar, resumirContas } from '../../lib/contas-a-pagar'
+import { carregarCalendario, addDias } from '../../lib/calendario'
 
 // ---------------------------------------------------------------------------
 // /api/dashboard-semanal
@@ -43,17 +44,10 @@ const COLS = {
   },
 }
 
-// A curva planejada nao tem coluna de data: o calendario sai da view do
-// realizado e e extrapolado a 7 dias por semana para as 87. Se a obra tiver
-// semana fora do padrao, a extrapolacao mente — o certo e a curva ter as
-// colunas de data tambem.
-const addDias = (iso, n) => {
-  const [y, m, d] = String(iso).slice(0, 10).split('-').map(Number)
-  if (!y || !m || !d) return null
-  // Date.UTC na entrada e toISOString na saida: tudo em UTC, sem passar pelo
-  // fuso local. E a mesma armadilha das linhas 46-52 do dashboard-integrado.
-  return new Date(Date.UTC(y, m - 1, d) + n * 86400000).toISOString().slice(0, 10)
-}
+// Calendario: tabela calendario_semanas (lib/calendario.js). As semanas nao
+// tem mais 7 dias sempre (decisao out/26: a semana termina no domingo ou no
+// ultimo dia do mes), entao todo rateio por semana pesa pelos dias dela. Sem
+// a tabela, cai no antigo: data da view extrapolada a 7 dias por semana.
 
 // Base de medicao da parcela A.
 //   'hh'    BCWP = hh_acumulado / Hh_total_evm x custo_total_A
@@ -216,6 +210,7 @@ export default async function handler(req, res) {
     const indiretos = indiretoRes.data
     const retratos = retratosRes.data
     const lancamentos = custosRes.data
+    const cal = await carregarCalendario(supabase, obra_id)
 
     // -----------------------------------------------------------------------
     // 1. Planejado: BCWS acumulado das tres parcelas, semana a semana
@@ -242,11 +237,28 @@ export default async function handler(req, res) {
           accB += num(row[C.bcwsB])
           accC += num(row[C.bcwsC])
         }
-        plan.set(s, { semana: s, data_fim: null, a: accA, b: accB, c: accC, total_tabela: num(row[C.totalAcum]), financeiro: num(row[C.financeiro]), perc_hh: num(row[C.percHh]), mes: parseInt(row[C.mes], 10) || null })
+        // Mes da semana: o do calendario (a semana nao cruza mais o mes); sem
+        // calendario, o da curva.
+        const doCal = cal.porSemana.get(s)
+        const mes = doCal && doCal.mes ? doCal.mes : parseInt(row[C.mes], 10) || null
+        plan.set(s, { semana: s, data_fim: null, a: accA, b: accB, c: accC, total_tabela: num(row[C.totalAcum]), financeiro: num(row[C.financeiro]), perc_hh: num(row[C.percHh]), mes })
         semanasOrdenadas.push(s)
       })
 
     const ultimaSemana = semanasOrdenadas.length ? semanasOrdenadas[semanasOrdenadas.length - 1] : 0
+
+    // Peso de cada semana = dias dela (7 se a semana nao estiver no calendario).
+    const diasDe = (w) => {
+      const c = cal.porSemana.get(w)
+      return c ? c.dias : 7
+    }
+    const somaDias = (lista) => lista.reduce((t, w) => t + diasDe(w), 0)
+    const diasAcum = new Map()
+    let totalDias = 0
+    semanasOrdenadas.forEach((w) => {
+      totalDias += diasDe(w)
+      diasAcum.set(w, totalDias)
+    })
     const fimDaCurva = plan.get(ultimaSemana)
     const totais = {
       a: fimDaCurva ? fimDaCurva.a : 0,
@@ -300,10 +312,10 @@ export default async function handler(req, res) {
       const janela = []
       for (let m = mi; m <= mf; m += 1) (semanasDoMes.get(m) || []).forEach((w) => janela.push(w))
       if (!janela.length || custo <= 0) return
-      const n = semanasOrdenadas.length
-      semanasOrdenadas.forEach((w, idx) => {
-        const original = (custo * janela.filter((x) => x <= w).length) / janela.length
-        const linear = (custo * (idx + 1)) / n
+      const diasJanela = somaDias(janela)
+      semanasOrdenadas.forEach((w) => {
+        const original = (custo * somaDias(janela.filter((x) => x <= w))) / diasJanela
+        const linear = (custo * diasAcum.get(w)) / totalDias
         plan.get(w).a += linear - original
       })
       correcaoPlanejadoTempo.push({ cod_eap: it.cod_eap, custo: r2(custo), mes_inicio: mi, mes_fim: mf })
@@ -324,8 +336,8 @@ export default async function handler(req, res) {
         indiretoSemMes += valor
         return
       }
-      const fatia = valor / alvo.length
-      alvo.forEach((s) => indiretoSemanal.set(s, (indiretoSemanal.get(s) || 0) + fatia))
+      const diasAlvo = somaDias(alvo)
+      alvo.forEach((s) => indiretoSemanal.set(s, (indiretoSemanal.get(s) || 0) + (valor * diasDe(s)) / diasAlvo))
     })
 
     // Classificacao pareada com a tela mensal: codigo comecando em 19. e
@@ -341,7 +353,6 @@ export default async function handler(req, res) {
     // (verba por tempo, material que herda o avanco do servico) nao cabem
     // nela. Hh continua vindo da view.
     // -----------------------------------------------------------------------
-    const nSemanas = semanasOrdenadas.length || TOTAL_SEMANAS
     // custo_encerrado: coluna opcional do orcamento (alter table ... add
     // column custo_encerrado boolean). Sem a coluna, tudo fica em aberto.
     const encerradoPorEap = {}
@@ -410,10 +421,7 @@ export default async function handler(req, res) {
     // Percentual do item na semana w, pela regra dele.
     const percAgregado = (eap, w) => {
       const regra = regraAgregado(eap)
-      if (regra === 'tempo') {
-        const pos = semanasOrdenadas.indexOf(w) + 1
-        return (Math.min(pos, nSemanas) / nSemanas) * 100
-      }
+      if (regra === 'tempo') return ((diasAcum.get(w) || 0) / totalDias) * 100
       const snap = percPorSemana.get(w) || { perc: {} }
       if (regra === 'herda') {
         const pares = paresResolvidos[eap]
@@ -460,13 +468,17 @@ export default async function handler(req, res) {
     const ancora = semanasComData.length
       ? { semana: semanasComData[0], data_fim: dataFimDaView.get(semanasComData[0]) }
       : null
-    if (!ancora) throw new Error(`${R.table}: nenhuma linha com ${R.dataFim}; sem calendario nao da para semanalizar o custo da parcela B`)
+    if (!ancora && !cal.semanas.length) throw new Error(`calendario_semanas vazio e ${R.table} sem ${R.dataFim}: sem calendario nao da para semanalizar o custo`)
 
     semanasOrdenadas.forEach((s) => {
       const p = plan.get(s)
-      p.data_fim = dataFimDaView.has(s)
-        ? dataFimDaView.get(s)
-        : addDias(ancora.data_fim, (s - ancora.semana) * 7)
+      const c = cal.porSemana.get(s)
+      p.data_fim = c
+        ? c.data_fim
+        : dataFimDaView.has(s)
+          ? dataFimDaView.get(s)
+          : addDias(ancora.data_fim, (s - ancora.semana) * 7)
+      p.data_inicio = c ? c.data_inicio : addDias(p.data_fim, -6)
     })
 
     // A view faz forward fill ate o fim do cronograma: ela tem as 87 semanas,
@@ -529,12 +541,10 @@ export default async function handler(req, res) {
       .map((s) => ({ semana: s, data_fim: plan.get(s).data_fim }))
       .filter((x) => !!x.data_fim)
 
-    // Inicio da S1: seis dias antes do fim dela. Sem esse piso, todo lancamento
+    // Inicio da S1 (data_inicio do calendario). Sem esse piso, todo lancamento
     // anterior a obra (pre-obra, mobilizacao, projeto) caía na S1, inflando o
     // ACWP e a parcela B da primeira semana.
-    const inicioDaObra = fimDeSemana.length
-      ? addDias(String(fimDeSemana[0].data_fim).slice(0, 10), -6)
-      : null
+    const inicioDaObra = fimDeSemana.length ? plan.get(fimDeSemana[0].semana).data_inicio : null
 
     // Data que posiciona o lancamento na semana: a baixa (pagamento) quando
     // existe, senao a emissao. Custo de obra e caixa — nota emitida em agosto e
@@ -760,7 +770,9 @@ export default async function handler(req, res) {
 
       curva.push({
         semana: s,
+        data_inicio: p.data_inicio,
         data_fim: p.data_fim,
+        dias: diasDe(s),
         mes: p.mes,
         bcws_a: r2(p.a),
         bcws_b: r2(p.b),
@@ -831,8 +843,7 @@ export default async function handler(req, res) {
       const alvo = []
       for (let m = mi; m <= mf; m += 1) (semanasDoMes.get(m) || []).forEach((w) => alvo.push(w))
       if (!alvo.length) return 0
-      const dentro = alvo.filter((w) => semanasAte.has(w)).length
-      return (valor / alvo.length) * dentro
+      return (valor * somaDias(alvo.filter((w) => semanasAte.has(w)))) / somaDias(alvo)
     }
 
     const realizadoPorEapAte = {}
@@ -1004,8 +1015,7 @@ export default async function handler(req, res) {
         const valor = num(it.valor_total)
         const m = parseInt(it.mes_desembolso, 10)
         const alvo = m > 0 ? semanasDoMes.get(m) || [] : semanasOrdenadas
-        const dentro = alvo.filter((w) => semanasAte.has(w)).length
-        const plan = alvo.length ? (valor / alvo.length) * dentro : 0
+        const plan = alvo.length ? (valor * somaDias(alvo.filter((w) => semanasAte.has(w)))) / somaDias(alvo) : 0
         const real = realizadoIndiretoPorEap[it.cod_eap] || 0
         return {
           cod_eap: it.cod_eap,
@@ -1061,7 +1071,7 @@ export default async function handler(req, res) {
       const alvo = []
       for (let m = mi; m <= mf; m += 1) (semanasDoMes.get(m) || []).forEach((w) => alvo.push(w))
       if (!alvo.length) return 0
-      return (alvo.filter((w) => semanasAte.has(w)).length / alvo.length) * 100
+      return (somaDias(alvo.filter((w) => semanasAte.has(w))) / somaDias(alvo)) * 100
     }
 
     const avancoPorGrupo = new Map()
@@ -1365,7 +1375,10 @@ export default async function handler(req, res) {
       .filter((it) => parseInt(it.mes_desembolso, 10) === 0 && !INDIRETO_FORA_DO_CALENDARIO.has(it.cod_eap))
       .reduce((t, it) => t + num(it.valor_total), 0)
     const custoCalendarioTotal = totais.b + totais.c + indiretoCalendario
-    const custoPorSemana = custoCalendarioTotal / (semanasOrdenadas.length || TOTAL_SEMANAS)
+    // Duracao da obra em semanas de 7 dias (a contagem de semanas do calendario
+    // muda com as semanas partidas; o prazo em dias, nao).
+    const duracaoSemanas = totalDias / 7 || TOTAL_SEMANAS
+    const custoPorSemana = custoCalendarioTotal / duracaoSemanas
 
     let projecao = null
     // IPC (decisao out/26) = agregado do direto / (realizado do direto + a
@@ -1379,7 +1392,7 @@ export default async function handler(req, res) {
       const idpPess = Math.min(idp, 1)
       // Falta = o que ainda nao foi executado, a preco de orcamento.
       const falta = orcadoDireto - agregadoRef
-      const duracao = semanasOrdenadas.length || TOTAL_SEMANAS
+      const duracao = duracaoSemanas
       // Se o ritmo atual se mantiver, a obra dura duracao / IDP. Obra
       // adiantada (IDP > 1) nao gera credito de calendario: fica em zero.
       const semanasExtras = Math.max(duracao / idp - duracao, 0)
@@ -1399,6 +1412,7 @@ export default async function handler(req, res) {
         provavel: r2(otimista + custoAtraso),
         pessimista: r2(comprometidoRef + falta / (idc * idpPess)),
         semanas_extras: r2(semanasExtras),
+        duracao_semanas: r2(duracao),
         custo_calendario_semana: r2(custoPorSemana),
         custo_atraso: r2(custoAtraso),
         calendario: {
@@ -1433,7 +1447,7 @@ export default async function handler(req, res) {
       const iFim = semanasOrdenadas.findIndex((w) => plan.get(w).data_fim >= corte)
       const wFim = iFim >= 0 ? semanasOrdenadas[iFim] : ultimaSemana
       const wAnt = iFim > 0 ? semanasOrdenadas[iFim - 1] : null
-      const inicioW = wAnt ? addDias(plan.get(wAnt).data_fim, 1) : inicioDaObra
+      const inicioW = plan.get(wFim).data_inicio
       const diasW = Math.round((Date.parse(plan.get(wFim).data_fim) - Date.parse(inicioW)) / 864e5) + 1
       const diasAte = Math.round((Date.parse(corte) - Date.parse(inicioW)) / 864e5) + 1
       const fr = Math.min(Math.max(diasAte / diasW, 0), 1)
@@ -1441,10 +1455,10 @@ export default async function handler(req, res) {
         const a = wAnt ? plan.get(wAnt)[campo] : 0
         return a + (plan.get(wFim)[campo] - a) * fr
       }
-      const posObra = (iFim >= 0 ? iFim : semanasOrdenadas.length - 1) + fr
+      const diasObraCorte = (wAnt ? diasAcum.get(wAnt) : 0) + diasDe(wFim) * fr
       const percItemCorte = (eap) => {
         const regra = regraAgregado(eap)
-        if (regra === 'tempo') return (Math.min(posObra, nSemanas) / nSemanas) * 100
+        if (regra === 'tempo') return (Math.min(diasObraCorte, totalDias) / totalDias) * 100
         if (regra === 'herda') {
           const pares = paresResolvidos[eap]
           const peso = pares.reduce((t, c) => t + (custoPorEap[c] || 0), 0)
@@ -1598,7 +1612,9 @@ export default async function handler(req, res) {
       divergencia_vs_custo_evm_acum: fimDaCurva
         ? r2(totais.total - fimDaCurva.total_tabela)
         : null,
-      calendario_extrapolado_a_partir_de: { semana: ancora.semana, data_fim: ancora.data_fim },
+      calendario: cal.semanas.length
+        ? { fonte: 'calendario_semanas', semanas: cal.semanas.length, dias: totalDias }
+        : { fonte: 'extrapolado da view', semana: ancora.semana, data_fim: ancora.data_fim },
       inicio_da_obra: inicioDaObra,
       base_parcela_a: BASE_PARCELA_A,
       grupos_planejado_soma: r2(somaGruposPlan),

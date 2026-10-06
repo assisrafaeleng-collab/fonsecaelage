@@ -51,6 +51,9 @@ const menos6 = (s) => {
   if (!y) return ''
   return new Date(Date.UTC(y, m - 1, d) - 6 * 86400000).toISOString().slice(0, 10)
 }
+// Inicio da semana: o do calendario (semanas partidas na virada do mes tem
+// menos de 7 dias); resposta antiga sem o campo, 6 dias antes do fim.
+const inicioDe = (c) => (c && c.data_inicio ? iso(c.data_inicio) : menos6(c && c.data_fim))
 
 const rotuloMes = (s) => {
   const [y, m] = iso(s).split('-').map(Number)
@@ -186,7 +189,7 @@ export default function Semanal() {
     if (!dados) return []
     const g = []
     dados.curva.forEach((c) => {
-      const ini = menos6(c.data_fim)
+      const ini = inicioDe(c)
       const rot = rotuloMes(ini)
       if (!g.length || g[g.length - 1].rotulo !== rot) g.push({ rotulo: rot, semanas: [] })
       g[g.length - 1].semanas.push({ ...c, data_inicio: ini })
@@ -266,7 +269,8 @@ export default function Semanal() {
     const orcado = dados.totais.custo_direto
     // Falta = o que ainda nao foi executado, a preco de orcamento.
     const falta = orcado - agregado
-    const duracao = dados.curva.length
+    // Prazo em semanas de 7 dias (o mesmo da rota)
+    const duracao = (dados.kpis.projecao && dados.kpis.projecao.duracao_semanas) || dados.curva.length
     const semanasExtras = Math.max(duracao / idp - duracao, 0)
     const porSemana = (dados.kpis.projecao && dados.kpis.projecao.custo_calendario_semana) || 0
     const otimista = comprometido + falta / idc
@@ -288,8 +292,8 @@ export default function Semanal() {
   // repete o ultimo valor, e o planejado continuaria andando.
   const avancoPlan = pRef.avanco_plan_hh
   const avancoReal = pRef.avanco_real_hh
-  const inicioSem = menos6(p.data_fim)
-  const primeira = menos6(dados.curva[0].data_fim)
+  const inicioSem = inicioDe(p)
+  const primeira = inicioDe(dados.curva[0])
   const ultima = dados.curva[dados.curva.length - 1].data_fim
 
   return (
@@ -1809,7 +1813,7 @@ function CurvaS({ curva, semana, ultMed, onPick }) {
           <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap', alignItems: 'center', padding: '10px 14px',
                         background: 'var(--bg3)', borderRadius: 9, border: '1px solid var(--border)' }}>
             <div style={{ font: '600 12px var(--mono)', color: 'var(--accent)' }}>
-              S{String(h.semana).padStart(2, '0')} · {dm(menos6(h.data_fim))} a {dm(h.data_fim)}
+              S{String(h.semana).padStart(2, '0')} · {dm(inicioDe(h))} a {dm(h.data_fim)}
             </div>
             {visiveis.map((sr) => (
               <div key={sr.id}>
