@@ -355,6 +355,15 @@ export default async function handler(req, res) {
       custoPorEap[it.cod_eap] = (custoPorEap[it.cod_eap] || 0) + num(it.preco_total)
       if (!descPorEap[it.cod_eap]) descPorEap[it.cod_eap] = String(it.descricao || '')
     })
+    // Valor agregado do MATERIAL (decisao out/26): linhas "Apenas Material" de
+    // aco e de material de forma, fundacao inclusive. Concreto usinado fica
+    // fora (entra pela medicao). Agregado = o MAIOR entre a heranca do servico
+    // (avanco x orcado) e o custo da linha (pago + a pagar) limitado ao orcado.
+    const ehMaterialAgregado = (eap) => {
+      const d = descPorEap[eap] || ''
+      return /apenas material/i.test(d) && /^\s*(a[çc]o\b|material forma)/i.test(d)
+    }
+    const MATERIAL_AGREGADO = new Set(Object.keys(custoPorEap).filter(ehMaterialAgregado))
     const paresNaoEncontrados = []
     const paresResolvidos = {}
     Object.entries(AGREGADO_HERDA).forEach(([eap, pares]) => {
@@ -634,6 +643,52 @@ export default async function handler(req, res) {
         }
       })
 
+    // Pago acumulado das linhas de material ate cada semana, para a regra do
+    // agregado do material. O a pagar e o do ultimo fechamento, o mesmo que
+    // entra no denominador do IPC.
+    const pagoMaterialAte = new Map()
+    {
+      const acc = {}
+      semanasOrdenadas.forEach((w) => {
+        const pe = pagoEapPorSemana.get(w) || {}
+        MATERIAL_AGREGADO.forEach((eap) => (acc[eap] = (acc[eap] || 0) + (pe[eap] || 0)))
+        pagoMaterialAte.set(w, { ...acc })
+      })
+    }
+    const materialNaSemana = (eap, w) => {
+      const orcado = custoPorEap[eap] || 0
+      const heranca = (orcado * percAgregado(eap, w)) / 100
+      const custo = ((pagoMaterialAte.get(w) || {})[eap] || 0) + (aPagarPorEap[eap] || 0)
+      const porCusto = Math.min(custo, orcado)
+      return {
+        heranca,
+        custo,
+        agregado: Math.max(heranca, porCusto),
+        perc_orcado: orcado > 0 ? (custo / orcado) * 100 : null,
+        // Material comprado antes da execucao: o custo segura o agregado
+        comprado: porCusto > heranca + 0.005,
+      }
+    }
+    // Agregado do codigo na semana, pela regra dele (material ou percentual).
+    const agregadoItem = (eap, w) =>
+      MATERIAL_AGREGADO.has(eap)
+        ? materialNaSemana(eap, w).agregado
+        : ((custoPorEap[eap] || 0) * percAgregado(eap, w)) / 100
+    semanasOrdenadas.forEach((w) => {
+      let delta = 0
+      MATERIAL_AGREGADO.forEach((eap) => {
+        const m = materialNaSemana(eap, w)
+        delta += m.agregado - m.heranca
+      })
+      if (!delta) return
+      agregadoRota.set(w, (agregadoRota.get(w) || 0) + delta)
+      if (bcwpABases.has(w)) {
+        const b = bcwpABases.get(w)
+        b.custo += delta
+        if (BASE_PARCELA_A === 'custo') bcwpAPorSemana.set(w, b.custo)
+      }
+    })
+
     // -----------------------------------------------------------------------
     // 4. Curva completa: 87 pontos, planejado sempre, realizado ate semanaAtual
     // -----------------------------------------------------------------------
@@ -652,7 +707,7 @@ export default async function handler(req, res) {
       let agEnc = 0
       let pagoEnc = 0
       Object.keys(custoPorEap).forEach((eap) => {
-        const ag = (custoPorEap[eap] * percAgregado(eap, w)) / 100
+        const ag = agregadoItem(eap, w)
         const pago = pagoEapAcum[eap] || 0
         if (encerradoPorEap[eap]) {
           agregadoSaldo += ag
@@ -828,7 +883,10 @@ export default async function handler(req, res) {
       // (locacao, funcionarios) nao ha % executado.
       const orcado = num(it.preco_total)
       const perc = it.entra_evm && it.cod_eap ? percAgregado(it.cod_eap, semanaAtual) : null
-      const agregado = perc == null ? null : (orcado * perc) / 100
+      // Material: regra propria, na parte desta linha do orcado do codigo
+      const mat = it.entra_evm && MATERIAL_AGREGADO.has(it.cod_eap) ? materialNaSemana(it.cod_eap, semanaAtual) : null
+      const fatia = mat && custoPorEap[it.cod_eap] > 0 ? orcado / custoPorEap[it.cod_eap] : 1
+      const agregado = perc == null ? null : mat ? mat.agregado * fatia : (orcado * perc) / 100
       linha.planejado += plan
       linha.realizado += real
       linha.orcado = (linha.orcado || 0) + orcado
@@ -846,6 +904,12 @@ export default async function handler(req, res) {
         planejado_total: r2(orcado),
         perc_executado: perc == null ? null : r2(perc),
         agregado: agregado == null ? null : r2(agregado),
+        // So nas linhas de material: (pago + a pagar) / orcado e a marcacao
+        // de material comprado antes da execucao
+        material: !!mat,
+        perc_orcado: mat && mat.perc_orcado != null ? r2(mat.perc_orcado) : null,
+        material_comprado: mat ? mat.comprado : null,
+        agregado_heranca: mat ? r2(mat.heranca * fatia) : null,
         // Eficiencia de custo = agregado / (realizado + a pagar do codigo).
         // Sem medicao (agregado zero ou fora do EVM) ou sem custo, fica nula
         // e a tela mostra "—".
@@ -1188,7 +1252,12 @@ export default async function handler(req, res) {
           custo_total: r2(custo),
           perc_fisico: r2(perc),
           medido_na_semana: regra === 'medido' ? snap.semana[it.cod_eap] || null : null,
-          agregado: r2((custo * perc) / 100),
+          material: MATERIAL_AGREGADO.has(it.cod_eap),
+          agregado: r2(
+            MATERIAL_AGREGADO.has(it.cod_eap) && custoPorEap[it.cod_eap] > 0
+              ? (agregadoItem(it.cod_eap, semanaAtual) * custo) / custoPorEap[it.cod_eap]
+              : (custo * perc) / 100
+          ),
         })
       })
       itensA.sort(
@@ -1239,7 +1308,7 @@ export default async function handler(req, res) {
           // codigo so; o pagamento e lancado por codigo).
           por_codigo: Object.fromEntries(
             Object.keys(custoPorEap).map((eap) => {
-              const ag = (custoPorEap[eap] * percAgregado(eap, semanaAtual)) / 100
+              const ag = agregadoItem(eap, semanaAtual)
               const pago = pagoAteSemana[eap] || 0
               const enc = !!encerradoPorEap[eap]
               return [eap, { agregado: r2(ag), pago: r2(pago), encerrado: enc,
@@ -1343,7 +1412,119 @@ export default async function handler(req, res) {
       }
     }
 
+    // -----------------------------------------------------------------------
+    // 5b. IPC do fechamento (decisao out/26): mensal, cortado no ULTIMO DIA do
+    // mes do ultimo fechamento de contas a pagar, por data e nao por semana.
+    //   avanco: ultimo retrato de cada item com data_lancamento ate o corte
+    //   custo: realizado do direto pago ate o corte + a pagar do fechamento
+    //   material: pago ate o corte + a pagar, limitado ao orcado (regra acima)
+    //   B: locacao paga ate o corte, com teto; C: planejado da curva no corte
+    // O planejado no corte e interpolado por dias dentro da semana.
+    // -----------------------------------------------------------------------
+    let ipcFechamento = null
+    if (contas.disponivel && contas.fechamento) {
+      const [fy, fm] = contas.fechamento.split('-').map(Number)
+      const corte = new Date(Date.UTC(fy, fm, 0)).toISOString().slice(0, 10)
+      const percCorte = {}
+      retratosOrd
+        .filter((r) => r.d && r.d.slice(0, 10) <= corte)
+        .forEach((r) => (percCorte[r.eap] = r.perc))
+      // Fracao da obra decorrida no corte e planejado interpolado
+      const iFim = semanasOrdenadas.findIndex((w) => plan.get(w).data_fim >= corte)
+      const wFim = iFim >= 0 ? semanasOrdenadas[iFim] : ultimaSemana
+      const wAnt = iFim > 0 ? semanasOrdenadas[iFim - 1] : null
+      const inicioW = wAnt ? addDias(plan.get(wAnt).data_fim, 1) : inicioDaObra
+      const diasW = Math.round((Date.parse(plan.get(wFim).data_fim) - Date.parse(inicioW)) / 864e5) + 1
+      const diasAte = Math.round((Date.parse(corte) - Date.parse(inicioW)) / 864e5) + 1
+      const fr = Math.min(Math.max(diasAte / diasW, 0), 1)
+      const interp = (campo) => {
+        const a = wAnt ? plan.get(wAnt)[campo] : 0
+        return a + (plan.get(wFim)[campo] - a) * fr
+      }
+      const posObra = (iFim >= 0 ? iFim : semanasOrdenadas.length - 1) + fr
+      const percItemCorte = (eap) => {
+        const regra = regraAgregado(eap)
+        if (regra === 'tempo') return (Math.min(posObra, nSemanas) / nSemanas) * 100
+        if (regra === 'herda') {
+          const pares = paresResolvidos[eap]
+          const peso = pares.reduce((t, c) => t + (custoPorEap[c] || 0), 0)
+          return peso > 0 ? pares.reduce((t, c) => t + (custoPorEap[c] || 0) * (percCorte[c] || 0), 0) / peso : 0
+        }
+        return percCorte[eap] || 0
+      }
+      const pagoCorte = {}
+      let realizadoDireto = 0
+      lancamentos
+        .filter((l) => l.status === 'Normal')
+        .forEach((l) => {
+          const eap = l.codigo_eap || ''
+          if (ehIndireto(eap)) return
+          const dt = dataDoLancamento(l)
+          const d = dt ? iso10(dt) : `${String(l.competencia || '').slice(0, 7)}-01`
+          if (d > corte) return
+          realizadoDireto += num(l.valor)
+          pagoCorte[eap] = (pagoCorte[eap] || 0) + num(l.valor)
+        })
+      let agA = 0
+      const linhasMaterial = []
+      Object.keys(custoPorEap).forEach((eap) => {
+        const orc = custoPorEap[eap]
+        const heranca = (orc * percItemCorte(eap)) / 100
+        if (!MATERIAL_AGREGADO.has(eap)) return (agA += heranca)
+        const pago = pagoCorte[eap] || 0
+        const aPagar = aPagarPorEap[eap] || 0
+        const ag = Math.max(heranca, Math.min(pago + aPagar, orc))
+        agA += ag
+        linhasMaterial.push({
+          cod_eap: eap,
+          descricao: descPorEap[eap],
+          orcado: r2(orc),
+          avanco_servico: r2(percItemCorte(eap)),
+          heranca: r2(heranca),
+          pago: r2(pago),
+          a_pagar: r2(aPagar),
+          perc_orcado: orc > 0 ? r2(((pago + aPagar) / orc) * 100) : null,
+          agregado: r2(ag),
+          material_comprado: Math.min(pago + aPagar, orc) > heranca + 0.005,
+          eficiencia: pago + aPagar > 0 ? r3(ag / (pago + aPagar)) : null,
+        })
+      })
+      const agB = Object.keys(tetoPorEap).reduce(
+        (t, eap) => t + Math.min(pagoCorte[eap] || 0, tetoPorEap[eap]),
+        0
+      )
+      const agC = interp('c')
+      const hhReal = orcamento.reduce(
+        (t, it) => (it.entra_evm ? t + (num(it.hh) * (percCorte[it.cod_eap] || 0)) / 100 : t),
+        0
+      )
+      const avancoReal = totalHhEvm > 0 ? (hhReal / totalHhEvm) * 100 : null
+      const avancoPlan = interp('perc_hh')
+      const agregadoTotal = agA + agB + agC
+      const comprometido = realizadoDireto + aPagarDireto
+      ipcFechamento = {
+        mes: contas.fechamento,
+        data_corte: corte,
+        semana_do_corte: wFim,
+        fracao_da_semana: r3(fr),
+        avanco_fisico_planejado: r2(avancoPlan),
+        avanco_fisico_realizado: avancoReal == null ? null : r2(avancoReal),
+        idp: avancoPlan > 0 && avancoReal != null ? r3(avancoReal / avancoPlan) : null,
+        agregado: r2(agregadoTotal),
+        agregado_a: r2(agA),
+        agregado_b: r2(agB),
+        agregado_c: r2(agC),
+        realizado_direto: r2(realizadoDireto),
+        a_pagar_direto: r2(aPagarDireto),
+        ipc: comprometido > 0 ? r3(agregadoTotal / comprometido) : null,
+        linhas_material: linhasMaterial.sort((a, b) =>
+          String(a.cod_eap).localeCompare(String(b.cod_eap), 'pt-BR', { numeric: true })
+        ),
+      }
+    }
+
     const kpis = {
+      ipc_fechamento: ipcFechamento,
       semana: ponto.semana,
       data_fim: ponto.data_fim,
       bcws: ponto.bcws,
@@ -1437,6 +1618,7 @@ export default async function handler(req, res) {
       agregado_por_tempo: Array.from(AGREGADO_POR_TEMPO),
       planejado_por_tempo_corrigido: correcaoPlanejadoTempo,
       agregado_herda: paresResolvidos,
+      agregado_material: Array.from(MATERIAL_AGREGADO).sort(),
       agregado_pares_nao_encontrados: paresNaoEncontrados,
       indireto_rateio:
         'mes_desembolso > 0 vai para as semanas do mes; mes_desembolso = 0 dilui pela obra inteira',

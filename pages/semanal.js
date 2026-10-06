@@ -848,6 +848,12 @@ export default function Semanal() {
                               Valor agregado
                             </th>
                             <th style={{ textAlign: 'right', width: 120 }}>Realizado</th>
+                            <th
+                              style={{ textAlign: 'right', width: 80 }}
+                              title="Só nas linhas de material (aço e material de forma): (pago + a pagar) ÷ orçado da linha"
+                            >
+                              % do orçado
+                            </th>
                             <th style={{ textAlign: 'right', width: 80 }} title="Valor agregado ÷ realizado. Acima de 1,00: custou menos que o orçado pelo que foi executado">
                               Eficiência
                             </th>
@@ -880,9 +886,32 @@ export default function Semanal() {
                             title={i.perc_executado == null ? 'Sem medição de avanço' : `${fmtPerc(i.perc_executado)} executado`}
                           >
                             {i.agregado > 0 ? fmtMoeda(i.agregado) : '—'}
+                            {i.material_comprado && (
+                              <span
+                                style={{ display: 'block', fontSize: 10, color: '#8b919c', fontFamily: 'inherit' }}
+                                title={`Material comprado antes da execução: o agregado segue o custo (pago + a pagar, até o orçado), não o avanço do serviço (${fmtMoeda(i.agregado_heranca || 0)})`}
+                              >
+                                material comprado
+                              </span>
+                            )}
                           </td>
                           <td style={{ textAlign: 'right', fontFamily: 'var(--mono)' }}>
                             {i.realizado > 0 ? fmtMoeda(i.realizado) : '—'}
+                          </td>
+                          <td
+                            style={{
+                              textAlign: 'right',
+                              fontFamily: 'var(--mono)',
+                              color: i.perc_orcado == null ? '#8b919c' : i.perc_orcado > 100 ? VERMELHO : undefined,
+                            }}
+                            title={
+                              i.perc_orcado == null
+                                ? ''
+                                : `(realizado + a pagar) ÷ orçado
+= (${fmtMoeda(i.realizado)} + ${fmtMoeda(i.a_pagar || 0)}) ÷ ${fmtMoeda(i.planejado_total)}`
+                            }
+                          >
+                            {i.perc_orcado == null ? '—' : fmtPerc(i.perc_orcado)}
                           </td>
                           <td
                             style={{
@@ -906,7 +935,7 @@ export default function Semanal() {
                         </tr>
                         {itemAberto === `c${i.cod_eap}` && (i.lancamentos || []).length > 0 && (
                           <tr key={`${i.cod_eap}-det`}>
-                            <td colSpan={7} style={{ padding: 0 }}>
+                            <td colSpan={8} style={{ padding: 0 }}>
                               <div style={{ background: 'var(--bg)', borderRadius: 8, padding: '10px 14px', margin: '0 0 8px' }}>
                                 {i.lancamentos.map((l, k) => (
                                   <div
