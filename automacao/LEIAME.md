@@ -60,10 +60,28 @@ A carga substitui a foto inteira do fechamento (tabela contas_a_pagar, supabase/
 Título sem EAP só grava com --aceitar-pendencias (fica fora do IPC).
 
 ## Indicadores do dashboard (decisão out/26)
+- Valor agregado do material (aço e material de forma "Apenas Material"; concreto fica fora): o maior entre
+  avanço do serviço × orçado e custo da linha (pago + a pagar) limitado ao orçado.
 - Avanço físico = horas executadas ÷ horas orçadas, em todas as telas. Nunca ponderado por valor.
 - IPC = valor agregado do direto ÷ (realizado do direto + contas a pagar do direto por entrega, com NF e
   previsões). Acima de 1 = economia. Indireto e recorrentes ficam fora do a pagar.
 - Projeção pessimista: IDP limitado a 1 (adiantamento não barateia a obra).
+- IPC é MENSAL: avanço e custo até o último dia do mês + contas a pagar do fechamento daquele mês. Na
+  semana de fechamento (a que termina no último dia do mês) a página semanal mostra o IPC do mês; nas semanas
+  do meio, "IPC de <mês>" do último fechamento. A projeção usa esse IPC; avanço físico e IDP são semanais.
+
+## Semanas alinhadas ao fechamento (decisão out/26, migração gravada em 06/10/2026)
+- A semana termina no domingo OU no último dia do mês. Fragmento de 1 dia no início do mês junta com a
+  semana seguinte; no fim do mês (mês que termina na segunda), com a anterior. S1–S13 ficaram como eram;
+  de S14 (28–30/09/2026) em diante, regra nova. 96 semanas, fim em 27/02/2028.
+- O código lê o calendário da tabela calendario_semanas (lib/calendario.js) e pesa os rateios por dias.
+- Scripts em supabase/semanas/:
+    0-diagnostico.sql            só leitura
+    1-migrar-semanas.sql         JÁ RODADO em 06/10/2026 — NÃO RODE DE NOVO
+    2-desfazer-semanas.sql       volta ao calendário antigo pelos backups *_bkp_20261006
+    3-apagar-backups-orfaos.sql  NÃO RODE: os backups *_bkp_20261006 são o caminho de volta da migração
+                                 gravada (ele recusa com 96 semanas, mas não dependa disso)
+- Mantenha as tabelas *_bkp_20261006 no banco.
 
 ## Uso mensal
     pip install pandas openpyxl xlrd
@@ -95,6 +113,20 @@ com --confirmar; a carga substitui a competência inteira e pode ser desfeita co
 - eap = '19.1.7=0.581;19.1.9=0.419' → rateio fixo entre EAPs (fecha ao centavo na última)
 - etapa.csv tem vigente_desde: a EAP da etapa é a vigente na competência do título
 - decisoes_pontuais.csv com eap = NAO_CUSTO → o título sai do custo (ex.: NF já paga por adiantamento)
+- parcela seguinte de uma NF sem decisão própria usa a decisão pontual da primeira parcela (2141/02 → 2141/01);
+  NAO_CUSTO não é herdado (decisão out/26)
+- eap = 'PEDIDO_ACO' → compra de aço dividida pelo pedido: a SC da OC (coluna "Nº SC FLUIG" do relatório
+  de OC) é procurada em pedidos_aco.csv (sc, pedido, eap, proporcao em kg das pranchas). Título sem OC ou
+  SC fora da planilha → pendência para você informar o pedido (decisão out/26)
+- madeira de forma (Nova Esperança, Madeireira BH): rateio fixo pelo orçado de forma do 2º ao 7º pav
+- eap = 'ETAPA_NF:CAT' → como ETAPA:, mas o pavimento é o de etapa.csv na DATA DE EMISSÃO da nota, não na
+  competência. Prego (CONTEM:PREGO) = FORMA_MATERIAL; arame (CONTEM:ARAME) = ACO_MATERIAL (decisão out/26)
+- "Prev. Financ. OC 0001826 ...": o título abre pelos itens da OC do histórico (vínculo "ALTA (OC no histórico)")
+
+## Pedidos de aço (pedidos_aco.csv)
+Uma linha por SC e EAP, com a proporção em kg das pranchas do pedido (planilha em projetos/Pedidos de Aço.xlsx):
+2º pedido = SC 96165 (pranchas do 2º pav, pilares e laje forro), 3º = SC 98265 (3º pav → 3.3.8),
+4º = SC 101014 (4º pav → 3.4.8). Pedido novo: acrescente as linhas da SC antes de rodar o classificador.
 
 ## Próximos passos (Claude Code)
 1. Gravar lancamentos no Supabase (upsert por documento + fornecedor)

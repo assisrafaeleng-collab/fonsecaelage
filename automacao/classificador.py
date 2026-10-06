@@ -120,7 +120,7 @@ def separar_nao_custo(tit):
 SIN_OC = {
     'oc': ['no oc'], 'cnpj': ['cnpj'], 'fornecedor': ['razao social'], 'item': ['nome prod'],
     'total_item': ['total do item'], 'nf': ['no nf'], 'status': ['desc_status'],
-    'cc': ['descricao c.custo'], 'emissao': ['data emissao'],
+    'cc': ['descricao c.custo'], 'emissao': ['data emissao'], 'sc': ['no sc fluig'],
 }
 
 def ler_ocs(pasta):
@@ -143,6 +143,8 @@ def ler_ocs(pasta):
         'total_item': pd.to_numeric(o['total_item'], errors='coerce').fillna(0),
         'nf': pd.to_numeric(o['nf'], errors='coerce'),
         'status': o.get('status'),
+        # SC (solicitação de compra) da OC: liga a compra de aço ao pedido (pedidos_aco.csv)
+        'sc': o['sc'].astype(str).str.replace(r'\.0$', '', regex=True).str.strip() if 'sc' in o else '',
         'emissao': pd.to_datetime(o.get('emissao'), errors='coerce'),
         'arquivo': o['arquivo'],
     })
@@ -156,6 +158,12 @@ def vincular_oc(tit, ocs):
     if m:
         g = ocs[ocs.oc == m.group(1)]
         return (g, 'ALTA') if len(g) else (None, None)
+    # "Prev. Financ. OC 000001826 ...": a OC vem no histórico; abre pelos itens dela (decisão out/26)
+    m = re.search(r'PREV\.?\s*FINANC.*\bOC\s*0*(\d+)', str(tit.historico))
+    if m:
+        g = ocs[(ocs.oc == m.group(1)) & (ocs.total_item > 0)]
+        if len(g):
+            return g, 'ALTA (OC no histórico)'
     m = re.match(r'^0*(\d+)/\d+$', tit.documento)
     if m:
         g = ocs[(ocs.nf == int(m.group(1))) & (ocs.cnpj == tit.cnpj)]
@@ -225,35 +233,76 @@ try:
 except FileNotFoundError:
     ETAPA = pd.DataFrame(columns=['categoria', 'eap', 'vigente_desde'])
 
-def resolver_etapa(eap, alerta, competencia=None):
-    """EAP 'ETAPA:ACO_MATERIAL' -> linha do pavimento em execução na competência do título (etapa.csv)"""
-    if eap and eap.startswith('ETAPA:'):
+def resolver_etapa(eap, alerta, competencia=None, emissao=None):
+    """EAP 'ETAPA:ACO_MATERIAL' -> linha do pavimento em execução na competência do título (etapa.csv).
+    'ETAPA_NF:...' usa a data de emissão da nota (prego e arame, decisão out/26); sem ela, a competência."""
+    if eap and eap.startswith(('ETAPA:', 'ETAPA_NF:')):
+        por_nota = eap.startswith('ETAPA_NF:')
         cat = eap.split(':', 1)[1]
+        data = emissao if por_nota and emissao is not None and not pd.isna(emissao) else competencia
         e = ETAPA[ETAPA.categoria == cat]
-        if competencia is not None:
-            e = e[(e.vigente_desde == '') | (e.vigente_desde <= str(competencia))]
+        if data is not None:
+            e = e[(e.vigente_desde == '') | (e.vigente_desde <= str(data))]
         if len(e) == 0:
             return None, f'categoria {cat} sem EAP em etapa.csv'
         e = e.sort_values('vigente_desde').iloc[-1]
-        return e.eap, (alerta + ' | ' if alerta else '') + f'EAP pela etapa ({cat} = {e.eap})'
+        return e.eap, (alerta + ' | ' if alerta else '') + f'EAP pela etapa ({cat} = {e.eap}' + (f', nota de {data}' if por_nota else '') + ')'
     return eap, alerta
 
-def aplicar_regra(regras, cnpj, fornecedor, item, valor, competencia=None):
+def aplicar_regra(regras, cnpj, fornecedor, item, valor, competencia=None, emissao=None):
     manuais, geradas = regras
     eap, motivo, alerta = _aplicar(manuais, cnpj, fornecedor, item, valor, competencia)
     if eap:
-        eap, alerta = resolver_etapa(eap, alerta, competencia)
+        eap, alerta = resolver_etapa(eap, alerta, competencia, emissao)
         return eap, motivo.replace('regra por', 'decisão sua por'), alerta
     return _aplicar(geradas, cnpj, fornecedor, item, valor)
 
-def ratear(eap, valor, competencia=None):
+def ratear(eap, valor, competencia=None, emissao=None):
     """regra com rateio: eap = '19.1.7=0.581;19.1.9=0.419' -> [(eap, valor), ...] fechando ao centavo na última"""
     if not eap or '=' not in eap:
         return [(eap, valor)]
     partes = [p.split('=') for p in eap.split(';') if p.strip()]
     vals = [round(valor * float(pr), 2) for _, pr in partes]
     vals[-1] = round(vals[-1] + valor - sum(vals), 2)
-    return [(resolver_etapa(e.strip(), '', competencia)[0], v) for (e, _), v in zip(partes, vals)]
+    return [(resolver_etapa(e.strip(), '', competencia, emissao)[0], v) for (e, _), v in zip(partes, vals)]
+
+# Compra de aço (decisão out/26): regra com eap = 'PEDIDO_ACO' divide o título pelo pedido de aço
+# (SC da OC) e pelas pranchas, na proporção em kg de pedidos_aco.csv (uma linha por SC e EAP).
+# Sem OC identificada, ou com SC fora da planilha de pedidos: pendência para você informar o pedido.
+try:
+    PEDIDOS_ACO = pd.read_csv('pedidos_aco.csv', dtype=str).fillna('')
+except FileNotFoundError:
+    PEDIDOS_ACO = pd.DataFrame(columns=['sc', 'pedido', 'eap', 'proporcao', 'obs'])
+
+def oc_do_historico(historico):
+    m = re.search(r'\bOC\s*0*(\d+)', str(historico))
+    return m.group(1) if m else ''
+
+def resolver_pedido_aco(oc, ocs):
+    if not oc:
+        return None, 'pedido de aço: título sem OC identificada (informe o pedido)'
+    scs = sorted({x for x in ocs[ocs.oc == oc].sc if x and x != 'nan'}) if 'sc' in ocs else []
+    if not scs:
+        return None, f'pedido de aço: OC {oc} sem SC no relatório de OC (informe o pedido)'
+    p = PEDIDOS_ACO[PEDIDOS_ACO.sc.isin(scs)]
+    if not len(p):
+        return None, f'pedido de aço: SC {", ".join(scs)} (OC {oc}) não está na planilha de pedidos (informe o pedido)'
+    eap = ';'.join(f'{r.eap}={r.proporcao}' for r in p.itertuples())
+    return eap, f'{p.pedido.iloc[0]}º pedido de aço (SC {p.sc.iloc[0]}, OC {oc}): divisão pelas pranchas'
+
+def parcela_anterior(pontuais, t):
+    """Parcelas seguintes de uma NF seguem a decisão da primeira parcela (decisão out/26):
+    sem decisão própria, '2141/02' usa a de '2141/01'. NAO_CUSTO não é herdado."""
+    if '/' not in t.documento:
+        return pontuais.iloc[0:0], None
+    base, par = t.documento.split('/')[0].lstrip('0'), t.documento.split('/')[-1]
+    irm = pontuais[(pontuais.cnpj == t.cnpj) & (pontuais.eap != 'NAO_CUSTO') & pontuais.documento.str.contains('/', regex=False)]
+    irm = irm[irm.documento.str.split('/').str[0].str.lstrip('0') == base]
+    irm = irm[pd.to_numeric(irm.documento.str.split('/').str[-1], errors='coerce') < pd.to_numeric(par, errors='coerce')]
+    if not len(irm):
+        return irm, None
+    primeira = min(irm.documento.unique(), key=lambda d: int(d.split('/')[-1]))
+    return irm[irm.documento == primeira], primeira
 
 def classificar(tit, ocs, regras):
     lanc, pend = [], []
@@ -267,16 +316,20 @@ def classificar(tit, ocs, regras):
         pontuais = pd.DataFrame(columns=['cnpj', 'documento', 'eap', 'proporcao', 'obs'])
     for t in tit.itertuples():
         dp = pontuais[(pontuais.cnpj == t.cnpj) & (pontuais.documento == t.documento)]
+        herdada = None
+        if not len(dp):
+            dp, herdada = parcela_anterior(pontuais, t)
         if len(dp):
             # rateio informado por você (ex.: boletim de medição); linha sem EAP vai para pendências
             vals = [round(t.valor * float(p), 2) for p in dp.proporcao]
             vals[-1] = round(vals[-1] + t.valor - sum(vals), 2)
             for r, v in zip(dp.fillna('').itertuples(), vals):
-                eap_r, _ = resolver_etapa(r.eap, '', t.competencia)
+                eap_r, _ = resolver_etapa(r.eap, '', t.competencia, t.emissao)
                 r = r._replace(eap=eap_r or '')
                 row = dict(documento=t.documento, fornecedor=t.fornecedor, item=r.obs, oc='',
                            competencia=t.competencia, valor=v, eap=r.eap, vinculo_oc='decisão pontual',
-                           regra=f'decisão: {r.obs}', alerta=getattr(r, 'alerta', ''),
+                           regra=f'decisão: {r.obs}' + (f' (herdada da parcela {herdada})' if herdada else ''),
+                           alerta=getattr(r, 'alerta', ''),
                            data_emissao=t.emissao, cnpj=t.cnpj,
                            classificacao=getattr(r, 'classificacao', ''))   # opcional, vai para o banco
                 (lanc if r.eap else pend).append(row)
@@ -284,7 +337,7 @@ def classificar(tit, ocs, regras):
         m = re.match(r'^0*(\d+)/\d+$', t.documento)
         ant = parcelas[(parcelas.cnpj == t.cnpj) & (parcelas.nf_base == m.group(1))] if m else parcelas.iloc[0:0]
         rm = regras[0]
-        volatil = len(rm[(rm.cnpj == t.cnpj) & rm.eap.str.startswith('ETAPA:') & ((rm.vigente_desde == '') | (rm.vigente_desde <= str(t.competencia)))]) > 0
+        volatil = len(rm[(rm.cnpj == t.cnpj) & rm.eap.str.startswith(('ETAPA:', 'ETAPA_NF:')) & ((rm.vigente_desde == '') | (rm.vigente_desde <= str(t.competencia)))]) > 0
         if len(ant) and not volatil:
             # outra parcela de uma NF já fechada: repete o mesmo rateio
             partes = [(e, round(t.valor * p, 2)) for e, p in zip(ant.eap, ant.proporcao)]
@@ -307,8 +360,10 @@ def classificar(tit, ocs, regras):
         else:
             partes = [(t.historico, t.valor, '')]
         for item, valor, oc in partes:
-            eap, motivo, alerta = aplicar_regra(regras, t.cnpj, t.fornecedor, item, t.valor if len(partes) == 1 else valor, t.competencia)
-            for eap_r, valor_r in ratear(eap, valor, t.competencia):
+            eap, motivo, alerta = aplicar_regra(regras, t.cnpj, t.fornecedor, item, t.valor if len(partes) == 1 else valor, t.competencia, t.emissao)
+            if eap == 'PEDIDO_ACO':
+                eap, motivo = resolver_pedido_aco(oc or oc_do_historico(t.historico), ocs)
+            for eap_r, valor_r in ratear(eap, valor, t.competencia, t.emissao):
                 row = dict(documento=t.documento, fornecedor=t.fornecedor, item=item, oc=oc,
                            competencia=t.competencia, valor=valor_r, eap=eap_r or '',
                            vinculo_oc=conf or 'sem OC', regra=motivo, alerta=alerta,

@@ -1,7 +1,10 @@
-categoria,eap,descricao,vigente_desde
+﻿categoria,eap,descricao,vigente_desde
 ACO_MATERIAL,3.1.7,Aço (apenas material) — pilares/escada 1º pav,
 FORMA_MATERIAL,3.1.6,Material de forma — pilares/escada 1º pav,
 FORMA_MO,3.1.4,MO de forma — pilares/escada 1º pav,
 ACO_MATERIAL,3.2.7,Aço (apenas material) — vigas/pilares/lajes 2º pav (obra no 2º pav desde a última semana de ago/26),2026-09-01
 FORMA_MATERIAL,3.2.6,Material de forma — vigas/pilares/lajes 2º pav,2026-09-01
 FORMA_MO,3.2.4,MO de forma — 2º pav,2026-09-01
+ACO_MATERIAL,3.3.8,Aço (apenas material) — vigas/pilares/lajes 3º pav (3º pav em execução desde 22/09/26 - decisão out/26),2026-09-22
+FORMA_MATERIAL,3.3.7,Material de forma — vigas/pilares/lajes 3º pav,2026-09-22
+FORMA_MO,3.3.5,MO de forma — 3º pav,2026-09-22

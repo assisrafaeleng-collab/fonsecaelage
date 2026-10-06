@@ -33,9 +33,29 @@ fica em `automacao/` — leia `automacao/LEIAME.md` antes de mexer nela.
   por valor. O dashboard mensal e a página semanal mostram o mesmo número (`lib/avanco-hh.js`).
 - IPC / eficiência de custo direto (cards, linhas e projeção) = valor agregado do direto ÷ (custo direto
   realizado + contas a pagar do direto por entrega, com NF e "Prev. Financ."). Acima de 1 = economia.
-  Indireto e recorrentes ficam fora do a pagar.
+  Indireto e recorrentes ficam fora do a pagar. O IPC é MENSAL: avanço e custo até o último dia do mês + a
+  pagar daquele fechamento; na semana de fechamento a semanal mostra o do mês, nas do meio "IPC de <mês>".
+- Semanas (migração de 06/10/26): a semana termina no domingo ou no último dia do mês; S1–S13 antigas, 96
+  semanas. Calendário em `calendario_semanas` (`lib/calendario.js`), rateios por dias. Não rode de novo
+  `supabase/semanas/1-migrar-semanas.sql` nem `3-apagar-backups-orfaos.sql`; mantenha as `*_bkp_20261006`.
 - Projeção pessimista: IDP limitado a 1 (adiantamento não barateia a obra).
 - Direto × indireto sempre pela EAP: grupo 19 = indireto, o resto = direto.
+- Valor agregado do MATERIAL (linhas "Apenas Material" de aço e de material de forma, inclusive fundação;
+  concreto usinado fica FORA e entra pela medição): agregado = o MAIOR entre (a) avanço do serviço × orçado
+  (herança) e (b) custo da linha (pago + a pagar) limitado ao orçado. Linha executada mostra a economia real;
+  material comprado antes da execução fica neutro; o que passar do orçado aparece no IPC.
+
+## Classificação de material (decisões out/26)
+- Madeira de forma (Madeiras Nova Esperança, Madeireira BH): compra nova é diluída na proporção do orçado
+  de forma do 2º ao 7º pav (3.2.6 42,18% · 3.3.7 12,77% · 3.4.7 12,30% · 3.5.6 12,80% · 3.6.5 10,25% ·
+  3.7.5 9,68%).
+- Parcelas seguintes de uma NF seguem a decisão pontual da primeira parcela (2141/02 usa a de 2141/01).
+- Aço (Takono, Santa Mônica): compra dividida pelo pedido (SC da OC) e pelas pranchas, em kg, conforme
+  `automacao/pedidos_aco.csv` (planilha de pedidos em `automacao/projetos`). Pedido fora da planilha ou
+  título sem OC = pendência para o usuário informar.
+- Prego = material de forma; arame = material de aço; os dois do pavimento em execução na DATA DA NOTA
+  (`ETAPA_NF:` em `regras_manuais.csv`, pavimento por `etapa.csv`; 3º pav desde 22/09/26). "Prev. Financ."
+  abre pelos itens da OC citada no histórico.
 
 ## Ambiente
 - Python é `py`, não `python`.
