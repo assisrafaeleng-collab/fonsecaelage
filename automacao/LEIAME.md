@@ -30,6 +30,14 @@ Card separado do custo realizado: nada daqui vai para custos_lancamentos.
    obra toda com Previsão de Baixa (ou Vencimento) no mês SEGUINTE ao fechamento (fechando 2026-09 →
    2026-10). Sem pagamento de meses anteriores NÃO entra.
 2. "Prev. Financ." entra, marcada como previsto sem NF. APORTE e NAO_CUSTO não entram.
+   Só entra o que é pago POR ENTREGA: material, serviço por empreitada (pago por serviço pronto/medido)
+   e indireto pontual (projetos, taxas, laudos, cartório). RECORRENTE sai do card e do IPC, pela
+   marcação que o sistema já tem (o importar.js aplica na prévia e na carga):
+   - direto fora do avanço físico (orcamento_planejado.entra_evm = false: locação 17, funcionários 18)
+     ou agregado por tempo (1.1.6: limpeza, EPI, ferramental, consumo);
+   - indireto diluído na obra (custos_indiretos_planejados.mes_desembolso = 0: contábeis, IPTU,
+     engenheiro, Taxa ADM, restaurante, padaria).
+   O realizado (já pago) não muda: recorrente pago continua no custo do mês.
 3. EAP pelo mesmo classificador e as mesmas regras do fechamento. O que as regras não cobrem vai para
    pendencias_contas.csv; a decisão vira regra (regras_manuais.csv se o fornecedor se repete,
    decisoes_pontuais.csv se é um título específico). Direto × indireto pela EAP (19.x = indireto).
@@ -47,8 +55,8 @@ Título sem EAP só grava com --aceitar-pendencias (fica fora do IPC).
 
 ## Indicadores do dashboard (decisão out/26)
 - Avanço físico = horas executadas ÷ horas orçadas, em todas as telas. Nunca ponderado por valor.
-- IPC = valor agregado do direto ÷ (realizado do direto + contas a pagar do direto, com NF e previsões).
-  Acima de 1 = economia. Indireto fica fora.
+- IPC = valor agregado do direto ÷ (realizado do direto + contas a pagar do direto por entrega, com NF e
+  previsões). Acima de 1 = economia. Indireto e recorrentes ficam fora do a pagar.
 - Projeção pessimista: IDP limitado a 1 (adiantamento não barateia a obra).
 
 ## Uso mensal

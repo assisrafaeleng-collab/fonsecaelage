@@ -58,6 +58,9 @@ const ACEITAR_SAIDAS = args.includes('--aceitar-saidas')
 const ACEITAR_DUPLICIDADE = args.includes('--aceitar-duplicidade')
 const ARQ_CONTAS_CLASSIF = arg('--contas-classificador')
 const ACEITAR_PENDENCIAS = args.includes('--aceitar-pendencias')
+// --exportar ARQUIVO.xlsx: grava (so no disco) a lista do custo direto a pagar
+// por entrega, para conferencia. Nao mexe no banco.
+const ARQ_EXPORTAR = arg('--exportar')
 // Tabela do contas a pagar por titulo (supabase/contas/1-contas-a-pagar.sql).
 // Mesmo nome em lib/contas-a-pagar.js. (Conferido em out/26: a tabela nao
 // existia no banco; o modo antigo --contas, que gravaria nela com outro
@@ -512,6 +515,84 @@ async function existeTabela(db, nome) {
   throw new Error(`${nome}: ${r.error.message}`)
 }
 
+// Recorrente x por entrega (decisao out/26). O contas a pagar so leva o que
+// e pago por entrega: material, servico por empreitada (medido) e indireto
+// pontual. Recorrente sai do card e do IPC (o ja pago continua no realizado).
+// A regua e a marcacao que o sistema ja tem:
+//   direto   recorrente = fora do avanco fisico (entra_evm = false: locacao,
+//            funcionarios) ou agregado por tempo (1.1.6);
+//   indireto recorrente = diluido na obra (mes_desembolso = 0).
+// Mesma lista do AGREGADO_POR_TEMPO de pages/api/dashboard-semanal.js
+const AGREGADO_POR_TEMPO = new Set(['1.1.6'])
+
+// Custo direto a pagar por entrega: uma linha por titulo e EAP, do maior para
+// o menor valor, com o total no fim.
+function exportarDireto(linhas, regua, arquivo) {
+  const m = new Map()
+  linhas
+    .filter((l) => l.classe === 'direto')
+    .forEach((l) => {
+      const k = `${l.__chave}#${l.codigo_eap}`
+      if (!m.has(k))
+        m.set(k, {
+          Fornecedor: l.fornecedor,
+          Documento: l.num_documento,
+          Vencimento: l.data_previsao || l.data_vencimento,
+          'Valor (R$)': 0,
+          'Valor do título (R$)': l.valor_titulo,
+          EAP: l.codigo_eap,
+          'Descrição da EAP': regua.descricao(l.codigo_eap),
+          Tipo: l.natureza === 'previsto_sem_nf' ? 'Previsto sem NF' : 'NF',
+          Alerta: l.alertas.join(' | '),
+        })
+      m.get(k)['Valor (R$)'] = r2(m.get(k)['Valor (R$)'] + l.valor)
+    })
+  const lista = [...m.values()].sort((a, b) => b['Valor (R$)'] - a['Valor (R$)'])
+  const total = r2(lista.reduce((t, x) => t + x['Valor (R$)'], 0))
+  const ws = XLSX.utils.json_to_sheet([...lista, { Fornecedor: 'TOTAL', 'Valor (R$)': total }])
+  ws['!cols'] = [{ wch: 44 }, { wch: 14 }, { wch: 11 }, { wch: 13 }, { wch: 15 }, { wch: 9 }, { wch: 60 }, { wch: 15 }, { wch: 70 }]
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Direto a pagar')
+  fs.mkdirSync(path.dirname(arquivo), { recursive: true })
+  XLSX.writeFile(wb, arquivo)
+  console.log(`
+  ✓ lista do direto a pagar gravada em ${arquivo}: ${lista.length} linha(s) · ${fmt(total)}`)
+  return lista
+}
+
+async function reguaRecorrencia(db) {
+  const orc = await todos(() => db.from('orcamento_planejado').select('cod_eap, descricao, entra_evm').eq('obra_id', OBRA))
+  const ind = await todos(() => db.from('custos_indiretos_planejados').select('cod_eap, categoria, mes_desembolso').eq('obra_id', OBRA))
+  const evm = {}
+  const desc = {}
+  orc.forEach((o) => {
+    if (!o.cod_eap) return
+    evm[o.cod_eap] = evm[o.cod_eap] || !!o.entra_evm
+    desc[o.cod_eap] = desc[o.cod_eap] || o.descricao
+  })
+  const mesInd = {}
+  ind.forEach((i) => {
+    if (!i.cod_eap) return
+    mesInd[i.cod_eap] = parseInt(i.mes_desembolso, 10) || 0
+    desc[i.cod_eap] = desc[i.cod_eap] || i.categoria
+  })
+  const regua = (eap) => {
+    if (!eap) return { recorrente: false, motivo: 'sem EAP' }
+    if (eap.startsWith('19.')) {
+      if (!(eap in mesInd)) return { recorrente: false, motivo: 'indireto sem marcação na tabela de indiretos' }
+      return mesInd[eap] === 0
+        ? { recorrente: true, motivo: 'indireto diluído na obra (mes_desembolso = 0)' }
+        : { recorrente: false, motivo: `indireto pontual (M${mesInd[eap]})` }
+    }
+    if (AGREGADO_POR_TEMPO.has(eap)) return { recorrente: true, motivo: 'agregado por tempo' }
+    if (eap in evm && !evm[eap]) return { recorrente: true, motivo: 'fora do avanço físico (entra_evm = false)' }
+    return { recorrente: false, motivo: 'medido por avanço físico' }
+  }
+  regua.descricao = (eap) => desc[eap] || ''
+  regua.todas = () => [...new Set([...Object.keys(evm), ...Object.keys(mesInd)])]
+  return regua
+}
+
 // Pagamento mensal (automacao/fornecedores_recorrentes.csv, decisao out/26):
 // mesmo valor em outro mes e outro documento e a mensalidade, nao duplicidade.
 function lerRecorrentes() {
@@ -580,7 +661,7 @@ async function contasClassificador(db, validos) {
   if (fechs.length !== 1 || !/^\d{4}-\d{2}$/.test(fechs[0])) throw new Error(`o arquivo deve ter UM fechamento; tem: ${fechs.join(', ')}`)
   const fechamento = fechs[0]
 
-  const linhas = brutas.map((b, i) => ({
+  const todas = brutas.map((b, i) => ({
     __linha: i + 2,
     obra_id: OBRA,
     competencia_fechamento: fechamento,
@@ -607,7 +688,7 @@ async function contasClassificador(db, validos) {
 
   // Titulos (uma chave por cnpj + documento) para os alertas do banco
   const titulos = {}
-  linhas.forEach((l) => {
+  todas.forEach((l) => {
     const chave = `${l.cnpj}|${l.num_documento}`
     l.__chave = chave
     if (!titulos[chave]) titulos[chave] = { chave, cnpj: l.cnpj, fornecedor: l.fornecedor, num_documento: l.num_documento, competencia_vencimento: l.competencia_vencimento, valor: 0, natureza: l.natureza, linhas: [] }
@@ -618,14 +699,39 @@ async function contasClassificador(db, validos) {
   const doRelatorio = {}
   Object.values(titulos).forEach((t) => (doRelatorio[t.chave] = t.linhas[0].alertas))
   const doBanco = alertasDoBanco(Object.values(titulos), custos, doRelatorio)
-  linhas.forEach((l) => (l.alertas = [...new Set([...l.alertas, ...(doBanco[l.__chave] || [])])]))
+  todas.forEach((l) => (l.alertas = [...new Set([...l.alertas, ...(doBanco[l.__chave] || [])])]))
+
+  // Recorrentes saem da carga: ficam fora do card e do IPC
+  const regua = await reguaRecorrencia(db)
+  todas.forEach((l) => (l.__rec = regua(l.codigo_eap)))
+  const recorrentes = todas.filter((l) => l.__rec.recorrente)
+  const linhas = todas.filter((l) => !l.__rec.recorrente)
+  const titulosTodos = Object.values(titulos).map((t) => ({ ...t, todas: t.linhas }))
+  Object.values(titulos).forEach((t) => {
+    t.linhas = t.linhas.filter((l) => !l.__rec.recorrente)
+    t.valor = r2(t.linhas.reduce((x, l) => x + l.valor, 0))
+    if (!t.linhas.length) delete titulos[t.chave]
+  })
 
   const destino = await existeTabela(db, TABELA_CONTAS)
 
   const soma = (ls) => r2(ls.reduce((t, l) => t + l.valor, 0))
   const nTit = (ls) => new Set(ls.map((l) => l.__chave)).size
   console.log(`\nContas a pagar · fechamento ${fechamento} → vencimento ${linhas[0].competencia_vencimento} · ${path.basename(ARQ_CONTAS_CLASSIF)}`)
-  console.log(`  ${nTit(linhas)} título(s) · ${linhas.length} linha(s) · ${fmt(soma(linhas))}`)
+  console.log(`  relatório: ${nTit(todas)} título(s) sem pagamento · ${fmt(soma(todas))}`)
+  const eapsRec = [...new Set(regua.todas().filter((e) => regua(e).recorrente))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+  console.log(`\n  RÉGUA (marcação do sistema): ${eapsRec.length} EAP(s) recorrentes; as demais ${regua.todas().length - eapsRec.length} são por entrega`)
+  eapsRec.forEach((e) => console.log(`    ↻ ${e.padEnd(8)} ${regua.descricao(e).slice(0, 60).padEnd(60)} ${regua(e).motivo}`))
+  console.log(`\n  RECORRENTES de ${linhas[0] ? linhas[0].competencia_vencimento : ''} (saem do card e do IPC): ${nTit(recorrentes)} título(s) · ${fmt(soma(recorrentes))}`)
+  titulosTodos
+    .filter((t) => t.todas.some((l) => l.__rec.recorrente))
+    .forEach((t) => {
+      const rec = t.todas.filter((l) => l.__rec.recorrente)
+      const parcial = rec.length < t.todas.length
+      const eaps = [...new Set(rec.map((l) => l.codigo_eap))].join(', ')
+      console.log(`    - ${t.num_documento} · ${t.fornecedor} · ${fmt(soma(rec))} · ${eaps}${parcial ? ` (parcial: ${fmt(soma(t.todas.filter((l) => !l.__rec.recorrente)))} fica)` : ''}`)
+    })
+  console.log(`\n  POR ENTREGA (vão para o card): ${nTit(linhas)} título(s) · ${linhas.length} linha(s) · ${fmt(soma(linhas))}`)
   const grupos = [
     ['Direto (com NF)', (l) => l.natureza === 'nf' && l.classe === 'direto'],
     ['Indireto (com NF)', (l) => l.natureza === 'nf' && l.classe === 'indireto'],
@@ -657,6 +763,8 @@ async function contasClassificador(db, validos) {
     console.log(`  tabela "${TABELA_CONTAS}": ${antigas.length} linha(s) do fechamento ${fechamento} · ${fmt(soma(antigas.map((a) => ({ valor: Number(a.valor) }))))} → serão SUBSTITUÍDAS`)
   } else console.log(`  tabela "${TABELA_CONTAS}" ainda não existe: rode antes o supabase/contas/1-contas-a-pagar.sql (banco: ${destino.erro})`)
 
+  if (ARQ_EXPORTAR) exportarDireto(linhas, regua, ARQ_EXPORTAR)
+
   const travaPend = pend.length > 0 && !ACEITAR_PENDENCIAS
   if (travaPend) console.log(`  ✗ ${pend.length} título(s) sem EAP. Decida e rode o contas_a_pagar.py de novo, ou grave assim com --aceitar-pendencias (ficam fora do IPC)`)
   if (!CONFIRMAR) return console.log(`\n  PRÉVIA: nada foi gravado.${ok && !travaPend && destino.existe ? ' Para gravar, rode de novo com --confirmar' : ' Resolva os itens marcados com ✗ antes de gravar.'}\n`)
@@ -667,7 +775,7 @@ async function contasClassificador(db, validos) {
   // Cada carga tem um id proprio: a nova entra inteira e so depois a anterior
   // do mesmo fechamento sai (a chave unica inclui a carga).
   const carga_id = require('crypto').randomUUID()
-  const novas = linhas.map(({ __linha, __chave, ...l }) => ({ ...l, carga_id }))
+  const novas = linhas.map(({ __linha, __chave, __rec, ...l }) => ({ ...l, carga_id }))
   const r = await db.from(TABELA_CONTAS).insert(novas)
   if (r.error) {
     await db.from(TABELA_CONTAS).delete().eq('carga_id', carga_id)
