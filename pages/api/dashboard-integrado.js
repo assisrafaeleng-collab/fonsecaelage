@@ -2,6 +2,7 @@ import { supabase } from '../../lib/supabase'
 import { competenciaDoLancamento } from '../../lib/competencia'
 import { carregarRetratos, fotoAteMes, ultimoMesMedido } from '../../lib/avanco-historico'
 import { carregarAvancoHh, avancoNoMes, curvaMensalHh } from '../../lib/avanco-hh'
+import { calcularPainelSemanal } from '../../lib/painel-semanal'
 import { getHHPlanejadoAcumulado, getTotalPlanejadoHH, getPlanejadoHhByItem, getPlanejadoHhBySubgrupo } from '../../lib/cronograma-hh'
 
 export default async function handler(req, res) {
@@ -285,29 +286,22 @@ export default async function handler(req, res) {
     const finPlanMesAtual = finPlanejada.find(f => f.mes_numero === mesRefBCWS) || finPlanejada[finPlanejada.length - 1]
     const fisPlanMesAtual = fisPlanejada.find(f => f.mes_numero === mesRefBCWS) || fisPlanejada[fisPlanejada.length - 1]
 
-    const bcws = fisPlanMesAtual ? fisPlanMesAtual.percentual_acumulado * totalDiretos : 0
     // Card de Avanço Físico Planejado: base hora-homem (mesma da Curva S)
     const avancoFisicoPlano = totalProjectHh > 0
       ? Math.min(100, Math.max(0, (hhPlanejadoAcumulado / totalProjectHh) * 100))
       : 0
 
-    const bcwpEquipamentos = itensGrupo17.reduce((soma, item) => {
-      const realizado = custoRealizadoPorEap[item.cod_eap] || 0
-      const planejado = parseFloat(item.preco_total || 0)
-      return soma + Math.min(realizado, planejado)
-    }, 0)
+    // Avanco fisico (decisao out/26): horas executadas / horas orcadas, igual
+    // a pagina semanal, na semana de fechamento do mes (ou a corrente).
+    const avancoMes = avancoNoMes(avancoHh, mesLimite)
 
-    const bcwpFuncionarioDireto = itensGrupo18.reduce((soma, item) => {
-      const inicio = item.mes_inicio || 1
-      const fim = item.mes_fim || mesLimite
-      const duracao = Math.max(fim - inicio + 1, 1)
-      const decorridos = Math.min(Math.max(mesRefBCWS - inicio + 1, 0), duracao)
-      const fracaoTempo = decorridos / duracao
-      return soma + fracaoTempo * parseFloat(item.preco_total || 0)
-    }, 0)
-
-    const bcwpHH = (avancoFisicoRealHH / 100) * totalDiretosHH
-    const bcwp = bcwpHH + bcwpEquipamentos + bcwpFuncionarioDireto
+    // Valor agregado, planejado e IPC (decisao out/26): a MESMA conta da
+    // pagina semanal e da /valor-agregado (lib/painel-semanal.js), na mesma
+    // semana do avanco. Inclui as regras do agregado (medido, herda, tempo e
+    // material comprado), a locacao com teto e os funcionarios pelo tempo.
+    const painel = await calcularPainelSemanal(supabase, { obra_id, semana: avancoMes.semana })
+    const bcwp = painel.kpis.bcwp
+    const bcws = painel.kpis.bcws
     const avancoFisicoReal = totalDiretos > 0 ? (bcwp / totalDiretos) * 100 : 0
 
     // ACWP para EVM: apenas custos DIRETOS realizados (codigo_eap que nao comeca com 19.)
@@ -315,7 +309,9 @@ export default async function handler(req, res) {
     const acwpProducao = todoslancamentos
       .filter(l => l.status === 'Normal' && !(l.codigo_eap || '').startsWith('19.'))
       .reduce((s,l) => s + parseFloat(l.valor||0), 0)
-    const cpi = acwpProducao > 0 ? bcwp / acwpProducao : 1
+    // IPC do mes da semana (o mesmo card da semanal): agregado / (realizado +
+    // a pagar do fechamento). Sem ele, o IPC da semana.
+    const cpi = (painel.kpis.ipc_mes && painel.kpis.ipc_mes.ipc) || painel.kpis.cpi || 1
     const spi = bcws > 0 ? bcwp / bcws : 1
     const eac = cpi > 0 ? totalDiretos / cpi : totalDiretos
     const saldoReal = totalDiretos - eac
@@ -343,10 +339,6 @@ export default async function handler(req, res) {
     const _custoAtrasoRealista = _atrasoRealista * _recorrenteMensal * 1.12 // + 12% taxa ADM
     const eacTotal = eac + totalIndiretos + _custoAtrasoRealista
 
-    // Avanco fisico (decisao out/26): horas executadas / horas orcadas, igual
-    // a pagina semanal. Antes era o Hh "atual" do item (orcamento rateado pela
-    // matriz do cronograma) / total da matriz, lido da tabela antiga.
-    const avancoMes = avancoNoMes(avancoHh, mesLimite)
     const curvaHh = curvaMensalHh(avancoHh)
 
     const kpis = {
@@ -363,6 +355,8 @@ export default async function handler(req, res) {
       hh_executado: parseFloat(avancoMes.hh_executado.toFixed(2)),
       hh_orcado: parseFloat(avancoMes.hh_total.toFixed(2)),
       bcwp: parseFloat(bcwp.toFixed(2)),
+      agregado_semana_referencia: painel.kpis.semana,
+      ipc_mes: painel.kpis.ipc_mes ? painel.kpis.ipc_mes.mes : null,
       bcws: parseFloat(bcws.toFixed(2)),
       acwp: parseFloat(acwp.toFixed(2)),
       acwp_producao: parseFloat(acwpProducao.toFixed(2)),

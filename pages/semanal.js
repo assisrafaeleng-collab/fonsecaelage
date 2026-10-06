@@ -230,13 +230,14 @@ export default function Semanal() {
   // nunca ponderado por valor. O alternador só escolhe quais cards aparecem.
   const nomeAvanco = 'Avanço Físico'
 
-  // Custo direto na última semana com medição física. Agregado e realizado
-  // precisam estar na mesma data; depois da última medição o agregado fica
-  // parado e o gasto continua, o que faria o saldo parecer pior do que é.
-  const semRef = Math.min(p.semana, dados.ultima_semana_com_avanco || p.semana)
-  const pRef = dados.curva.find((c) => c.semana === semRef) || p
-  const sRef = `S${String(semRef).padStart(2, '0')}`
-  const refAtrasada = semRef < p.semana
+  // Valor agregado e custo direto na semana SELECIONADA (decisão out/26:
+  // tudo na mesma data, em todas as telas). Semana sem medição nova usa o
+  // percentual acumulado da última medição; o agregado é a mesma conta do
+  // dashboard mensal e da /valor-agregado (lib/painel-semanal.js).
+  const semMedida = Math.min(p.semana, dados.ultima_semana_com_avanco || p.semana)
+  const pRef = p
+  const sRef = `S${String(p.semana).padStart(2, '0')}`
+  const refAtrasada = semMedida < p.semana
   // Avanço físico e IDP (decisão out/26): planejado e realizado SEMPRE na
   // semana selecionada. Semana sem medição nova usa o realizado acumulado da
   // última medição (a curva já vem com ele) contra o planejado da própria
@@ -403,7 +404,7 @@ export default function Semanal() {
       <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '16px' }}>
         <div
           className="kpi kpi-clickable"
-          onClick={() => router.push(`/valor-agregado?semana=${semRef}`)}
+          onClick={() => router.push(`/valor-agregado?semana=${p.semana}`)}
           title={`Serviço executado a preço de orçamento (percentual × custo do item).\nPlanejado pelo cronograma até ${sRef}: ${fmtMoeda(pRef.bcws)}\nClique para ver a memória de cálculo`}
         >
           <div className="kpi-label">Valor Agregado ↗</div>
@@ -412,7 +413,7 @@ export default function Semanal() {
           </div>
           <div className="kpi-sub">
             Executado até {sRef}
-            {refAtrasada ? ' · última medição' : ''}
+            {refAtrasada ? ` · medição de ${sMedicao}` : ''}
           </div>
         </div>
 

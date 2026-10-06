@@ -98,7 +98,9 @@ export default function ValorAgregado() {
         String(i.descricao).toLowerCase().includes(termo) ||
         String(i.pavimento || '').toLowerCase().includes(termo)
       if (!casa) return
-      if (i.perc_fisico > 0 || mostrarZerados) g.itens.push(i)
+      // Material comprado tem agregado (custo pago + a pagar, até o orçado)
+      // mesmo com o serviço em 0%: não é item não iniciado.
+      if (i.perc_fisico > 0 || i.agregado > 0 || mostrarZerados) g.itens.push(i)
       else g.zerados += 1
     })
     return Array.from(mapa.values()).sort((a, b) => a.grupo - b.grupo)
@@ -338,7 +340,8 @@ export default function ValorAgregado() {
           </button>
           <span style={{ font: "500 11px 'IBM Plex Sans'", color: 'var(--text2)' }}>
             Valor agregado = custo do item × % físico · <i>tempo</i>: verba mensal, linear pela obra ·{' '}
-            <i>herda</i>: material sem medição, usa o % do serviço
+            <i>herda</i>: material sem medição, usa o % do serviço · <i>material comprado</i>: aço e material de
+            forma comprados antes da execução, agregado = custo pago + a pagar até o orçado
             {efeitoRegras != null && Math.abs(efeitoRegras) > 1
               ? ` · regras mudam ${fmtMoeda(efeitoRegras)} em relação à view do banco`
               : ''}
@@ -378,22 +381,29 @@ export default function ValorAgregado() {
                 <div style={dir}>{fmtMoeda(i.custo_total)}</div>
                 <div style={dir}>{fmtP(i.perc_fisico)}</div>
                 <div
-                  style={{ ...dir, color: i.regra === 'medido' ? 'var(--text2)' : PLAN }}
+                  style={{ ...dir, color: i.regra === 'medido' && !i.material_comprado ? 'var(--text2)' : PLAN }}
                   title={
-                    i.regra === 'tempo'
-                      ? 'Verba mensal: linear pela duração da obra'
-                      : i.regra === 'herda'
-                        ? `Usa o % de ${i.herda_de.join(', ')}, ponderado pelo custo`
-                        : ''
+                    i.material_comprado
+                      ? `Material comprado antes da execução: agregado = custo pago + a pagar, até o orçado` +
+                        (i.perc_orcado != null ? ` (${fmtP(i.perc_orcado)} do orçado)` : '') +
+                        `. O serviço está em ${fmtP(i.perc_fisico)}.`
+                      : i.regra === 'tempo'
+                        ? 'Verba mensal: linear pela duração da obra'
+                        : i.regra === 'herda'
+                          ? `Usa o % de ${i.herda_de.join(', ')}, ponderado pelo custo` +
+                            (i.material ? '; ou o custo pago + a pagar até o orçado, se for maior' : '')
+                          : ''
                   }
                 >
-                  {i.regra === 'tempo'
-                    ? 'tempo'
-                    : i.regra === 'herda'
-                      ? `herda ${i.herda_de.join('/')}`
-                      : i.medido_na_semana
-                        ? s2(i.medido_na_semana)
-                        : '—'}
+                  {i.material_comprado
+                    ? 'material comprado'
+                    : i.regra === 'tempo'
+                      ? 'tempo'
+                      : i.regra === 'herda'
+                        ? `herda ${i.herda_de.join('/')}`
+                        : i.medido_na_semana
+                          ? s2(i.medido_na_semana)
+                          : '—'}
                 </div>
                 <div style={{ ...dir, color: i.agregado > 0 ? PLAN : 'var(--text2)' }}>{fmtMoeda(i.agregado)}</div>
                 {(() => {
