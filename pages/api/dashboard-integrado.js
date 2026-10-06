@@ -1,5 +1,7 @@
 import { supabase } from '../../lib/supabase'
-import { normalizeCompetencia } from '../../lib/competencia'
+import { competenciaDoLancamento } from '../../lib/competencia'
+import { carregarRetratos, fotoAteMes, ultimoMesMedido } from '../../lib/avanco-historico'
+import { carregarAvancoHh, avancoNoMes, curvaMensalHh } from '../../lib/avanco-hh'
 import { getHHPlanejadoAcumulado, getTotalPlanejadoHH, getPlanejadoHhByItem, getPlanejadoHhBySubgrupo } from '../../lib/cronograma-hh'
 
 export default async function handler(req, res) {
@@ -16,7 +18,8 @@ export default async function handler(req, res) {
       fisPlanejadaRes,
       custosRes,
       horasRes,
-      avancoRealRes,
+      retratos,
+      avancoHh,
       indiretosPlanoRes,
       diretosPlanoRes,
       orcamentoPlanejadoRes
@@ -25,7 +28,13 @@ export default async function handler(req, res) {
       supabase.from('v_curva_s_fisica_planejada').select('*').eq('obra_id', obra_id).order('mes_numero'),
       supabase.from('custos_lancamentos').select('competencia, data_emissao, data_vencimento, valor, status, grupo_custo, codigo_eap').eq('obra_id', obra_id).order('data_emissao'),
       supabase.from('cronograma_horas_planejado').select('grupo_nome, horas_totais').eq('obra_id', obra_id),
-      supabase.from('avanco_fisico_realizado').select('mes_numero, competencia, atividade_nome, percentual_realizado, hh_planejado, hh_realizado, codigo_eap, pavimento').eq('obra_id', obra_id).lte('mes_numero', mesLimite).order('mes_numero'),
+      // Mesma fonte da tela de lancamento e da pagina semanal. A tabela
+      // avanco_fisico_realizado era a "foto" da tela antiga e parou de ser
+      // atualizada quando o lancamento passou a gravar so no historico.
+      carregarRetratos(supabase, obra_id),
+      // Avanco fisico dos cards e da curva: horas executadas / horas orcadas,
+      // mesmas fontes da pagina semanal (lib/avanco-hh.js)
+      carregarAvancoHh(supabase, obra_id),
       supabase.from('custos_indiretos_planejados').select('valor_total').eq('obra_id', obra_id),
       supabase.from('orcamento_planejado').select('preco_total, grupo_numero, grupo_nome, cod_eap, hh, mes_inicio, mes_fim').eq('obra_id', obra_id),
       supabase.from('orcamento_planejado').select('hh, mes_inicio, mes_fim').eq('obra_id', obra_id),
@@ -35,13 +44,21 @@ export default async function handler(req, res) {
     if (fisPlanejadaRes.error) throw new Error(fisPlanejadaRes.error.message)
     if (custosRes.error) throw new Error(custosRes.error.message)
     if (horasRes.error) throw new Error(horasRes.error.message)
-    if (avancoRealRes.error) throw new Error(avancoRealRes.error.message)
 
     const finPlanejada = finPlanejadaRes.data || []
     const fisPlanejada = fisPlanejadaRes.data || []
     const custosRealizados = custosRes.data || []
     const horasData = horasRes.data || []
-    const avancoRealData = avancoRealRes.data || []
+    // Uma foto por mes (ultimo % de cada item ate o fim do mes), do M1 ate o
+    // ultimo mes com medicao, sem passar do filtro.
+    const hhOrcPorEap = {}
+    ;(diretosPlanoRes.data || []).forEach(it => {
+      if (it.cod_eap) hhOrcPorEap[it.cod_eap] = (hhOrcPorEap[it.cod_eap] || 0) + (parseFloat(it.hh) || 0)
+    })
+    const avancoRealData = []
+    for (let m = 1; m <= Math.min(mesLimite, ultimoMesMedido(retratos)); m++) {
+      avancoRealData.push(...fotoAteMes(retratos, m, hhOrcPorEap))
+    }
 
     // Obra: Jul/2026 = M1
     const dataInicio = '2026-07-01'
@@ -62,7 +79,9 @@ export default async function handler(req, res) {
     custosRealizados
       .filter(c => c.status === 'Normal')
       .forEach(c => {
-        const comp = normalizeCompetencia(c.competencia, c.data_emissao, c.data_vencimento)
+        // Pela competencia do fechamento, nao pela emissao: o mes tem que
+        // bater com o relatorio de titulos pagos.
+        const comp = competenciaDoLancamento(c.competencia, c.data_emissao)
         if (!comp) return
 
         const compDate = `${comp}-01`
@@ -324,6 +343,12 @@ export default async function handler(req, res) {
     const _custoAtrasoRealista = _atrasoRealista * _recorrenteMensal * 1.12 // + 12% taxa ADM
     const eacTotal = eac + totalIndiretos + _custoAtrasoRealista
 
+    // Avanco fisico (decisao out/26): horas executadas / horas orcadas, igual
+    // a pagina semanal. Antes era o Hh "atual" do item (orcamento rateado pela
+    // matriz do cronograma) / total da matriz, lido da tabela antiga.
+    const avancoMes = avancoNoMes(avancoHh, mesLimite)
+    const curvaHh = curvaMensalHh(avancoHh)
+
     const kpis = {
       orcamento_total: orcamentoTotal,
       custo_direto_total: parseFloat(totalDiretos.toFixed(2)),
@@ -332,8 +357,11 @@ export default async function handler(req, res) {
       custo_direto_realizado: custoDiretoReal,
       custo_indireto_realizado: custoIndiretoReal,
       // Card: Hh realizado / Hh total — mesma base do planejado e da Curva S
-      avanco_fisico_realizado: parseFloat(avancoFisicoRealHH.toFixed(2)),
-      avanco_fisico_planejado: avancoFisicoPlano,
+      avanco_fisico_realizado: parseFloat(avancoMes.realizado.toFixed(2)),
+      avanco_fisico_planejado: parseFloat(avancoMes.planejado.toFixed(2)),
+      avanco_semana_referencia: avancoMes.semana,
+      hh_executado: parseFloat(avancoMes.hh_executado.toFixed(2)),
+      hh_orcado: parseFloat(avancoMes.hh_total.toFixed(2)),
       bcwp: parseFloat(bcwp.toFixed(2)),
       bcws: parseFloat(bcws.toFixed(2)),
       acwp: parseFloat(acwp.toFixed(2)),
@@ -347,7 +375,7 @@ export default async function handler(req, res) {
       saldo_real: parseFloat(saldoReal.toFixed(2)),
       desvio_financeiro: desvioFinanceiro,
       desvio_financeiro_perc: parseFloat(desvioFinanceiroPerc.toFixed(2)),
-      desvio_fisico: parseFloat((avancoFisicoRealHH - avancoFisicoPlano).toFixed(2)),
+      desvio_fisico: parseFloat((avancoMes.realizado - avancoMes.planejado).toFixed(2)),
       projecao_custo_final: eac,
       saldo_orcamento: totalDiretos - acwpProducao,
       mes_atual: mesAtual,
@@ -399,27 +427,16 @@ export default async function handler(req, res) {
       const finPlan = finPlanejada.find(f => f.mes_numero === i)
       const finReal = i <= mesLimite ? finRealizada.find(f => f.mes_numero === i) : null
 
-      const hhPlanejadoAcumMes = getHHPlanejadoAcumulado(i)
-
-      const hhRealizadoAcumMes = Array.from(ultimoRealizadoPorItem.values()).reduce((sum, item) => {
-        if ((parseInt(item.mes_numero || 0) || 0) <= i) return sum + (parseFloat(item.hh_realizado || 0) || 0)
-        return sum
-      }, 0)
-
-      const temRealizadoNoMes = i <= ultimoMesRealizadoComDados
-
-      const fisicoPlanejadoPct = totalProjectHh > 0 ? Math.min(100, Math.max(0, (hhPlanejadoAcumMes / totalProjectHh) * 100)) : null
-      const fisicoRealizadoPct = temRealizadoNoMes && totalProjectHh > 0 && i <= ultimoMesRealizadoComDados
-        ? Math.min(100, Math.max(0, (hhRealizadoAcumMes / totalProjectHh) * 100))
-        : null
+      // Fisico em Hh, mesma regua da pagina semanal (lib/avanco-hh.js)
+      const fisMes = curvaHh[i - 1] || { planejado: null, realizado: null }
 
       meses.push({
         mes_numero: i,
         competencia: finPlan ? finPlan.competencia : null,
         financeiro_planejado: diretosOrcamentoAcum[i] != null ? diretosOrcamentoAcum[i] : null,
         financeiro_realizado: (i <= mesLimite && i <= ultimoMesFinReal && finReal) ? (finReal.valor_direto != null ? finReal.valor_direto : finReal.valor_acumulado) : null,
-        fisico_planejado: fisicoPlanejadoPct,
-        fisico_realizado: fisicoRealizadoPct,
+        fisico_planejado: fisMes.planejado,
+        fisico_realizado: i <= mesLimite ? fisMes.realizado : null,
       })
     }
 

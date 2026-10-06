@@ -39,6 +39,8 @@ const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'o
 
 const fmtPerc = (v) => (v == null ? '-' : `${v.toFixed(1)}%`)
 const fmtIdx = (v) => (v == null ? '-' : v.toFixed(3).replace('.', ','))
+// Eficiencia de custo da linha (agregado / realizado): 1,05 = 5% abaixo do orcado.
+const fmtEficiencia = (v) => (v == null ? '—' : v.toFixed(2).replace('.', ','))
 const iso = (s) => (s ? String(s).slice(0, 10) : '')
 const dm = (s) => (s ? `${iso(s).slice(8, 10)}/${iso(s).slice(5, 7)}` : '')
 const dmy = (s) => (s ? `${iso(s).slice(8, 10)}/${iso(s).slice(5, 7)}/${iso(s).slice(0, 4)}` : '')
@@ -211,19 +213,16 @@ export default function Semanal() {
   const indiretoTotal = dados.totais.indireto || 0
   const indiretoPlan = p.indireto_planejado || 0
   const indiretoReal = p.indireto_realizado
-  // Contas a pagar: zerado ate chegar o relatorio do TOTVS. Quando tiver,
-  // trocar estes dois valores pelos do relatorio (direto e indireto).
-  const aPagarDireto = 0
-  const aPagarIndireto = 0
+  // Contas a pagar do ultimo fechamento (relatorio do TOTVS, classificado por
+  // EAP). Direto = com NF e "Prev. Financ."; entra no IPC. Sem carga, zero.
+  const contas = dados.contas_a_pagar || { disponivel: false, direto: 0, indireto: 0 }
+  const aPagarDireto = contas.direto || 0
+  const aPagarIndireto = contas.indireto || 0
   const saldoIndireto = indiretoReal == null ? null : indiretoPlan - indiretoReal - aPagarIndireto
   const pctIndireto = saldoIndireto == null || indiretoPlan <= 0 ? null : (saldoIndireto / indiretoPlan) * 100
-  const bcwpA = base === 'hh' ? p.bcwp_a_hh : p.bcwp_a_custo
-  const bcwp = bcwpA == null ? null : bcwpA + (p.bcwp_b || 0) + (p.bcwp_c || 0)
-  const spi = p.bcws > 0 && bcwp != null ? bcwp / p.bcws : null
-  const cpi = p.acwp > 0 && bcwp != null ? bcwp / p.acwp : null
-  // Nome dos cards de avanço conforme a régua: em Hh é avanço físico; em custo
-  // é o percentual de cada serviço ponderado pelo peso dele no orçamento.
-  const nomeAvanco = base === 'hh' ? 'Avanço Físico' : 'Avanço Ponderado por Custo'
+  // Avanço físico é sempre horas executadas ÷ horas orçadas (decisão out/26),
+  // nunca ponderado por valor. O alternador só escolhe quais cards aparecem.
+  const nomeAvanco = 'Avanço Físico'
 
   // Custo direto na última semana com medição física. Agregado e realizado
   // precisam estar na mesma data; depois da última medição o agregado fica
@@ -259,7 +258,7 @@ export default function Semanal() {
   // referência da tela).
   //   otimista   = realizado + falta ÷ IDC
   //   provável   = otimista + custo de calendário × semanas extras
-  //   pessimista = realizado + falta ÷ (IDC × IDP)
+  //   pessimista = realizado + falta ÷ (IDC × IDP), com o IDP limitado a 1
   const projecao = (() => {
     if (idc == null || idp == null || idc <= 0 || idp <= 0 || agregado == null) return null
     const orcado = dados.totais.custo_direto
@@ -274,19 +273,19 @@ export default function Semanal() {
       falta,
       otimista,
       provavel: otimista + porSemana * semanasExtras,
-      // Adiantamento não barateia a obra: no pessimista o IDP fica até 1.
-      pessimista: comprometido + falta / (idc * idp),
+      // Adiantamento não barateia a obra: no pessimista o IDP fica até 1
+      // (decisão out/26, mesma regra da rota).
+      pessimista: comprometido + falta / (idc * Math.min(idp, 1)),
       semanasExtras,
       porSemana,
       custoAtraso: porSemana * semanasExtras,
     }
   })()
-  // O alternador escolhe a régua do avanço físico: hora-homem ou custo.
-  // Planejado e realizado na mesma semana: a da ultima medicao (ou a
-  // selecionada, se for anterior). Depois da medicao o realizado so repete o
-  // ultimo valor, e o planejado continuaria andando.
-  const avancoPlan = base === 'hh' ? pRef.avanco_plan_hh : pRef.avanco_plan_custo
-  const avancoReal = base === 'hh' ? pRef.avanco_real_hh : pRef.avanco_real_custo
+  // Avanço em Hh. Planejado e realizado na mesma semana: a da ultima medicao
+  // (ou a selecionada, se for anterior). Depois da medicao o realizado so
+  // repete o ultimo valor, e o planejado continuaria andando.
+  const avancoPlan = pRef.avanco_plan_hh
+  const avancoReal = pRef.avanco_real_hh
   const inicioSem = menos6(p.data_fim)
   const primeira = menos6(dados.curva[0].data_fim)
   const ultima = dados.curva[dados.curva.length - 1].data_fim
@@ -363,17 +362,15 @@ export default function Semanal() {
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', margin: '4px 0 16px' }}>
-        <span style={{ font: "500 12px 'IBM Plex Sans'", color: '#8b919c' }}>Medir avanço físico por</span>
+        <span style={{ font: "500 12px 'IBM Plex Sans'", color: '#8b919c' }}>Mostrar</span>
         <button className={base === 'custo' ? 'btn-primary' : 'btn-sm'} onClick={() => setBase('custo')}>
-          Custo do orçamento
+          Custos
         </button>
         <button className={base === 'hh' ? 'btn-primary' : 'btn-sm'} onClick={() => setBase('hh')}>
-          Horas de mão de obra
+          Avanço físico
         </button>
         <span style={{ font: "500 11px 'IBM Plex Sans'", color: '#8b919c' }}>
-          {base === 'custo'
-            ? 'é a régua da curva planejada'
-            : `base de ${dados.consistencia.hh_total_evm.toLocaleString('pt-BR')} h · só a parcela de produção`}
+          avanço físico = horas executadas ÷ {dados.consistencia.hh_total_evm.toLocaleString('pt-BR')} h orçadas (parcela de produção)
         </span>
       </div>
 
@@ -418,7 +415,9 @@ export default function Semanal() {
                 `− Pago: ${fmtMoeda(realizadoRef)}\n` +
                 `− A pagar: ${fmtMoeda(aPagarDireto)}\n` +
                 `= Saldo: ${fmtMoeda(saldoDireto)}\n\n` +
-                'Enquanto o a pagar estiver zerado, parte da economia pode ser só conta ainda não paga.'
+                (contas.disponivel
+                  ? `A pagar: contas do fechamento ${contas.fechamento} com vencimento em ${contas.competencia_vencimento}.`
+                  : 'Contas a pagar ainda não carregado: parte da economia pode ser só conta ainda não paga.')
           }
         >
           <div className="kpi-label">Saldo Custo Direto</div>
@@ -585,12 +584,22 @@ export default function Semanal() {
         )}
 
         {base === 'custo' && (
-          <div className="kpi" title="Contas a pagar do TOTVS (direto + indireto). Zerado até automatizarmos o relatório.">
+          <div
+            className="kpi"
+            title={
+              contas.disponivel
+                ? `Contas a pagar do TOTVS (direto + indireto), fechamento ${contas.fechamento}, vencimento em ${contas.competencia_vencimento}.\nDireto ${fmtMoeda(aPagarDireto)} (entra no IPC) · indireto ${fmtMoeda(aPagarIndireto)}` +
+                  (contas.pendente > 0 ? `\nFora da conta: ${fmtMoeda(contas.pendente)} sem EAP (pendente)` : '')
+                : `Contas a pagar ainda não carregado: ${contas.motivo || ''}`
+            }
+          >
             <div className="kpi-label">A Pagar</div>
             <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2', color: '#c9a45c' }}>
               {fmtMoeda(aPagarDireto + aPagarIndireto)}
             </div>
-            <div className="kpi-sub">Aguardando relatório do TOTVS</div>
+            <div className="kpi-sub">
+              {contas.disponivel ? `Vencimento em ${contas.competencia_vencimento} · fechamento ${contas.fechamento}` : 'Aguardando a carga do TOTVS'}
+            </div>
           </div>
         )}
       </div>
@@ -682,11 +691,11 @@ export default function Semanal() {
                 'Projeção Pessimista',
                 'pessimista',
                 projecao &&
-                  `Realizado + falta ÷ (IDC × IDP)\n` +
-                    `= ${fmtMoeda(comprometido)} + ${fmtMoeda(projecao.falta)} ÷ (${fmtIdx(idc)} × ${fmtIdx(idp)})\n` +
+                  `Realizado + falta ÷ (IDC × IDP, limitado a 1)\n` +
+                    `= ${fmtMoeda(comprometido)} + ${fmtMoeda(projecao.falta)} ÷ (${fmtIdx(idc)} × ${fmtIdx(Math.min(idp, 1))})\n` +
                     `= ${fmtMoeda(projecao.pessimista)}\n\n` +
                     (idp > 1
-                      ? 'Custo e prazo pesam juntos, com o IDP real.\nAdiantado (IDP > 1), este cenário fica abaixo do otimista.'
+                      ? `IDP real ${fmtIdx(idp)}: adiantamento não barateia a obra, então aqui o IDP fica em 1.\nCom IDP ≥ 1, este cenário fica igual ao otimista.`
                       : 'Custo e prazo pesam juntos: o atraso encarece o que falta.'),
               ],
             ].map(([nome, chave, formula]) => (
@@ -828,15 +837,22 @@ export default function Semanal() {
                           <tr>
                             <th style={{ width: 70 }}>EAP</th>
                             <th>Descrição</th>
-                            <th style={{ textAlign: 'right', width: 120 }}>Planejado</th>
+                            <th style={{ textAlign: 'right', width: 120 }}>Orçado</th>
+                            <th
+                              style={{ textAlign: 'right', width: 120 }}
+                              title="Orçado da linha × % executado do código na semana (mesma regra do card de valor agregado)"
+                            >
+                              Valor agregado
+                            </th>
                             <th style={{ textAlign: 'right', width: 120 }}>Realizado</th>
-                            <th style={{ textAlign: 'right', width: 80 }}>% do plan.</th>
+                            <th style={{ textAlign: 'right', width: 80 }} title="Valor agregado ÷ realizado. Acima de 1,00: custou menos que o orçado pelo que foi executado">
+                              Eficiência
+                            </th>
                             <th style={{ textAlign: 'right', width: 90 }}>Período</th>
                           </tr>
                         </thead>
                     <tbody>
                       {pv.itens.map((i) => {
-                        const consumo = i.planejado > 0 ? (i.realizado / i.planejado) * 100 : null
                         return (
                         <React.Fragment key={i.chave || i.cod_eap}>
                         <tr
@@ -854,7 +870,13 @@ export default function Semanal() {
                             )}
                           </td>
                           <td style={{ textAlign: 'right', fontFamily: 'var(--mono)', color: PLAN }}>
-                            {i.planejado > 0 ? fmtMoeda(i.planejado) : '—'}
+                            {i.planejado_total > 0 ? fmtMoeda(i.planejado_total) : '—'}
+                          </td>
+                          <td
+                            style={{ textAlign: 'right', fontFamily: 'var(--mono)' }}
+                            title={i.perc_executado == null ? 'Sem medição de avanço' : `${fmtPerc(i.perc_executado)} executado`}
+                          >
+                            {i.agregado > 0 ? fmtMoeda(i.agregado) : '—'}
                           </td>
                           <td style={{ textAlign: 'right', fontFamily: 'var(--mono)' }}>
                             {i.realizado > 0 ? fmtMoeda(i.realizado) : '—'}
@@ -863,10 +885,15 @@ export default function Semanal() {
                             style={{
                               textAlign: 'right',
                               fontFamily: 'var(--mono)',
-                              color: consumo == null ? '#8b919c' : consumo > 100 ? VERMELHO : VERDE,
+                              color: i.eficiencia == null ? '#8b919c' : i.eficiencia < 1 ? VERMELHO : VERDE,
                             }}
+                            title={
+                              i.eficiencia == null
+                                ? ''
+                                : `Valor agregado ÷ (realizado + a pagar)\n= ${fmtMoeda(i.agregado)} ÷ (${fmtMoeda(i.realizado)} + ${fmtMoeda(i.a_pagar || 0)})`
+                            }
                           >
-                            {consumo == null ? '—' : fmtPerc(consumo)}
+                            {fmtEficiencia(i.eficiencia)}
                           </td>
                           <td
                             style={{ textAlign: 'right', fontFamily: 'var(--mono)', fontSize: 10, color: '#8b919c' }}
@@ -876,7 +903,7 @@ export default function Semanal() {
                         </tr>
                         {itemAberto === `c${i.cod_eap}` && (i.lancamentos || []).length > 0 && (
                           <tr key={`${i.cod_eap}-det`}>
-                            <td colSpan={6} style={{ padding: 0 }}>
+                            <td colSpan={7} style={{ padding: 0 }}>
                               <div style={{ background: 'var(--bg)', borderRadius: 8, padding: '10px 14px', margin: '0 0 8px' }}>
                                 {i.lancamentos.map((l, k) => (
                                   <div
@@ -952,15 +979,15 @@ export default function Semanal() {
               <tr>
                 <th style={{ width: 70 }}>EAP</th>
                 <th>Categoria</th>
+                <th style={{ textAlign: 'right', width: 120 }}>Orçado</th>
+                <th style={{ textAlign: 'right', width: 120 }}>Valor agregado</th>
+                <th style={{ textAlign: 'right', width: 120 }}>Realizado</th>
+                <th style={{ textAlign: 'right', width: 80 }}>Eficiência</th>
                 <th style={{ textAlign: 'right', width: 130 }}>Planejado até aqui</th>
-                <th style={{ textAlign: 'right', width: 130 }}>Realizado</th>
-                <th style={{ textAlign: 'right', width: 90 }}>% do plan.</th>
-                <th style={{ textAlign: 'right', width: 130 }}>Planejado total</th>
               </tr>
             </thead>
             <tbody>
               {(indiretos || []).map((i) => {
-                const consumo = i.planejado > 0 ? (i.realizado / i.planejado) * 100 : null
                 const chave = `i${i.cod_eap || i.categoria}`
                 const temLanc = (i.lancamentos || []).length > 0
                 return (
@@ -982,27 +1009,22 @@ export default function Semanal() {
                       )}
                     </td>
                     <td style={{ textAlign: 'right', fontFamily: 'var(--mono)', color: PLAN }}>
-                      {i.planejado > 0 ? fmtMoeda(i.planejado) : '—'}
+                      {fmtMoeda(i.planejado_total)}
+                    </td>
+                    <td style={{ textAlign: 'right', fontFamily: 'var(--mono)', color: '#8b919c' }} title="Indireto não tem medição de avanço">
+                      —
                     </td>
                     <td style={{ textAlign: 'right', fontFamily: 'var(--mono)' }}>
                       {i.realizado > 0 ? fmtMoeda(i.realizado) : '—'}
                     </td>
-                    <td
-                      style={{
-                        textAlign: 'right',
-                        fontFamily: 'var(--mono)',
-                        color: consumo == null ? '#8b919c' : consumo > 100 ? VERMELHO : VERDE,
-                      }}
-                    >
-                      {consumo == null ? '—' : fmtPerc(consumo)}
-                    </td>
+                    <td style={{ textAlign: 'right', fontFamily: 'var(--mono)', color: '#8b919c' }}>—</td>
                     <td style={{ textAlign: 'right', fontFamily: 'var(--mono)', color: '#8b919c' }}>
-                      {fmtMoeda(i.planejado_total)}
+                      {i.planejado > 0 ? fmtMoeda(i.planejado) : '—'}
                     </td>
                   </tr>
                   {itemAberto === chave && temLanc && (
                     <tr>
-                      <td colSpan={6} style={{ padding: 0 }}>
+                      <td colSpan={7} style={{ padding: 0 }}>
                         <div style={{ background: 'var(--bg)', borderRadius: 8, padding: '10px 14px', margin: '0 0 8px' }}>
                           {i.lancamentos.map((l, k) => (
                             <div
@@ -1454,7 +1476,6 @@ export default function Semanal() {
           curva={dados.curva}
           semana={p.semana}
           ultMed={dados.ultima_semana_com_avanco || p.semana}
-          base={base}
           onPick={setSemana}
         />
       </div>
@@ -1614,8 +1635,7 @@ const fmtK = (v) =>
   v >= 1e6 ? `R$ ${(v / 1e6).toFixed(2).replace('.', ',')}M` : `R$ ${Math.round(v / 1000)}k`
 const fmtPc2 = (v) => `${v.toFixed(2).replace('.', ',')}%`
 
-function CurvaS({ curva, semana, ultMed, base, onPick }) {
-  const porHora = base === 'hh'
+function CurvaS({ curva, semana, ultMed, onPick }) {
   const W = 900, H = 340, PADL = 52, PADR = 66, PADT = 26, PADB = 40
   const n = curva.length
   const [hover, setHover] = useState(null)
@@ -1627,8 +1647,9 @@ function CurvaS({ curva, semana, ultMed, base, onPick }) {
   const pontos = curva.map((c) => ({
     semana: c.semana,
     data_fim: c.data_fim,
-    fp: porHora ? c.avanco_plan_hh : c.avanco_plan_custo,
-    fr: c.medido ? (porHora ? c.avanco_real_hh : c.avanco_real_custo) : null,
+    // Físico sempre em Hh (horas executadas ÷ horas orçadas)
+    fp: c.avanco_plan_hh,
+    fr: c.medido ? c.avanco_real_hh : null,
     vp: c.bcws,
     va: va(c),
     cr: c.medido ? c.acwp : null,

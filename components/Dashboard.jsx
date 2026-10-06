@@ -6,6 +6,8 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
 import { Line } from 'react-chartjs-2'
 import { fmtMoeda } from '../lib/constants'   // fonte única
+import { garantirSenha } from '../lib/fetch-com-senha'
+import { competenciaDoLancamento } from '../lib/competencia'
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -34,6 +36,261 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, T
 const fmtPerc = (val) => {
   if (val == null) return '-'
   return `${val.toFixed(1)}%`
+}
+
+// Competencia AAAA-MM do mes do projeto (M1 = jul/2026).
+const compDoMes = (m) => {
+  const abs = 6 + (m - 1)
+  return `${2026 + Math.floor(abs / 12)}-${String((abs % 12) + 1).padStart(2, '0')}`
+}
+const NOMES_MES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
+const rotuloComp = (c) => `${NOMES_MES[Number(c.slice(5, 7)) - 1]}/${c.slice(0, 4)}`
+const dmy = (s) => (s ? `${s.slice(8, 10)}/${s.slice(5, 7)}/${s.slice(0, 4)}` : '—')
+
+// Conferencia do fechamento: os lancamentos de uma competencia, com
+// subtotais direto (EAP fora do 19) e indireto (EAP 19). A lista mostra
+// fornecedor, por isso so carrega depois da senha, como a tela de custos.
+function LancamentosDoMes({ mesInicial, ultimoMes }) {
+  const [comp, setComp] = useState(compDoMes(mesInicial))
+  const [liberado, setLiberado] = useState(false)
+  const [lista, setLista] = useState(null)
+  const [erro, setErro] = useState(null)
+
+  useEffect(() => { setComp(compDoMes(mesInicial)) }, [mesInicial])
+
+  useEffect(() => {
+    if (!liberado) return
+    setLista(null)
+    setErro(null)
+    // Busca tudo e filtra pela mesma regra do dashboard: a competencia
+    // gravada pode vir como 2026-09 ou 2026-09-01.
+    fetch('/api/custos', { cache: 'no-store' })
+      .then(r => r.json())
+      .then(d => {
+        if (!d.lancamentos) throw new Error(d.message || d.error || 'resposta sem lançamentos')
+        setLista(
+          d.lancamentos
+            .filter(l => l.status === 'Normal' && competenciaDoLancamento(l.competencia, l.data_emissao) === comp)
+            .sort((a, b) =>
+              String(a.codigo_eap || '').localeCompare(String(b.codigo_eap || ''), 'pt-BR', { numeric: true }) ||
+              String(a.fornecedor || '').localeCompare(String(b.fornecedor || ''), 'pt-BR'))
+        )
+      })
+      .catch(e => setErro(e.message))
+  }, [liberado, comp])
+
+  async function abrir() {
+    if (await garantirSenha()) setLiberado(true)
+  }
+
+  const ehIndireto = (l) => String(l.codigo_eap || '').startsWith('19.')
+  const soma = (xs) => xs.reduce((t, l) => t + (parseFloat(l.valor) || 0), 0)
+  const opcoes = Array.from({ length: Math.max(ultimoMes, 1) }, (_, i) => compDoMes(i + 1)).reverse()
+  const dir = { textAlign: 'right', fontFamily: 'var(--mono)', whiteSpace: 'nowrap' }
+
+  return (
+    <div className="card">
+      <div className="card-title" style={{ justifyContent: 'space-between', flexWrap: 'wrap' }}>
+        <span>Lançamentos do mês — conferência do fechamento</span>
+        {liberado && (
+          <select className="periodo" value={comp} onChange={e => setComp(e.target.value)}>
+            {opcoes.map(c => <option key={c} value={c}>{rotuloComp(c)}</option>)}
+          </select>
+        )}
+      </div>
+      {!liberado && (
+        <button className="nav-btn" style={{ borderBottom: 'none', color: 'var(--text)' }} onClick={abrir}>
+          Ver os lançamentos de {rotuloComp(comp)} (pede a senha) ▸
+        </button>
+      )}
+      {liberado && erro && <div className="empty-state"><p>Erro ao carregar: {erro}</p></div>}
+      {liberado && !erro && !lista && <div className="loading">Carregando lançamentos...</div>}
+      {liberado && lista && (() => {
+        const ind = lista.filter(ehIndireto)
+        const dirs = lista.filter(l => !ehIndireto(l))
+        return (
+          <>
+            <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', font: "500 12px 'IBM Plex Sans'", color: 'var(--text2)', marginBottom: 14 }}>
+              <span>Direto <b style={{ color: 'var(--text)', fontFamily: 'var(--mono)' }}>{fmtMoeda(soma(dirs))}</b> ({dirs.length})</span>
+              <span>Indireto <b style={{ color: 'var(--text)', fontFamily: 'var(--mono)' }}>{fmtMoeda(soma(ind))}</b> ({ind.length})</span>
+              <span>Total <b style={{ color: 'var(--text)', fontFamily: 'var(--mono)' }}>{fmtMoeda(soma(lista))}</b> ({lista.length} lançamentos)</span>
+            </div>
+            {lista.length === 0 ? (
+              <div className="empty-state"><p>Nenhum lançamento em {rotuloComp(comp)}.</p></div>
+            ) : (
+              <div style={{ overflowX: 'auto', maxHeight: 520, overflowY: 'auto' }}>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Fornecedor</th>
+                      <th>Documento</th>
+                      <th>Emissão</th>
+                      <th>EAP</th>
+                      <th>Tipo</th>
+                      <th style={{ textAlign: 'right' }}>Valor</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {lista.map(l => (
+                      <tr key={l.id}>
+                        <td>
+                          {l.fornecedor}
+                          {l.historico && <div style={{ color: 'var(--text2)', fontSize: 11 }}>{l.historico}</div>}
+                        </td>
+                        <td style={{ fontFamily: 'var(--mono)', whiteSpace: 'nowrap' }}>{l.num_documento || '—'}</td>
+                        <td style={{ fontFamily: 'var(--mono)', whiteSpace: 'nowrap' }}>{dmy(l.data_emissao)}</td>
+                        <td style={{ fontFamily: 'var(--mono)', whiteSpace: 'nowrap' }} title={l.classificacao || ''}>{l.codigo_eap || '—'}</td>
+                        <td>{ehIndireto(l) ? 'Indireto' : 'Direto'}</td>
+                        <td style={dir}>{fmtMoeda(parseFloat(l.valor) || 0)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    {[['Subtotal direto', dirs], ['Subtotal indireto', ind], ['Total do mês', lista]].map(([rot, xs]) => (
+                      <tr key={rot}>
+                        <td colSpan={5} style={{ fontWeight: 600 }}>{rot}</td>
+                        <td style={{ ...dir, fontWeight: 600 }}>{fmtMoeda(soma(xs))}</td>
+                      </tr>
+                    ))}
+                  </tfoot>
+                </table>
+              </div>
+            )}
+          </>
+        )
+      })()}
+    </div>
+  )
+}
+
+// Contas a pagar do mes seguinte ao fechamento. Fica fora do custo
+// realizado; o a pagar do direto entra so no IPC (pagina semanal). A lista
+// mostra fornecedor, por isso so abre depois da senha.
+function ContasAPagar() {
+  const [resumo, setResumo] = useState(null)
+  const [lista, setLista] = useState(null)
+  const [aberto, setAberto] = useState(false)
+  const [erro, setErro] = useState(null)
+
+  useEffect(() => {
+    fetch('/api/contas-a-pagar?resumo=1', { cache: 'no-store' })
+      .then(r => r.json())
+      .then(d => (d.error ? setErro(d.error) : setResumo(d)))
+      .catch(e => setErro(e.message))
+  }, [])
+
+  async function abrir() {
+    if (aberto) return setAberto(false)
+    if (!(await garantirSenha())) return
+    setAberto(true)
+    if (!lista)
+      fetch('/api/contas-a-pagar', { cache: 'no-store' })
+        .then(r => r.json())
+        .then(d => (d.error ? setErro(d.error) : setLista(d.titulos || [])))
+        .catch(e => setErro(e.message))
+  }
+
+  const dir = { textAlign: 'right', fontFamily: 'var(--mono)', whiteSpace: 'nowrap' }
+  const AMBAR = '#c9a45c'
+  const rotuloClasse = { direto: 'Direto', indireto: 'Indireto', pendente: 'Pendente' }
+
+  if (erro) return <div className="card"><div className="card-title">Contas a pagar</div><div className="empty-state"><p>Erro: {erro}</p></div></div>
+  if (!resumo) return null
+  if (!resumo.disponivel)
+    return (
+      <div className="card">
+        <div className="card-title">Contas a pagar</div>
+        <div style={{ font: "500 12px 'IBM Plex Sans'", color: 'var(--text2)' }}>Sem dados: {resumo.motivo}.</div>
+      </div>
+    )
+
+  const t = resumo.totais
+  const mesVenc = resumo.competencia_vencimento ? rotuloComp(resumo.competencia_vencimento) : '—'
+  const blocos = [
+    ['Direto', t.direto, 'com NF'],
+    ['Indireto', t.indireto, 'com NF'],
+    ['Previsto sem NF', t.previsto_sem_nf, '"Prev. Financ."'],
+    ['Pendente', t.pendente, 'sem EAP: aguarda decisão'],
+  ]
+  return (
+    <div className="card">
+      <div className="card-title" style={{ justifyContent: 'space-between', flexWrap: 'wrap' }}>
+        <span>Contas a pagar — vencimento em {mesVenc} · fechamento de {rotuloComp(resumo.fechamento)}</span>
+        {resumo.n_alertas > 0 && (
+          <span className="badge" style={{ background: 'rgba(201,164,92,.15)', color: AMBAR }}>
+            ⚠ {resumo.n_alertas} título(s) com alerta
+          </span>
+        )}
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16 }}>
+        {blocos.map(([rot, v, sub]) => (
+          <div key={rot}>
+            <div className="kpi-label" style={{ marginBottom: 6 }}>{rot}</div>
+            <div className="kpi-value" style={{ fontSize: 18 }}>{fmtMoeda(v)}</div>
+            <div className="kpi-sub">{sub}</div>
+          </div>
+        ))}
+        <div>
+          <div className="kpi-label" style={{ marginBottom: 6 }}>Total a pagar</div>
+          <div className="kpi-value" style={{ fontSize: 18 }}>{fmtMoeda(t.total)}</div>
+          <div className="kpi-sub">{resumo.n_titulos} títulos · fora do custo realizado</div>
+        </div>
+      </div>
+      <div style={{ font: "500 11px 'IBM Plex Sans'", color: 'var(--text2)', margin: '12px 0 4px' }}>
+        Entra no IPC (direto, com NF e previsto): {fmtMoeda(t.ipc_direto)}
+      </div>
+      <button className="nav-btn" style={{ borderBottom: 'none', color: 'var(--text)' }} onClick={abrir}>
+        {aberto ? 'Fechar os títulos ▴' : 'Ver os títulos (pede a senha) ▸'}
+      </button>
+      {aberto && !lista && <div className="loading">Carregando títulos...</div>}
+      {aberto && lista && (
+        <div style={{ overflowX: 'auto', maxHeight: 560, overflowY: 'auto', marginTop: 8 }}>
+          <table>
+            <thead>
+              <tr>
+                <th>Vencimento</th>
+                <th>Fornecedor</th>
+                <th>Documento</th>
+                <th>EAP</th>
+                <th>Tipo</th>
+                <th style={{ textAlign: 'right' }}>Valor</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lista.map(x => (
+                <tr key={x.chave}>
+                  <td style={{ fontFamily: 'var(--mono)', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{dmy(x.data_vencimento)}</td>
+                  <td style={{ verticalAlign: 'top' }}>
+                    {x.fornecedor}
+                    {x.natureza === 'previsto_sem_nf' && (
+                      <span className="badge badge-gray" style={{ marginLeft: 8 }}>previsto, sem NF</span>
+                    )}
+                    {x.alertas.map((a, k) => (
+                      <div key={k} style={{ color: AMBAR, fontSize: 11, marginTop: 3 }}>⚠ {a}</div>
+                    ))}
+                  </td>
+                  <td style={{ fontFamily: 'var(--mono)', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{x.num_documento}</td>
+                  <td style={{ fontFamily: 'var(--mono)', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
+                    {x.eaps.map(e => <div key={e.codigo_eap || 'pend'}>{e.codigo_eap || '—'}{x.eaps.length > 1 ? ` · ${fmtMoeda(e.valor)}` : ''}</div>)}
+                  </td>
+                  <td style={{ verticalAlign: 'top' }}>
+                    {[...new Set(x.eaps.map(e => rotuloClasse[e.classe] || e.classe))].join(' + ')}
+                  </td>
+                  <td style={{ ...dir, verticalAlign: 'top' }}>{fmtMoeda(x.valor)}</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colSpan={5} style={{ fontWeight: 600 }}>Total</td>
+                <td style={{ ...dir, fontWeight: 600 }}>{fmtMoeda(t.total)}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      )}
+    </div>
+  )
 }
 
 function ComparativoFisico({ mesLimite }) {
@@ -138,6 +395,8 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
   if (!dados) return <div className="empty-state"><h3>Nenhum dado disponível</h3></div>
 
   const { kpis, meses_alinhados } = dados
+  // Ultimo mes com custo lancado (padrao da conferencia quando o filtro e "todos")
+  const ultimoMesComCusto = meses_alinhados.reduce((u, m) => (m.financeiro_realizado != null ? m.mes_numero : u), 1)
 
   const labels = meses_alinhados.map(m => {
     if (!m.competencia) return `M${m.mes_numero}`
@@ -275,7 +534,7 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
         <div className="kpi" style={{ cursor: 'pointer' }} onClick={() => router.push(`/avanco-fisico-planejado?mes=${mesLimite}`)}>
           <div className="kpi-label">Avanço Físico Planejado</div>
           <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2' }}>{fmtPerc(avancoFisicoPlano)}</div>
-          <div className="kpi-sub">Base: projeto acumulado</div>
+          <div className="kpi-sub">Hh planejado ÷ Hh orçado · em S{String(kpis.avanco_semana_referencia || 0).padStart(2, '0')}</div>
         </div>
         <div className="kpi">
           <div className="kpi-label">Desvio Físico do Projeto</div>
@@ -304,10 +563,12 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
           <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2', color: saldoCustoIndireto >= 0 ? VERDE : VERMELHO }}>{fmtMoeda(saldoCustoIndireto)}</div>
           <div className="kpi-sub">{saldoCustoIndireto >= 0 ? 'Economia' : 'Acima'}</div>
         </div>
-        <div className="kpi" style={{ cursor: 'pointer' }} onClick={() => navRestrita('/avanco-fisico-realizado')}>
+        <div className="kpi" style={{ cursor: 'pointer' }} onClick={() => router.push('/semanal')}>
           <div className="kpi-label">Avanço Físico Realizado</div>
           <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2' }}>{fmtPerc(avancoFisicoReal)}</div>
-          <div className="kpi-sub">Realizado até agora</div>
+          <div className="kpi-sub" title="Avanço físico = horas executadas ÷ horas orçadas (mesma conta da página semanal)">
+            {(kpis.hh_executado || 0).toLocaleString('pt-BR')} h de {(kpis.hh_orcado || 0).toLocaleString('pt-BR')} h · em S{String(kpis.avanco_semana_referencia || 0).padStart(2, '0')}
+          </div>
         </div>
         <div style={{ visibility: 'hidden' }}></div>
       </div>
@@ -328,6 +589,13 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
           <Line data={chartData} options={chartOptions} />
         </div>
       </div>
+
+      <LancamentosDoMes
+        mesInicial={mesLimite < 20 ? mesLimite : ultimoMesComCusto}
+        ultimoMes={Math.max(ultimoMesComCusto, mesLimite < 20 ? mesLimite : 0)}
+      />
+
+      <ContasAPagar />
 
       <div className="card">
         <div className="card-title">Mapa de Avanço por Pavimento</div>

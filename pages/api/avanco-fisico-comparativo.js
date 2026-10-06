@@ -1,4 +1,5 @@
 import { supabase } from '../../lib/supabase'
+import { carregarRetratos, fotoAteMes } from '../../lib/avanco-historico'
 
 const toPercent = (value) => {
   const n = Number(value ?? 0)
@@ -24,14 +25,9 @@ export default async function handler(req, res) {
 
     if (errPlan) throw new Error(errPlan.message)
 
-    // Realizado por atividade acumulado até o mês
-    const { data: realizado, error: errReal } = await supabase
-      .from('avanco_fisico_realizado')
-      .select('atividade_nome, percentual_realizado')
-      .eq('obra_id', obra_id)
-      .lte('mes_numero', mesLimite)
-
-    if (errReal) throw new Error(errReal.message)
+    // Realizado por atividade acumulado até o mês: último % de cada item no
+    // histórico (mesma fonte da página semanal)
+    const realizado = fotoAteMes(await carregarRetratos(supabase, obra_id), mesLimite)
 
     // Agrupar planejado por atividade
     const planejadoPorAtividade = {}

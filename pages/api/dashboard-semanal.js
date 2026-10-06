@@ -1,4 +1,5 @@
 import { supabase } from '../../lib/supabase'
+import { carregarContasAPagar, resumirContas } from '../../lib/contas-a-pagar'
 
 // ---------------------------------------------------------------------------
 // /api/dashboard-semanal
@@ -94,26 +95,37 @@ const AGREGADO_POR_TEMPO = new Set(['1.1.6'])
 // descricao fica no MESMO subgrupo do item (3.3.7 so procura em 3.3.x), que
 // na estrutura e o pavimento; o que nao for achado aparece na consistencia.
 const FORMA = 'desc:Forma de chapa compensada plastificada 18 mm'
+const ARMACAO = 'desc:Armação aço CA-50'
+const LANCAMENTO = 'desc:Lançamento, adensamento e acabamento de concreto'
 const AGREGADO_HERDA = {
+  // Fundacao: forma e aco de bloco e viga baldrame seguem os dois servicos.
   '2.1.13': ['2.1.9', '2.1.10'],
   '2.1.14': ['2.1.9', '2.1.10'],
-  // Material de pilares/escada do 1o pavimento: segue a forma do mesmo
-  // pavimento. Por descricao pegaria a forma de todos os andares.
+  // Estrutura, por pavimento: forma (material) segue a forma de chapa do
+  // andar; aco (material) segue a armacao do andar.
   '3.1.6': ['3.1.4'],
-  '3.1.7': ['3.1.4'],
-  // Demais pavimentos: forma e aco (apenas material) seguem a forma do andar.
+  '3.1.7': [ARMACAO],
   '3.2.6': [FORMA],
-  '3.2.7': [FORMA],
+  '3.2.7': [ARMACAO],
   '3.3.7': [FORMA],
-  '3.3.8': [FORMA],
+  '3.3.8': [ARMACAO],
   '3.4.7': [FORMA],
-  '3.4.8': [FORMA],
+  '3.4.8': [ARMACAO],
   '3.5.6': [FORMA],
-  '3.5.7': [FORMA],
+  '3.5.7': [ARMACAO],
   '3.6.5': [FORMA],
-  '3.6.6': [FORMA],
+  '3.6.6': [ARMACAO],
   '3.7.5': [FORMA],
-  '3.7.6': [FORMA],
+  '3.7.6': [ARMACAO],
+  // Concreto do 7o sem Hh: segue o lancamento do andar.
+  '3.7.2': [LANCAMENTO],
+  // Eletrica: cabos seguem o 7.1.7.
+  '7.1.8': ['7.1.7'],
+  '7.1.9': ['7.1.7'],
+  // Esquadrias e area externa.
+  '12.1.22': ['12.1.21'],
+  '16.1.4': ['16.1.3'],
+  '16.1.5': ['16.1.3'],
 }
 
 // Grupos cujo servico se repete andar a andar e o cronograma acompanha por
@@ -189,6 +201,14 @@ export default async function handler(req, res) {
       if (r.error) throw new Error(`${nome}: ${r.error.message}`)
       if (!r.data || r.data.length === 0) throw new Error(`${nome}: sem linhas para obra_id=${obra_id}`)
     }
+
+    // Contas a pagar do ultimo fechamento (direto, com NF e "Prev. Financ.").
+    // IPC = valor agregado do direto / (realizado do direto + a pagar do
+    // direto). Sem a tabela no banco, o a pagar fica zerado e a resposta avisa.
+    const contas = await carregarContasAPagar(supabase, obra_id)
+    const resumoContas = contas.disponivel ? resumirContas(contas.linhas) : null
+    const aPagarDireto = resumoContas ? resumoContas.totais.ipc_direto : 0
+    const aPagarPorEap = resumoContas ? resumoContas.por_eap_direto : {}
 
     const curvaRaw = curvaRes.data
     const realizadoRaw = realizadoRes.data
@@ -322,6 +342,12 @@ export default async function handler(req, res) {
     // nela. Hh continua vindo da view.
     // -----------------------------------------------------------------------
     const nSemanas = semanasOrdenadas.length || TOTAL_SEMANAS
+    // custo_encerrado: coluna opcional do orcamento (alter table ... add
+    // column custo_encerrado boolean). Sem a coluna, tudo fica em aberto.
+    const encerradoPorEap = {}
+    orcamento.forEach((it) => {
+      if (it.cod_eap && it.custo_encerrado === true) encerradoPorEap[it.cod_eap] = true
+    })
     const custoPorEap = {}
     const descPorEap = {}
     orcamento.forEach((it) => {
@@ -570,6 +596,8 @@ export default async function handler(req, res) {
     const acwpParcelaPorSemana = new Map()
     const acwpIndiretoPorSemana = new Map()
     const eapsNaoClassificados = {}
+    // Pago por codigo em cada semana (so direto): base do saldo por item.
+    const pagoEapPorSemana = new Map()
 
     lancamentos
       .filter((l) => l.status === 'Normal')
@@ -591,6 +619,9 @@ export default async function handler(req, res) {
           acwpIndiretoPorSemana.set(s, (acwpIndiretoPorSemana.get(s) || 0) + valor)
         } else {
           acwpPorSemana.set(s, (acwpPorSemana.get(s) || 0) + valor)
+          if (!pagoEapPorSemana.has(s)) pagoEapPorSemana.set(s, {})
+          const pe = pagoEapPorSemana.get(s)
+          pe[eap] = (pe[eap] || 0) + valor
           const parcela = parcelaPorEap[eap] || 'nc'
           if (!acwpParcelaPorSemana.has(s)) acwpParcelaPorSemana.set(s, { a: 0, b: 0, c: 0, nc: 0 })
           acwpParcelaPorSemana.get(s)[parcela] += valor
@@ -608,6 +639,35 @@ export default async function handler(req, res) {
     // -----------------------------------------------------------------------
     const incorridoAcumPorEap = {}
     let acwpAcum = 0
+    const pagoEapAcum = {}
+    // Saldo por item da producao. O realizado e o que foi PAGO; o agregado e o
+    // que foi EXECUTADO. Item em aberto (boleto a vencer, parcela, medicao do
+    // empreiteiro ainda nao paga) entra no saldo pelo menor entre agregado e
+    // pago: mostra estouro, nunca economia que ainda vai sair do caixa. Item
+    // com custo_encerrado = true no orcamento entra pelo agregado cheio.
+    const saldoProducaoNaSemana = (w) => {
+      let agregadoSaldo = 0
+      let aguardando = 0
+      let itensAPagar = 0
+      let agEnc = 0
+      let pagoEnc = 0
+      Object.keys(custoPorEap).forEach((eap) => {
+        const ag = (custoPorEap[eap] * percAgregado(eap, w)) / 100
+        const pago = pagoEapAcum[eap] || 0
+        if (encerradoPorEap[eap]) {
+          agregadoSaldo += ag
+          agEnc += ag
+          pagoEnc += pago
+        } else {
+          agregadoSaldo += Math.min(ag, pago)
+          if (ag > pago + 0.005) {
+            aguardando += ag - pago
+            itensAPagar += 1
+          }
+        }
+      })
+      return { agregadoSaldo, aguardando, itensAPagar, agEnc, pagoEnc }
+    }
     const acwpParcelaAcum = { a: 0, b: 0, c: 0, nc: 0 }
     let indiretoPlanAcum = 0
     let indiretoRealAcum = 0
@@ -633,6 +693,8 @@ export default async function handler(req, res) {
       const bcwpC = p.c
 
       acwpAcum += acwpPorSemana.get(s) || 0
+      const pes = pagoEapPorSemana.get(s)
+      if (pes) Object.keys(pes).forEach((k) => (pagoEapAcum[k] = (pagoEapAcum[k] || 0) + pes[k]))
       const dp = acwpParcelaPorSemana.get(s)
       if (dp) Object.keys(acwpParcelaAcum).forEach((k) => (acwpParcelaAcum[k] += dp[k]))
       indiretoPlanAcum += indiretoSemanal.get(s) || 0
@@ -681,6 +743,18 @@ export default async function handler(req, res) {
         indireto_planejado: r2(indiretoPlanAcum),
         indireto_realizado: r2(indiretoRealAcum),
         bcwp_a_custo: temRealizado ? r2((bcwpABases.get(s) || {}).custo || 0) : null,
+        ...(() => {
+          if (!temRealizado)
+            return { bcwp_a_saldo: null, aguardando_pagamento: null, itens_a_pagar: null, agregado_encerrado: null, pago_encerrado: null }
+          const sp = saldoProducaoNaSemana(s)
+          return {
+            bcwp_a_saldo: r2(sp.agregadoSaldo),
+            aguardando_pagamento: r2(sp.aguardando),
+            itens_a_pagar: sp.itensAPagar,
+            agregado_encerrado: r2(sp.agEnc),
+            pago_encerrado: r2(sp.pagoEnc),
+          }
+        })(),
         bcwp_a_hh: temRealizado ? r2((bcwpABases.get(s) || {}).hh || 0) : null,
         hh_acumulado: temRealizado ? r2((bcwpABases.get(s) || {}).hh_acum || 0) : null,
       })
@@ -749,8 +823,16 @@ export default async function handler(req, res) {
       const linha = porGrupo.get(g)
       const plan = fatiaPlanejadaAte(it)
       const real = realizadoPorEapAte[it.cod_eap] || 0
+      // Valor agregado da linha: orcado x % executado do codigo na semana,
+      // pela mesma regra do card (medido, herda ou tempo). Fora do EVM
+      // (locacao, funcionarios) nao ha % executado.
+      const orcado = num(it.preco_total)
+      const perc = it.entra_evm && it.cod_eap ? percAgregado(it.cod_eap, semanaAtual) : null
+      const agregado = perc == null ? null : (orcado * perc) / 100
       linha.planejado += plan
       linha.realizado += real
+      linha.orcado = (linha.orcado || 0) + orcado
+      linha.agregado = (linha.agregado || 0) + (agregado || 0)
       linha.mes_inicio = Math.min(linha.mes_inicio, parseInt(it.mes_inicio, 10) || 1)
       linha.mes_fim = Math.max(linha.mes_fim, parseInt(it.mes_fim, 10) || 1)
       linha.itens.push({
@@ -761,7 +843,16 @@ export default async function handler(req, res) {
         mes_fim: parseInt(it.mes_fim, 10) || null,
         planejado: r2(plan),
         realizado: r2(real),
-        planejado_total: r2(num(it.preco_total)),
+        planejado_total: r2(orcado),
+        perc_executado: perc == null ? null : r2(perc),
+        agregado: agregado == null ? null : r2(agregado),
+        // Eficiencia de custo = agregado / (realizado + a pagar do codigo).
+        // Sem medicao (agregado zero ou fora do EVM) ou sem custo, fica nula
+        // e a tela mostra "—".
+        a_pagar: r2(aPagarPorEap[it.cod_eap] || 0),
+        eficiencia: agregado > 0 && real + (aPagarPorEap[it.cod_eap] || 0) > 0
+          ? r3(agregado / (real + (aPagarPorEap[it.cod_eap] || 0)))
+          : null,
         lancamentos: (lancamentosPorEap[it.cod_eap] || []).sort((a, b) =>
           String(a.data || '').localeCompare(String(b.data || ''))
         ),
@@ -774,6 +865,8 @@ export default async function handler(req, res) {
         ...g,
         planejado: r2(g.planejado),
         realizado: r2(g.realizado),
+        orcado: r2(g.orcado || 0),
+        agregado: r2(g.agregado || 0),
         itens: g.itens.sort((a, b) =>
           String(a.cod_eap).localeCompare(String(b.cod_eap), 'pt-BR', { numeric: true })
         ),
@@ -786,10 +879,12 @@ export default async function handler(req, res) {
               const m = new Map()
               g.itens.forEach((i) => {
                 const p = i.pavimento || 'Sem pavimento'
-                if (!m.has(p)) m.set(p, { pavimento: p, planejado: 0, realizado: 0, itens: [] })
+                if (!m.has(p)) m.set(p, { pavimento: p, planejado: 0, realizado: 0, orcado: 0, agregado: 0, itens: [] })
                 const b = m.get(p)
                 b.planejado += i.planejado
                 b.realizado += i.realizado
+                b.orcado += i.planejado_total
+                b.agregado += i.agregado || 0
                 b.itens.push(i)
               })
               return Array.from(m.values())
@@ -797,6 +892,8 @@ export default async function handler(req, res) {
                   pavimento: b.pavimento,
                   planejado: r2(b.planejado),
                   realizado: r2(b.realizado),
+                  orcado: r2(b.orcado),
+                  agregado: r2(b.agregado),
                   itens: b.itens.sort((x, y) =>
                     String(x.cod_eap).localeCompare(String(y.cod_eap), 'pt-BR', { numeric: true })
                   ),
@@ -1066,6 +1163,11 @@ export default async function handler(req, res) {
     let memoriaAgregado = null
     if (req.query.memoria) {
       const pontoMem = curva.find((x) => x.semana === semanaAtual) || curva[curva.length - 1]
+      const pagoAteSemana = {}
+      pagoEapPorSemana.forEach((bucket, w) => {
+        if (w > semanaAtual) return
+        Object.keys(bucket).forEach((k) => (pagoAteSemana[k] = (pagoAteSemana[k] || 0) + bucket[k]))
+      })
       const itensA = []
       orcamento.forEach((it) => {
         if (!it.entra_evm) return
@@ -1075,6 +1177,7 @@ export default async function handler(req, res) {
         const snap = percPorSemana.get(semanaAtual) || { semana: {} }
         const custo = num(it.preco_total)
         itensA.push({
+          encerrado: !!encerradoPorEap[it.cod_eap],
           regra,
           herda_de: regra === 'herda' ? paresResolvidos[it.cod_eap] : null,
           grupo: g,
@@ -1130,6 +1233,20 @@ export default async function handler(req, res) {
           // A soma tem que bater com o card (mesmo calculo). A view do banco
           // fica so como referencia: a diferenca e o efeito das regras.
           dashboard: pontoMem.bcwp_a_custo,
+          saldo_agregado: pontoMem.bcwp_a_saldo,
+          aguardando_pagamento: pontoMem.aguardando_pagamento,
+          // Pago e agregado por codigo (varias linhas por pavimento somam num
+          // codigo so; o pagamento e lancado por codigo).
+          por_codigo: Object.fromEntries(
+            Object.keys(custoPorEap).map((eap) => {
+              const ag = (custoPorEap[eap] * percAgregado(eap, semanaAtual)) / 100
+              const pago = pagoAteSemana[eap] || 0
+              const enc = !!encerradoPorEap[eap]
+              return [eap, { agregado: r2(ag), pago: r2(pago), encerrado: enc,
+                saldo: r2((enc ? ag : Math.min(ag, pago)) - pago),
+                aguardando: r2(enc ? 0 : Math.max(ag - pago, 0)) }]
+            })
+          ),
           diferenca_vs_dashboard: pontoMem.bcwp_a_custo == null ? null : r2(somaA - pontoMem.bcwp_a_custo),
           view_banco: bcwpViewCusto.has(semanaAtual) ? r2(bcwpViewCusto.get(semanaAtual)) : null,
         },
@@ -1182,28 +1299,36 @@ export default async function handler(req, res) {
     const custoPorSemana = custoCalendarioTotal / (semanasOrdenadas.length || TOTAL_SEMANAS)
 
     let projecao = null
-    if (agregadoRef != null && ref.acwp > 0 && ref.bcws > 0 && agregadoRef > 0) {
-      const idc = agregadoRef / ref.acwp
-      const idp = agregadoRef / ref.bcws
+    // IPC (decisao out/26) = agregado do direto / (realizado do direto + a
+    // pagar do direto). Substitui a regra de custo encerrado. IDP pelo avanco
+    // fisico em Hh, as duas pontas na semana de referencia (igual a tela).
+    const comprometidoRef = ref.acwp + aPagarDireto
+    if (agregadoRef != null && agregadoRef > 0 && comprometidoRef > 0 && ref.avanco_plan_hh > 0 && ref.avanco_real_hh != null) {
+      const idc = agregadoRef / comprometidoRef
+      const idp = ref.avanco_real_hh / ref.avanco_plan_hh
+      // Adiantamento nao barateia a obra: no pessimista o IDP fica ate 1.
+      const idpPess = Math.min(idp, 1)
+      // Falta = o que ainda nao foi executado, a preco de orcamento.
       const falta = orcadoDireto - agregadoRef
       const duracao = semanasOrdenadas.length || TOTAL_SEMANAS
       // Se o ritmo atual se mantiver, a obra dura duracao / IDP. Obra
       // adiantada (IDP > 1) nao gera credito de calendario: fica em zero.
       const semanasExtras = Math.max(duracao / idp - duracao, 0)
-      const otimista = ref.acwp + falta / idc
+      const otimista = comprometidoRef + falta / idc
       const custoAtraso = custoPorSemana * semanasExtras
       projecao = {
         semana_referencia: semanaRef,
         orcado: r2(orcadoDireto),
         agregado: r2(agregadoRef),
         realizado: r2(ref.acwp),
+        a_pagar: r2(aPagarDireto),
         planejado: r2(ref.bcws),
         falta: r2(falta),
         idc: r3(idc),
         idp: r3(idp),
         otimista: r2(otimista),
         provavel: r2(otimista + custoAtraso),
-        pessimista: r2(ref.acwp + falta / (idc * idp)),
+        pessimista: r2(comprometidoRef + falta / (idc * idpPess)),
         semanas_extras: r2(semanasExtras),
         custo_calendario_semana: r2(custoPorSemana),
         custo_atraso: r2(custoAtraso),
@@ -1225,7 +1350,8 @@ export default async function handler(req, res) {
       bcwp: ponto.bcwp,
       acwp: ponto.acwp,
       spi: r3(spi(ponto.bcwp, ponto.bcws)),
-      cpi: ponto.acwp > 0 && ponto.bcwp != null ? r3(ponto.bcwp / ponto.acwp) : null,
+      // IPC com o a pagar do direto no denominador (decisao out/26)
+      cpi: ponto.acwp + aPagarDireto > 0 && ponto.bcwp != null ? r3(ponto.bcwp / (ponto.acwp + aPagarDireto)) : null,
       sv: ponto.bcwp != null ? r2(ponto.bcwp - ponto.bcws) : null,
       cv: ponto.bcwp != null && ponto.acwp != null ? r2(ponto.bcwp - ponto.acwp) : null,
       avanco_fisico_planejado: ponto.avanco_plan_hh,
@@ -1340,6 +1466,20 @@ export default async function handler(req, res) {
       semana_corrente_calendario: semanaCorrente,
       ultima_semana_com_avanco: ultimaSemanaComAvanco,
       kpis,
+      // A pagar do ultimo fechamento: o direto entra no IPC, o indireto no
+      // saldo do indireto. Fora do custo realizado.
+      contas_a_pagar: resumoContas
+        ? {
+            disponivel: true,
+            fechamento: contas.fechamento,
+            competencia_vencimento: contas.linhas[0] ? contas.linhas[0].competencia_vencimento : null,
+            direto: resumoContas.totais.ipc_direto,
+            indireto: resumoContas.totais.a_pagar_indireto,
+            previsto_sem_nf: resumoContas.totais.previsto_sem_nf,
+            pendente: resumoContas.totais.pendente,
+            total: resumoContas.totais.total,
+          }
+        : { disponivel: false, motivo: contas.motivo, direto: 0, indireto: 0 },
       curva,
       grupos,
       indiretos: indiretosAbertura,

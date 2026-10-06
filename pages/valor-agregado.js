@@ -10,12 +10,13 @@ import { fmtMoeda } from '../lib/constants'
 const PLAN = '#6e8ba8'
 const VERDE = '#7fb08a'
 const VERMELHO = '#c77b74'
+const AMBAR = '#c9a45c'
 const MONO = "500 11px 'IBM Plex Mono', monospace"
 const s2 = (n) => `S${String(n).padStart(2, '0')}`
 const fmtP = (v) => (v == null ? '—' : `${Number(v).toFixed(1).replace('.', ',')}%`)
 const dmy = (s) => (s ? `${s.slice(8, 10)}/${s.slice(5, 7)}/${s.slice(0, 4)}` : '')
 
-const COLS = '90px minmax(0,1fr) 110px 130px 80px 130px 130px'
+const COLS = '80px minmax(0,1fr) 80px 120px 70px 120px 120px 120px 110px'
 
 function Linha({ children, cabecalho, destaque }) {
   return (
@@ -49,6 +50,9 @@ export default function ValorAgregado() {
   const [busca, setBusca] = useState('')
 
   const semana = router.query.semana ? parseInt(router.query.semana, 10) : null
+  // Executado nao pago (agregado acima do pago). Nao confundir com o card de
+  // contas a pagar, que vem do relatorio do TOTVS. 'a-pagar' e o nome antigo.
+  const soAPagar = router.query.filtro === 'nao-pago' || router.query.filtro === 'a-pagar'
 
   useEffect(() => {
     if (!router.isReady) return
@@ -70,12 +74,24 @@ export default function ValorAgregado() {
     if (!m) return []
     const termo = busca.trim().toLowerCase()
     const mapa = new Map()
+    const porCodigo = m.parcela_a.por_codigo || {}
     m.parcela_a.itens.forEach((i) => {
-      if (!mapa.has(i.grupo)) mapa.set(i.grupo, { grupo: i.grupo, nome: i.grupo_nome, custo: 0, agregado: 0, itens: [], zerados: 0 })
+      if (!mapa.has(i.grupo))
+        mapa.set(i.grupo, {
+          grupo: i.grupo, nome: i.grupo_nome, custo: 0, agregado: 0, pago: 0, aPagar: 0,
+          codigos: new Set(), itens: [], zerados: 0,
+        })
       const g = mapa.get(i.grupo)
       // Subtotal sempre com todos os itens: esconder linha nao pode mudar a soma.
       g.custo += i.custo_total
       g.agregado += i.agregado
+      // Pago e a pagar sao por codigo: conta uma vez so por codigo no grupo.
+      const pc = porCodigo[i.cod_eap]
+      if (pc && !g.codigos.has(i.cod_eap)) {
+        g.codigos.add(i.cod_eap)
+        g.pago += pc.pago
+        g.aPagar += pc.aguardando
+      }
       const casa =
         !termo ||
         String(i.cod_eap).toLowerCase().includes(termo) ||
@@ -100,6 +116,123 @@ export default function ValorAgregado() {
         <div className="loading">Montando a memória de cálculo...</div>
       </div>
     )
+
+  // Lista de conferência: um registro por código com executado acima do pago.
+  const listaAPagar = (() => {
+    const pc = m.parcela_a.por_codigo || {}
+    const info = {}
+    m.parcela_a.itens.forEach((i) => {
+      if (!info[i.cod_eap]) info[i.cod_eap] = { ...i, custo: 0 }
+      info[i.cod_eap].custo += i.custo_total
+    })
+    return Object.keys(pc)
+      .filter((c) => pc[c].aguardando > 0.005)
+      .map((c) => ({ cod: c, ...pc[c], ...(info[c] || {}), perc: info[c] && info[c].custo > 0 ? (pc[c].agregado / info[c].custo) * 100 : null }))
+      .sort((a, b) => b.aguardando - a.aguardando)
+  })()
+
+  if (soAPagar) {
+    const COLS_P = '80px minmax(0,1fr) 110px 120px 70px 130px 120px 120px 120px'
+    const cab = { font: MONO, textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--text2)' }
+    const lin = (extra) => ({
+      display: 'grid', gridTemplateColumns: COLS_P, gap: 10, padding: '7px 0',
+      borderBottom: '1px solid var(--border)', alignItems: 'center', ...extra,
+    })
+    const total = listaAPagar.reduce((t, x) => t + x.aguardando, 0)
+    return (
+      <div className="page">
+        <div className="header">
+          <div className="header-top">
+            <div>
+              <div className="obra-eye">
+                <a onClick={() => router.push('/semanal')} style={{ cursor: 'pointer', color: 'inherit', textDecoration: 'none' }}>
+                  ← Acompanhamento semanal
+                </a>
+                {'  ·  '}
+                <a
+                  onClick={() => router.push(`/valor-agregado?semana=${m.semana}`)}
+                  style={{ cursor: 'pointer', color: 'inherit', textDecoration: 'none' }}
+                >
+                  Memória de cálculo completa
+                </a>
+              </div>
+              <div className="obra-nome">Executado não pago</div>
+              <div className="obra-info">
+                Flats Pampulha · até {s2(m.semana)} ({dmy(m.data_fim)}) · serviço executado cujo custo ainda não foi
+                pago (boleto a vencer, parcela, medição do empreiteiro)
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginTop: 18 }}>
+          <div className="kpi">
+            <div className="kpi-label">Não pago</div>
+            <div className="kpi-value" style={{ fontSize: 20, color: AMBAR }}>{fmtMoeda(total)}</div>
+            <div className="kpi-sub">Executado − pago, por item em aberto</div>
+          </div>
+          <div className="kpi">
+            <div className="kpi-label">Itens</div>
+            <div className="kpi-value" style={{ fontSize: 20 }}>{listaAPagar.length}</div>
+            <div className="kpi-sub">Com execução acima do pagamento</div>
+          </div>
+          <div className="kpi">
+            <div className="kpi-label">Sem nenhum pagamento</div>
+            <div className="kpi-value" style={{ fontSize: 20 }}>{listaAPagar.filter((x) => x.pago <= 0.005).length}</div>
+            <div className="kpi-sub">
+              {fmtMoeda(listaAPagar.filter((x) => x.pago <= 0.005).reduce((t, x) => t + x.aguardando, 0))}
+            </div>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-title">Itens executados e não pagos — do maior para o menor</div>
+          <div style={lin(cab)}>
+            <div>Código</div>
+            <div>Serviço</div>
+            <div>Regra</div>
+            <div style={dir}>Orçado</div>
+            <div style={dir}>% exec.</div>
+            <div style={dir}>Executado</div>
+            <div style={dir}>Pago</div>
+            <div style={dir}>Não pago</div>
+            <div style={dir}>% pago</div>
+          </div>
+          {listaAPagar.map((x) => (
+            <div key={x.cod} style={lin({ font: "500 12px 'IBM Plex Sans'" })}>
+              <div style={{ color: 'var(--text2)' }}>{x.cod}</div>
+              <div>{x.descricao}</div>
+              <div style={{ color: x.regra === 'medido' ? 'var(--text2)' : PLAN, fontSize: 11 }}>
+                {x.regra === 'tempo' ? 'tempo' : x.regra === 'herda' ? `herda ${x.herda_de.join('/')}` : 'medido'}
+              </div>
+              <div style={dir}>{fmtMoeda(x.custo)}</div>
+              <div style={dir}>{fmtP(x.perc)}</div>
+              <div style={{ ...dir, color: PLAN }}>{fmtMoeda(x.agregado)}</div>
+              <div style={dir}>{fmtMoeda(x.pago)}</div>
+              <div style={{ ...dir, color: AMBAR, fontWeight: 600 }}>{fmtMoeda(x.aguardando)}</div>
+              <div style={{ ...dir, color: 'var(--text2)' }}>{x.agregado > 0 ? fmtP((x.pago / x.agregado) * 100) : '—'}</div>
+            </div>
+          ))}
+          <div style={lin({ font: "600 12px 'IBM Plex Sans'", background: 'var(--bg3)' })}>
+            <div />
+            <div>Total</div>
+            <div />
+            <div />
+            <div />
+            <div style={{ ...dir, color: PLAN }}>{fmtMoeda(listaAPagar.reduce((t, x) => t + x.agregado, 0))}</div>
+            <div style={dir}>{fmtMoeda(listaAPagar.reduce((t, x) => t + x.pago, 0))}</div>
+            <div style={{ ...dir, color: AMBAR }}>{fmtMoeda(total)}</div>
+            <div />
+          </div>
+          <div style={{ font: "500 11px 'IBM Plex Sans'", color: 'var(--text2)', marginTop: 10, lineHeight: 1.6 }}>
+            O valor não pago é estimado pelo orçado do serviço executado. Se o item já foi quitado por um valor menor,
+            marque <code>custo_encerrado = true</code> no orçamento: ele sai desta lista e a economia entra no saldo.
+            Se o pagamento foi lançado em outro código, o item aparece aqui e o outro aparece pago acima do executado.
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   const semanasMedidas = dados.curva.filter((c) => c.semana <= dados.semana_corrente_calendario)
   const difView = m.parcela_a.diferenca_vs_dashboard
@@ -131,7 +264,9 @@ export default function ValorAgregado() {
             <select
               className="periodo"
               value={m.semana}
-              onChange={(e) => router.push(`/valor-agregado?semana=${e.target.value}`)}
+              onChange={(e) =>
+                router.push(`/valor-agregado?semana=${e.target.value}${soAPagar ? '&filtro=nao-pago' : ''}`)
+              }
             >
               {semanasMedidas.map((c) => (
                 <option key={c.semana} value={c.semana}>
@@ -218,6 +353,8 @@ export default function ValorAgregado() {
           <div style={dir}>% físico</div>
           <div style={dir}>Medido</div>
           <div style={dir}>Valor agregado</div>
+          <div style={dir}>Pago</div>
+          <div style={dir}>Não pago</div>
         </Linha>
 
         {grupos.map((g) => (
@@ -230,6 +367,8 @@ export default function ValorAgregado() {
               <div style={{ ...dir, fontWeight: 600 }}>{g.custo > 0 ? fmtP((g.agregado / g.custo) * 100) : '—'}</div>
               <div />
               <div style={{ ...dir, fontWeight: 600, color: PLAN }}>{fmtMoeda(g.agregado)}</div>
+              <div style={{ ...dir, fontWeight: 600 }}>{fmtMoeda(g.pago)}</div>
+              <div style={{ ...dir, fontWeight: 600, color: g.aPagar > 0 ? AMBAR : 'var(--text2)' }}>{fmtMoeda(g.aPagar)}</div>
             </Linha>
             {g.itens.map((i, k) => (
               <Linha key={`${i.cod_eap}-${i.pavimento || ''}-${k}`}>
@@ -257,6 +396,23 @@ export default function ValorAgregado() {
                         : '—'}
                 </div>
                 <div style={{ ...dir, color: i.agregado > 0 ? PLAN : 'var(--text2)' }}>{fmtMoeda(i.agregado)}</div>
+                {(() => {
+                  // Varias linhas do mesmo codigo (pavimentos): pago so na primeira.
+                  const pc = (m.parcela_a.por_codigo || {})[i.cod_eap]
+                  const primeira = g.itens.findIndex((x) => x.cod_eap === i.cod_eap) === k
+                  if (!pc || !primeira) return (<><div /><div /></>)
+                  const estouro = pc.pago > pc.agregado && pc.agregado > 0
+                  return (
+                    <>
+                      <div style={{ ...dir, color: estouro ? VERMELHO : 'var(--text)' }} title={estouro ? 'Pago acima do executado' : ''}>
+                        {fmtMoeda(pc.pago)}
+                      </div>
+                      <div style={{ ...dir, color: pc.encerrado ? VERDE : pc.aguardando > 0 ? AMBAR : 'var(--text2)' }}>
+                        {pc.encerrado ? 'encerrado' : fmtMoeda(pc.aguardando)}
+                      </div>
+                    </>
+                  )
+                })()}
               </Linha>
             ))}
             {g.zerados > 0 && (
@@ -275,7 +431,17 @@ export default function ValorAgregado() {
           <div style={{ ...dir, fontWeight: 600 }}>{custoA > 0 ? fmtP((m.parcela_a.soma / custoA) * 100) : '—'}</div>
           <div />
           <div style={{ ...dir, fontWeight: 600, color: PLAN }}>{fmtMoeda(m.parcela_a.soma)}</div>
+          <div style={{ ...dir, fontWeight: 600 }}>
+            {fmtMoeda(Object.values(m.parcela_a.por_codigo || {}).reduce((t, x) => t + x.pago, 0))}
+          </div>
+          <div style={{ ...dir, fontWeight: 600, color: AMBAR }}>{fmtMoeda(m.parcela_a.aguardando_pagamento)}</div>
         </Linha>
+        <div style={{ font: "500 11px 'IBM Plex Sans'", color: 'var(--text2)', marginTop: 10, lineHeight: 1.6 }}>
+          <b>Não pago</b> = executado ainda não pago (boleto a vencer, parcela, medição do empreiteiro). No saldo, item
+          em aberto entra pelo menor entre executado e pago: mostra estouro, mas não economia. Quando o item estiver
+          quitado, marque <code>custo_encerrado = true</code> no orçamento para o saldo usar o executado cheio.
+          Pago em vermelho: pago acima do executado.
+        </div>
       </div>
 
       <div className="card">

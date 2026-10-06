@@ -13,6 +13,13 @@
 //   node ferramentas/fechamento/importar.js --contas "...\fechamento_2026-09.xlsx" --data 2026-09-30 [--confirmar]
 //      substitui a foto do contas a pagar daquela data.
 //
+// Contas a pagar do classificador (automacao/contas_a_pagar.csv, gerado pelo
+// contas_a_pagar.py): card separado do custo, nao entra em custos_lancamentos.
+//   node ferramentas/fechamento/importar.js --contas-classificador automacao/contas_a_pagar.csv [--confirmar]
+//      previa com totais (direto / indireto / previsto sem NF / pendente),
+//      alertas e pendencias; substitui a foto inteira do fechamento. Titulo
+//      sem EAP so grava com --aceitar-pendencias (fica fora do IPC).
+//
 // Saida do classificador (automacao/lancamentos.csv):
 //   node ferramentas/fechamento/importar.js --classificador automacao/lancamentos.csv [--confirmar]
 //      a competencia vem das datas do arquivo (Data de Baixa); substitui a
@@ -49,6 +56,13 @@ const ARQ_CLASSIF = arg('--classificador')
 const DESFAZER = arg('--desfazer')
 const ACEITAR_SAIDAS = args.includes('--aceitar-saidas')
 const ACEITAR_DUPLICIDADE = args.includes('--aceitar-duplicidade')
+const ARQ_CONTAS_CLASSIF = arg('--contas-classificador')
+const ACEITAR_PENDENCIAS = args.includes('--aceitar-pendencias')
+// Tabela do contas a pagar por titulo (supabase/contas/1-contas-a-pagar.sql).
+// Mesmo nome em lib/contas-a-pagar.js. (Conferido em out/26: a tabela nao
+// existia no banco; o modo antigo --contas, que gravaria nela com outro
+// formato, foi desativado.)
+const TABELA_CONTAS = 'contas_a_pagar'
 // Ate esta competencia o banco tem historico lancado a mao (fev-jun dentro de
 // 2026-07): substituir a competencia inteira apagaria esse historico.
 const ULTIMA_COMPETENCIA_MANUAL = '2026-07'
@@ -112,8 +126,8 @@ async function todos(q) {
 }
 
 async function main() {
-  if (!ARQ_CUSTOS && !ARQ_CONTAS && !ARQ_CLASSIF && !DESFAZER) {
-    console.error('Uso: --custos ARQUIVO --competencia AAAA-MM  |  --contas ARQUIVO --data AAAA-MM-DD  |  --classificador lancamentos.csv  |  --desfazer ID  [--confirmar]')
+  if (!ARQ_CUSTOS && !ARQ_CONTAS && !ARQ_CLASSIF && !ARQ_CONTAS_CLASSIF && !DESFAZER) {
+    console.error('Uso: --custos ARQUIVO --competencia AAAA-MM  |  --contas ARQUIVO --data AAAA-MM-DD  |  --classificador lancamentos.csv  |  --contas-classificador contas_a_pagar.csv  |  --desfazer ID  [--confirmar]')
     process.exit(1)
   }
   const env = lerEnv()
@@ -134,6 +148,7 @@ async function main() {
   if (ARQ_CUSTOS) await custos(db, validos, pavimento)
   if (ARQ_CONTAS) await contas(db, validos)
   if (ARQ_CLASSIF) await classificador(db, validos, pavimento)
+  if (ARQ_CONTAS_CLASSIF) await contasClassificador(db, validos)
   if (DESFAZER) await desfazer(db)
 }
 
@@ -235,6 +250,9 @@ async function custos(db, validos, pavimento) {
 }
 
 async function contas(db, validos) {
+  // Desativado: gravava na tabela contas_a_pagar com outro formato (aba do
+  // preparar.js). O contas a pagar agora vem do classificador.
+  throw new Error('--contas foi substituído por --contas-classificador automacao/contas_a_pagar.csv (gerado pelo automacao/contas_a_pagar.py)')
   if (!/^\d{4}-\d{2}-\d{2}$/.test(DATA_REF || '')) throw new Error('--data AAAA-MM-DD é obrigatório com --contas')
   const brutas = lerAba(ARQ_CONTAS, 'Contas a pagar', ['Codigo da EAP', 'Valor (R$)'])
   const linhas = brutas.map((l) => ({
@@ -474,6 +492,191 @@ async function classificador(db, validos, pavimento) {
   await db.from('importacoes').update({ status: 'ok' }).eq('id', importacao_id)
   console.log(`\n  ✓ ${novas.length} lançamentos gravados em ${competencia}; ${ids.length} antigos substituídos.`)
   console.log(`  importação: ${importacao_id}  (para desfazer: --desfazer ${importacao_id})\n`)
+}
+
+// ── Contas a pagar pelo classificador (automacao/contas_a_pagar.csv) ─────
+//
+// Card separado do custo realizado: nada daqui vai para custos_lancamentos.
+// Substitui a foto inteira do fechamento (insere as novas e so depois apaga
+// as antigas). Alertas: os do relatorio vem no arquivo; os que dependem do
+// historico do banco sao calculados aqui e gravados junto.
+
+// Parcelas da mesma NF (99222/01, /02) tem o mesmo numero antes da barra
+const baseNf = (doc) => txt(doc).split('/')[0].replace(/^0+/, '')
+const chaveForn = (cnpj, forn) => (txt(cnpj) ? `c${txt(cnpj).replace(/\D/g, '').slice(0, 8)}` : `n${semAcento(forn).slice(0, 12)}`)
+
+async function existeTabela(db, nome) {
+  const r = await db.from(nome).select('*').limit(1)
+  if (!r.error) return { existe: true, colunas: r.data && r.data[0] ? Object.keys(r.data[0]) : null }
+  if (/does not exist|could not find the table|schema cache/i.test(r.error.message)) return { existe: false, erro: r.error.message }
+  throw new Error(`${nome}: ${r.error.message}`)
+}
+
+// Pagamento mensal (automacao/fornecedores_recorrentes.csv, decisao out/26):
+// mesmo valor em outro mes e outro documento e a mensalidade, nao duplicidade.
+function lerRecorrentes() {
+  const f = path.join(__dirname, '..', '..', 'automacao', 'fornecedores_recorrentes.csv')
+  if (!fs.existsSync(f)) return new Set()
+  return new Set(lerCsv(f).map((r) => txt(r.cnpj)).filter(Boolean))
+}
+
+function alertasDoBanco(titulos, custos, jaAvisados = {}) {
+  const mensais = lerRecorrentes()
+  // Historico por fornecedor: um registro por documento (soma das linhas de EAP)
+  const docs = {}
+  custos.forEach((c) => {
+    const k = `${chaveDoc(c.num_documento, c.fornecedor)}`
+    if (!docs[k]) docs[k] = { fornecedor: c.fornecedor, cnpj: c.cnpj, num_documento: c.num_documento, competencia: c.competencia, valor: 0 }
+    docs[k].valor = r2(docs[k].valor + Number(c.valor))
+  })
+  const lista = Object.values(docs)
+  const porForn = {}
+  lista.forEach((d) => {
+    // Nos meses lancados a mao o cnpj pode faltar: indexa pelo cnpj e pelo nome
+    ;[chaveForn(d.cnpj, d.fornecedor), chaveForn(null, d.fornecedor)].forEach((k) => {
+      if (!porForn[k]) porForn[k] = []
+      if (!porForn[k].includes(d)) porForn[k].push(d)
+    })
+  })
+  const doFornecedor = (t) => {
+    const a = porForn[chaveForn(t.cnpj, t.fornecedor)] || []
+    const b = porForn[chaveForn(null, t.fornecedor)] || []
+    return [...new Set([...a, ...b])]
+  }
+
+  const out = {}
+  titulos.forEach((t) => {
+    const al = []
+    const hist = doFornecedor(t)
+    if (!hist.length) al.push('fornecedor novo (nunca apareceu nos fechamentos)')
+    else {
+      const media = hist.reduce((s, d) => s + d.valor, 0) / hist.length
+      if (media > 0 && t.valor > media * 1.5)
+        al.push(`valor ${Math.round((t.valor / media - 1) * 100)}% acima da média do fornecedor (${fmt(media)} em ${hist.length} título(s))`)
+      const mesmoDoc = hist.filter((d) => chaveDoc(d.num_documento, d.fornecedor) === chaveDoc(t.num_documento, t.fornecedor))
+      mesmoDoc.forEach((d) => al.push(`título já lançado como custo em ${d.competencia} (${fmt(d.valor)})`))
+      // Mesmo valor em outro documento: parcela da mesma NF e pagamento fixo
+      // mensal (mesmo valor em 2+ meses) nao contam.
+      // O relatorio ja avisou pelo titulo pago: nao repete o mesmo documento
+      const avisados = (jaAvisados[t.chave] || []).join(' ')
+      let dup = hist.filter((d) => Math.abs(d.valor - t.valor) < 0.005 && baseNf(d.num_documento) !== baseNf(t.num_documento) && !mesmoDoc.includes(d))
+        .filter((d) => !txt(d.num_documento) || !avisados.includes(`título ${txt(d.num_documento)} `))
+      if (new Set(dup.map((d) => d.competencia)).size >= 2) dup = []
+      if (mensais.has(txt(t.cnpj))) dup = dup.filter((d) => txt(d.competencia).slice(0, 7) === t.competencia_vencimento)
+      dup.forEach((d) => al.push(`possível duplicidade: ${d.num_documento || 'sem documento'} de mesmo valor já lançado em ${d.competencia}`))
+    }
+    if (al.length) out[t.chave] = al
+  })
+  return out
+}
+
+async function contasClassificador(db, validos) {
+  const brutas = lerCsv(ARQ_CONTAS_CLASSIF)
+  if (!brutas.length) throw new Error(`${ARQ_CONTAS_CLASSIF} está vazio`)
+  const faltando = ['competencia_fechamento', 'competencia_vencimento', 'cnpj', 'fornecedor', 'documento', 'seq', 'valor', 'eap', 'classe', 'natureza', 'alertas']
+    .filter((c) => !(c in brutas[0]))
+  if (faltando.length) throw new Error(`${path.basename(ARQ_CONTAS_CLASSIF)} sem as colunas: ${faltando.join(', ')} (rode o contas_a_pagar.py atualizado)`)
+  const fechs = [...new Set(brutas.map((b) => txt(b.competencia_fechamento)))]
+  if (fechs.length !== 1 || !/^\d{4}-\d{2}$/.test(fechs[0])) throw new Error(`o arquivo deve ter UM fechamento; tem: ${fechs.join(', ')}`)
+  const fechamento = fechs[0]
+
+  const linhas = brutas.map((b, i) => ({
+    __linha: i + 2,
+    obra_id: OBRA,
+    competencia_fechamento: fechamento,
+    competencia_vencimento: txt(b.competencia_vencimento),
+    cnpj: txt(b.cnpj) || null,
+    fornecedor: txt(b.fornecedor),
+    num_documento: txt(b.documento),
+    seq: parseInt(b.seq, 10) || 1,
+    historico: txt(b.historico) || null,
+    item: txt(b.item) || null,
+    oc: txt(b.oc) || null,
+    data_emissao: iso(txt(b.data_emissao)),
+    data_vencimento: iso(txt(b.data_vencimento)),
+    data_previsao: iso(txt(b.data_previsao)),
+    valor_titulo: r2(num(b.valor_titulo)),
+    valor: r2(num(b.valor)),
+    codigo_eap: txt(b.eap) || null,
+    classe: txt(b.classe),
+    natureza: txt(b.natureza),
+    vinculo_oc: txt(b.vinculo_oc) || null,
+    regra: txt(b.regra) || null,
+    alertas: txt(b.alertas) ? txt(b.alertas).split(' | ') : [],
+  }))
+
+  // Titulos (uma chave por cnpj + documento) para os alertas do banco
+  const titulos = {}
+  linhas.forEach((l) => {
+    const chave = `${l.cnpj}|${l.num_documento}`
+    l.__chave = chave
+    if (!titulos[chave]) titulos[chave] = { chave, cnpj: l.cnpj, fornecedor: l.fornecedor, num_documento: l.num_documento, competencia_vencimento: l.competencia_vencimento, valor: 0, natureza: l.natureza, linhas: [] }
+    titulos[chave].valor = r2(titulos[chave].valor + l.valor)
+    titulos[chave].linhas.push(l)
+  })
+  const custos = await todos(() => db.from('custos_lancamentos').select('competencia, num_documento, fornecedor, cnpj, valor').eq('obra_id', OBRA).eq('status', 'Normal'))
+  const doRelatorio = {}
+  Object.values(titulos).forEach((t) => (doRelatorio[t.chave] = t.linhas[0].alertas))
+  const doBanco = alertasDoBanco(Object.values(titulos), custos, doRelatorio)
+  linhas.forEach((l) => (l.alertas = [...new Set([...l.alertas, ...(doBanco[l.__chave] || [])])]))
+
+  const legado = await existeTabela(db, 'contas_a_pagar')
+  const destino = await existeTabela(db, TABELA_CONTAS)
+
+  const soma = (ls) => r2(ls.reduce((t, l) => t + l.valor, 0))
+  const nTit = (ls) => new Set(ls.map((l) => l.__chave)).size
+  console.log(`\nContas a pagar · fechamento ${fechamento} → vencimento ${linhas[0].competencia_vencimento} · ${path.basename(ARQ_CONTAS_CLASSIF)}`)
+  console.log(`  ${nTit(linhas)} título(s) · ${linhas.length} linha(s) · ${fmt(soma(linhas))}`)
+  const grupos = [
+    ['Direto (com NF)', (l) => l.natureza === 'nf' && l.classe === 'direto'],
+    ['Indireto (com NF)', (l) => l.natureza === 'nf' && l.classe === 'indireto'],
+    ['Previsto sem NF', (l) => l.natureza === 'previsto_sem_nf' && l.classe !== 'pendente'],
+    ['Pendente (sem EAP)', (l) => l.classe === 'pendente'],
+  ]
+  grupos.forEach(([rot, f]) => {
+    const ls = linhas.filter(f)
+    console.log(`    ${rot.padEnd(20)} ${String(nTit(ls)).padStart(3)} título(s) · ${fmt(soma(ls))}`)
+  })
+  const ipc = linhas.filter((l) => l.classe === 'direto')
+  console.log(`  entra no IPC (direto, com NF e previsto): ${fmt(soma(ipc))}`)
+
+  const comAlerta = Object.values(titulos).filter((t) => t.linhas[0].alertas.length)
+  console.log(`\n  ALERTAS (${comAlerta.length} título(s)):`)
+  comAlerta.forEach((t) => {
+    console.log(`    ! ${t.num_documento} · ${t.fornecedor} · ${fmt(t.valor)}${t.natureza === 'previsto_sem_nf' ? ' · previsto sem NF' : ''}`)
+    t.linhas[0].alertas.forEach((a) => console.log(`        - ${a}`))
+  })
+  const pend = Object.values(titulos).filter((t) => t.linhas.some((l) => l.classe === 'pendente'))
+  console.log(`\n  PENDÊNCIAS (${pend.length} título(s) sem EAP · ${fmt(soma(linhas.filter((l) => l.classe === 'pendente')))}): decida em automacao/pendencias_contas.csv e grave como regra`)
+  pend.forEach((t) => console.log(`    ? ${t.num_documento} · ${t.fornecedor} · ${fmt(soma(t.linhas.filter((l) => l.classe === 'pendente')))} · ${t.linhas.find((l) => l.classe === 'pendente').regra || ''}`))
+  const ok = checar(linhas.filter((l) => l.codigo_eap).map((l) => ({ ...l, codigo_eap: l.codigo_eap })), validos)
+
+  console.log(`\n  tabela antiga "contas_a_pagar" no banco: ${legado.existe ? `EXISTE${legado.colunas ? ` (colunas: ${legado.colunas.join(', ')})` : ' (vazia)'}` : 'não existe'}`)
+  let antigas = []
+  if (destino.existe) {
+    antigas = await todos(() => db.from(TABELA_CONTAS).select('id, valor').eq('obra_id', OBRA).eq('competencia_fechamento', fechamento))
+    console.log(`  tabela "${TABELA_CONTAS}": ${antigas.length} linha(s) do fechamento ${fechamento} · ${fmt(soma(antigas.map((a) => ({ valor: Number(a.valor) }))))} → serão SUBSTITUÍDAS`)
+  } else console.log(`  tabela "${TABELA_CONTAS}" ainda não existe: rode antes o supabase/contas/1-contas-a-pagar.sql (banco: ${destino.erro})`)
+
+  const travaPend = pend.length > 0 && !ACEITAR_PENDENCIAS
+  if (travaPend) console.log(`  ✗ ${pend.length} título(s) sem EAP. Decida e rode o contas_a_pagar.py de novo, ou grave assim com --aceitar-pendencias (ficam fora do IPC)`)
+  if (!CONFIRMAR) return console.log(`\n  PRÉVIA: nada foi gravado.${ok && !travaPend && destino.existe ? ' Para gravar, rode de novo com --confirmar' : ' Resolva os itens marcados com ✗ antes de gravar.'}\n`)
+  if (!destino.existe) throw new Error(`a tabela ${TABELA_CONTAS} não existe: nada foi gravado`)
+  if (!ok) throw new Error('há códigos EAP inválidos: nada foi gravado')
+  if (travaPend) throw new Error('há títulos sem EAP e --aceitar-pendencias não foi informado: nada foi gravado')
+
+  // Cada carga tem um id proprio: a nova entra inteira e so depois a anterior
+  // do mesmo fechamento sai (a chave unica inclui a carga).
+  const carga_id = require('crypto').randomUUID()
+  const novas = linhas.map(({ __linha, __chave, ...l }) => ({ ...l, carga_id }))
+  const r = await db.from(TABELA_CONTAS).insert(novas)
+  if (r.error) {
+    await db.from(TABELA_CONTAS).delete().eq('carga_id', carga_id)
+    throw new Error(`inserção falhou (a foto antiga continua): ${r.error.message}`)
+  }
+  const d = await db.from(TABELA_CONTAS).delete().eq('obra_id', OBRA).eq('competencia_fechamento', fechamento).neq('carga_id', carga_id)
+  if (d.error) throw new Error(`gravou, mas apagar a foto antiga falhou: ${d.error.message}. Rode de novo para limpar.`)
+  console.log(`\n  ✓ contas a pagar do fechamento ${fechamento} gravado: ${novas.length} linhas, carga ${carga_id} (${antigas.length} antigas substituídas).\n`)
 }
 
 async function desfazer(db) {

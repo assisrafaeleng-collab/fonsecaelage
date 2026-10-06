@@ -33,18 +33,16 @@ function useHeatmapSource(mes) {
   useEffect(() => {
     async function load() {
       try {
-        const [d, ...avancos] = await Promise.all([
+        // A foto ja e o acumulado ate o mes (ultimo % de cada item).
+        const [d, foto] = await Promise.all([
           fetch('/api/orcamento-itens', { cache: 'no-store' }).then(r => r.json()),
-          ...Array.from({ length: mes }, (_, i) => fetch(`/api/avanco-fisico-realizado?mes=${i + 1}`).then(r => r.json()))
+          fetch(`/api/avanco-fisico-atual?mes=${mes}`, { cache: 'no-store' }).then(r => r.json()),
         ])
         setDados(d || [])
 
         const map = {}
-        avancos.forEach(res => {
-          ;(res.data || []).forEach(item => {
-            const key = `${item.codigo_eap}|${item.pavimento}`
-            map[key] = Math.max(map[key] || 0, parseFloat(item.percentual_realizado || 0))
-          })
+        ;(foto.data || []).forEach(item => {
+          map[`${item.codigo_eap}|${item.pavimento}`] = parseFloat(item.percentual_realizado || 0)
         })
         setAvanco(map)
       } catch (e) {

@@ -198,7 +198,7 @@ export default function AvancoFisicoPlanejado() {
 
         <div style={S.nav}>
           <button style={S.navBtn} onClick={() => router.push('/')}>← Dashboard</button>
-          <button style={S.navBtn} onClick={() => router.push('/avanco-fisico-realizado')}>📍 Realizado</button>
+          <button style={S.navBtn} onClick={() => router.push('/semanal')}>📍 Realizado</button>
         </div>
 
         {/* KPIs */}
