@@ -90,12 +90,28 @@ export default function ContasAPagarDetalhe() {
           })}
         </tbody>
         <tfoot>
+          {/* Resumo: direto e indireto ja com o previsto sem NF de cada um */}
           <tr>
             <td colSpan={6} style={{ fontWeight: 600 }}>
-              Total · direto {fmtMoeda(dados.totais.direto)} · indireto {fmtMoeda(dados.totais.indireto)} · previsto sem NF{' '}
-              {fmtMoeda(dados.totais.previsto_sem_nf)}
+              Total direto (com NF {fmtMoeda(dados.totais.direto)} + previsto sem NF {fmtMoeda(dados.totais.previsto_direto)})
             </td>
-            <td style={{ ...dir, fontWeight: 600 }}>{fmtMoeda(dados.totais.total)}</td>
+            <td style={{ ...dir, fontWeight: 600 }}>{fmtMoeda(dados.totais.ipc_direto)}</td>
+          </tr>
+          <tr>
+            <td colSpan={6} style={{ fontWeight: 600 }}>
+              Total indireto (com NF {fmtMoeda(dados.totais.indireto)} + previsto sem NF {fmtMoeda(dados.totais.previsto_indireto)})
+            </td>
+            <td style={{ ...dir, fontWeight: 600 }}>{fmtMoeda(dados.totais.a_pagar_indireto)}</td>
+          </tr>
+          {dados.totais.pendente > 0 && (
+            <tr>
+              <td colSpan={6} style={{ fontWeight: 600 }}>Pendente (sem EAP)</td>
+              <td style={{ ...dir, fontWeight: 600 }}>{fmtMoeda(dados.totais.pendente)}</td>
+            </tr>
+          )}
+          <tr>
+            <td colSpan={6} style={{ fontWeight: 700 }}>Total geral</td>
+            <td style={{ ...dir, fontWeight: 700 }}>{fmtMoeda(dados.totais.total)}</td>
           </tr>
         </tfoot>
       </table>

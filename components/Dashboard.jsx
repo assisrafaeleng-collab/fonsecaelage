@@ -164,10 +164,11 @@ function LancamentosDoMes({ mesInicial, ultimoMes }) {
   )
 }
 
-// Contas a pagar: titulos sem pagamento com vencimento a partir do mes do
-// fechamento, so o que e pago por entrega. Fica fora do custo realizado; o a
-// pagar do direto entra so no IPC (pagina semanal). Clique no card abre a
-// lista que forma o total, por mes de vencimento.
+// Custo direto a pagar: titulos sem pagamento com vencimento a partir do mes
+// do fechamento, so o que e pago por entrega. O valor do card e o direto (com
+// NF + previsto sem NF), o mesmo que entra no IPC; fica fora do custo
+// realizado. Clique no card abre a lista completa (direto e indireto) por mes
+// de vencimento.
 function ContasAPagar() {
   const [resumo, setResumo] = useState(null)
   const [aberto, setAberto] = useState(false)
@@ -182,28 +183,22 @@ function ContasAPagar() {
 
   const AMBAR = '#c9a45c'
 
-  if (erro) return <div className="card"><div className="card-title">Contas a pagar</div><div className="empty-state"><p>Erro: {erro}</p></div></div>
+  if (erro) return <div className="card"><div className="card-title">Custo direto a pagar</div><div className="empty-state"><p>Erro: {erro}</p></div></div>
   if (!resumo) return null
   if (!resumo.disponivel)
     return (
       <div className="card">
-        <div className="card-title">Contas a pagar</div>
+        <div className="card-title">Custo direto a pagar</div>
         <div style={{ font: "500 12px 'IBM Plex Sans'", color: 'var(--text2)' }}>Sem dados: {resumo.motivo}.</div>
       </div>
     )
 
   const t = resumo.totais
-  const blocos = [
-    ['Direto', t.direto, 'com NF'],
-    ['Indireto', t.indireto, 'com NF'],
-    ['Previsto sem NF', t.previsto_sem_nf, '"Prev. Financ."'],
-    ['Pendente', t.pendente, 'sem EAP: aguarda decisão'],
-  ]
   return (
     <div className="card kpi-clickable" style={{ cursor: 'pointer' }} onClick={() => setAberto(v => !v)}>
       <div className="card-title" style={{ justifyContent: 'space-between', flexWrap: 'wrap' }}>
         <span>
-          Contas a pagar — Vencimentos a partir de {resumo.vencimentos_a_partir_de} · fechamento {resumo.fechamento} {aberto ? '▴' : '▾'}
+          Custo direto a pagar — Vencimentos a partir de {resumo.vencimentos_a_partir_de} · fechamento {resumo.fechamento} {aberto ? '▴' : '▾'}
         </span>
         {resumo.n_alertas > 0 && (
           <span className="badge" style={{ background: 'rgba(201,164,92,.15)', color: AMBAR }}>
@@ -211,24 +206,13 @@ function ContasAPagar() {
           </span>
         )}
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16 }}>
-        {blocos.map(([rot, v, sub]) => (
-          <div key={rot}>
-            <div className="kpi-label" style={{ marginBottom: 6 }}>{rot}</div>
-            <div className="kpi-value" style={{ fontSize: 18 }}>{fmtMoeda(v)}</div>
-            <div className="kpi-sub">{sub}</div>
-          </div>
-        ))}
-        <div>
-          <div className="kpi-label" style={{ marginBottom: 6 }}>Total a pagar</div>
-          <div className="kpi-value" style={{ fontSize: 18 }}>{fmtMoeda(t.total)}</div>
-          <div className="kpi-sub">{resumo.n_titulos} títulos · fora do custo realizado</div>
-        </div>
+      <div className="kpi-value" style={{ fontSize: 22 }}>{fmtMoeda(t.ipc_direto)}</div>
+      <div className="kpi-sub">
+        com NF {fmtMoeda(t.direto)} + previsto sem NF {fmtMoeda(t.previsto_direto)} · é o valor que entra no IPC · fora do custo realizado
       </div>
       <div style={{ font: "500 11px 'IBM Plex Sans'", color: 'var(--text2)', margin: '12px 0 4px' }}>
-        Por mês: {resumo.por_mes.map(m => `${rotuloComp(m.mes)} ${fmtMoeda(m.total)}`).join(' · ')}
-        {' · '}entra no IPC (direto, com NF e previsto): {fmtMoeda(t.ipc_direto)}
-        {' · '}{aberto ? 'clique para fechar' : 'clique para ver os títulos'}
+        Por mês: {resumo.por_mes.map(m => `${rotuloComp(m.mes)} ${fmtMoeda(m.ipc_direto)}`).join(' · ')}
+        {' · '}{aberto ? 'clique para fechar' : 'clique para ver todos os títulos (direto e indireto)'}
       </div>
       {aberto && (
         <div onClick={e => e.stopPropagation()} style={{ cursor: 'default' }}>
