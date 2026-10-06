@@ -591,14 +591,14 @@ export default function Semanal() {
             onClick={() => setAbrirAPagar((v) => !v)}
             title={
               contas.disponivel
-                ? `Contas a pagar do TOTVS (direto + indireto), vencimentos a partir de ${contas.vencimentos_a_partir_de} · fechamento ${contas.fechamento}. Clique para ver os títulos.\nDireto ${fmtMoeda(aPagarDireto)} (entra no IPC) · indireto ${fmtMoeda(aPagarIndireto)}` +
+                ? `Custo direto a pagar (com NF + previsto sem NF), o mesmo valor que entra no IPC. Vencimentos a partir de ${contas.vencimentos_a_partir_de} · fechamento ${contas.fechamento}.\nIndireto a pagar (fora deste card): ${fmtMoeda(aPagarIndireto)}. Clique para ver todos os títulos.` +
                   (contas.pendente > 0 ? `\nFora da conta: ${fmtMoeda(contas.pendente)} sem EAP (pendente)` : '')
                 : `Contas a pagar ainda não carregado: ${contas.motivo || ''}`
             }
           >
-            <div className="kpi-label">A Pagar {abrirAPagar ? '▴' : '▾'}</div>
+            <div className="kpi-label">Custo direto a pagar {abrirAPagar ? '▴' : '▾'}</div>
             <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2', color: '#c9a45c' }}>
-              {fmtMoeda(aPagarDireto + aPagarIndireto)}
+              {fmtMoeda(aPagarDireto)}
             </div>
             <div className="kpi-sub">
               {contas.disponivel ? `Vencimentos a partir de ${contas.vencimentos_a_partir_de} · fechamento ${contas.fechamento}` : 'Aguardando a carga do TOTVS'}
@@ -1075,7 +1075,7 @@ export default function Semanal() {
       {abrirAPagar && (
         <div className="card">
           <div className="card-title">
-            Contas a pagar — vencimentos a partir de {contas.vencimentos_a_partir_de} · fechamento {contas.fechamento}
+            Custo direto a pagar — todos os títulos (direto e indireto), vencimentos a partir de {contas.vencimentos_a_partir_de} · fechamento {contas.fechamento}
           </div>
           <ContasAPagarDetalhe />
         </div>
