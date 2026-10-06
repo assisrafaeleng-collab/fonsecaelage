@@ -1472,7 +1472,7 @@ export default async function handler(req, res) {
         ? {
             disponivel: true,
             fechamento: contas.fechamento,
-            competencia_vencimento: contas.linhas[0] ? contas.linhas[0].competencia_vencimento : null,
+            vencimentos_a_partir_de: contas.fechamento,
             direto: resumoContas.totais.ipc_direto,
             indireto: resumoContas.totais.a_pagar_indireto,
             previsto_sem_nf: resumoContas.totais.previsto_sem_nf,

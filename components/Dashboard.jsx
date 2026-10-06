@@ -7,6 +7,7 @@ import { useRouter } from 'next/router'
 import { Line } from 'react-chartjs-2'
 import { fmtMoeda } from '../lib/constants'   // fonte única
 import { garantirSenha } from '../lib/fetch-com-senha'
+import ContasAPagarDetalhe from './ContasAPagarDetalhe'
 import { competenciaDoLancamento } from '../lib/competencia'
 import {
   Chart as ChartJS,
@@ -163,12 +164,12 @@ function LancamentosDoMes({ mesInicial, ultimoMes }) {
   )
 }
 
-// Contas a pagar do mes seguinte ao fechamento. Fica fora do custo
-// realizado; o a pagar do direto entra so no IPC (pagina semanal). A lista
-// mostra fornecedor, por isso so abre depois da senha.
+// Contas a pagar: titulos sem pagamento com vencimento a partir do mes do
+// fechamento, so o que e pago por entrega. Fica fora do custo realizado; o a
+// pagar do direto entra so no IPC (pagina semanal). Clique no card abre a
+// lista que forma o total, por mes de vencimento.
 function ContasAPagar() {
   const [resumo, setResumo] = useState(null)
-  const [lista, setLista] = useState(null)
   const [aberto, setAberto] = useState(false)
   const [erro, setErro] = useState(null)
 
@@ -179,20 +180,7 @@ function ContasAPagar() {
       .catch(e => setErro(e.message))
   }, [])
 
-  async function abrir() {
-    if (aberto) return setAberto(false)
-    if (!(await garantirSenha())) return
-    setAberto(true)
-    if (!lista)
-      fetch('/api/contas-a-pagar', { cache: 'no-store' })
-        .then(r => r.json())
-        .then(d => (d.error ? setErro(d.error) : setLista(d.titulos || [])))
-        .catch(e => setErro(e.message))
-  }
-
-  const dir = { textAlign: 'right', fontFamily: 'var(--mono)', whiteSpace: 'nowrap' }
   const AMBAR = '#c9a45c'
-  const rotuloClasse = { direto: 'Direto', indireto: 'Indireto', pendente: 'Pendente' }
 
   if (erro) return <div className="card"><div className="card-title">Contas a pagar</div><div className="empty-state"><p>Erro: {erro}</p></div></div>
   if (!resumo) return null
@@ -205,7 +193,6 @@ function ContasAPagar() {
     )
 
   const t = resumo.totais
-  const mesVenc = resumo.competencia_vencimento ? rotuloComp(resumo.competencia_vencimento) : '—'
   const blocos = [
     ['Direto', t.direto, 'com NF'],
     ['Indireto', t.indireto, 'com NF'],
@@ -213,9 +200,11 @@ function ContasAPagar() {
     ['Pendente', t.pendente, 'sem EAP: aguarda decisão'],
   ]
   return (
-    <div className="card">
+    <div className="card kpi-clickable" style={{ cursor: 'pointer' }} onClick={() => setAberto(v => !v)}>
       <div className="card-title" style={{ justifyContent: 'space-between', flexWrap: 'wrap' }}>
-        <span>Contas a pagar — vencimento em {mesVenc} · fechamento de {rotuloComp(resumo.fechamento)}</span>
+        <span>
+          Contas a pagar — Vencimentos a partir de {resumo.vencimentos_a_partir_de} · fechamento {resumo.fechamento} {aberto ? '▴' : '▾'}
+        </span>
         {resumo.n_alertas > 0 && (
           <span className="badge" style={{ background: 'rgba(201,164,92,.15)', color: AMBAR }}>
             ⚠ {resumo.n_alertas} título(s) com alerta
@@ -237,56 +226,13 @@ function ContasAPagar() {
         </div>
       </div>
       <div style={{ font: "500 11px 'IBM Plex Sans'", color: 'var(--text2)', margin: '12px 0 4px' }}>
-        Entra no IPC (direto, com NF e previsto): {fmtMoeda(t.ipc_direto)}
+        Por mês: {resumo.por_mes.map(m => `${rotuloComp(m.mes)} ${fmtMoeda(m.total)}`).join(' · ')}
+        {' · '}entra no IPC (direto, com NF e previsto): {fmtMoeda(t.ipc_direto)}
+        {' · '}{aberto ? 'clique para fechar' : 'clique para ver os títulos'}
       </div>
-      <button className="nav-btn" style={{ borderBottom: 'none', color: 'var(--text)' }} onClick={abrir}>
-        {aberto ? 'Fechar os títulos ▴' : 'Ver os títulos (pede a senha) ▸'}
-      </button>
-      {aberto && !lista && <div className="loading">Carregando títulos...</div>}
-      {aberto && lista && (
-        <div style={{ overflowX: 'auto', maxHeight: 560, overflowY: 'auto', marginTop: 8 }}>
-          <table>
-            <thead>
-              <tr>
-                <th>Vencimento</th>
-                <th>Fornecedor</th>
-                <th>Documento</th>
-                <th>EAP</th>
-                <th>Tipo</th>
-                <th style={{ textAlign: 'right' }}>Valor</th>
-              </tr>
-            </thead>
-            <tbody>
-              {lista.map(x => (
-                <tr key={x.chave}>
-                  <td style={{ fontFamily: 'var(--mono)', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{dmy(x.data_vencimento)}</td>
-                  <td style={{ verticalAlign: 'top' }}>
-                    {x.fornecedor}
-                    {x.natureza === 'previsto_sem_nf' && (
-                      <span className="badge badge-gray" style={{ marginLeft: 8 }}>previsto, sem NF</span>
-                    )}
-                    {x.alertas.map((a, k) => (
-                      <div key={k} style={{ color: AMBAR, fontSize: 11, marginTop: 3 }}>⚠ {a}</div>
-                    ))}
-                  </td>
-                  <td style={{ fontFamily: 'var(--mono)', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{x.num_documento}</td>
-                  <td style={{ fontFamily: 'var(--mono)', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
-                    {x.eaps.map(e => <div key={e.codigo_eap || 'pend'}>{e.codigo_eap || '—'}{x.eaps.length > 1 ? ` · ${fmtMoeda(e.valor)}` : ''}</div>)}
-                  </td>
-                  <td style={{ verticalAlign: 'top' }}>
-                    {[...new Set(x.eaps.map(e => rotuloClasse[e.classe] || e.classe))].join(' + ')}
-                  </td>
-                  <td style={{ ...dir, verticalAlign: 'top' }}>{fmtMoeda(x.valor)}</td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr>
-                <td colSpan={5} style={{ fontWeight: 600 }}>Total</td>
-                <td style={{ ...dir, fontWeight: 600 }}>{fmtMoeda(t.total)}</td>
-              </tr>
-            </tfoot>
-          </table>
+      {aberto && (
+        <div onClick={e => e.stopPropagation()} style={{ cursor: 'default' }}>
+          <ContasAPagarDetalhe />
         </div>
       )}
     </div>

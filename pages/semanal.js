@@ -7,6 +7,7 @@ import { Line } from 'react-chartjs-2'
 import { fmtMoeda } from '../lib/constants'
 import { fetchComSenha, garantirSenha } from '../lib/fetch-com-senha'
 import DiarioOcorrencias from '../components/DiarioOcorrencias'
+import ContasAPagarDetalhe from '../components/ContasAPagarDetalhe'
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -66,6 +67,7 @@ export default function Semanal() {
   const [abrirProjecao, setAbrirProjecao] = useState(false)
   const [abrirIndiretos, setAbrirIndiretos] = useState(false)
   const [abrirAvanco, setAbrirAvanco] = useState(false)
+  const [abrirAPagar, setAbrirAPagar] = useState(false)
   const [avancoGrupos, setAvancoGrupos] = useState(null)
   const [mapa, setMapa] = useState(null)
   const [avancoAberto, setAvancoAberto] = useState(null)
@@ -416,7 +418,7 @@ export default function Semanal() {
                 `− A pagar: ${fmtMoeda(aPagarDireto)}\n` +
                 `= Saldo: ${fmtMoeda(saldoDireto)}\n\n` +
                 (contas.disponivel
-                  ? `A pagar: contas do fechamento ${contas.fechamento} com vencimento em ${contas.competencia_vencimento}.`
+                  ? `A pagar: vencimentos a partir de ${contas.vencimentos_a_partir_de} · fechamento ${contas.fechamento}.`
                   : 'Contas a pagar ainda não carregado: parte da economia pode ser só conta ainda não paga.')
           }
         >
@@ -585,20 +587,21 @@ export default function Semanal() {
 
         {base === 'custo' && (
           <div
-            className="kpi"
+            className="kpi kpi-clickable"
+            onClick={() => setAbrirAPagar((v) => !v)}
             title={
               contas.disponivel
-                ? `Contas a pagar do TOTVS (direto + indireto), fechamento ${contas.fechamento}, vencimento em ${contas.competencia_vencimento}.\nDireto ${fmtMoeda(aPagarDireto)} (entra no IPC) · indireto ${fmtMoeda(aPagarIndireto)}` +
+                ? `Contas a pagar do TOTVS (direto + indireto), vencimentos a partir de ${contas.vencimentos_a_partir_de} · fechamento ${contas.fechamento}. Clique para ver os títulos.\nDireto ${fmtMoeda(aPagarDireto)} (entra no IPC) · indireto ${fmtMoeda(aPagarIndireto)}` +
                   (contas.pendente > 0 ? `\nFora da conta: ${fmtMoeda(contas.pendente)} sem EAP (pendente)` : '')
                 : `Contas a pagar ainda não carregado: ${contas.motivo || ''}`
             }
           >
-            <div className="kpi-label">A Pagar</div>
+            <div className="kpi-label">A Pagar {abrirAPagar ? '▴' : '▾'}</div>
             <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2', color: '#c9a45c' }}>
               {fmtMoeda(aPagarDireto + aPagarIndireto)}
             </div>
             <div className="kpi-sub">
-              {contas.disponivel ? `Vencimento em ${contas.competencia_vencimento} · fechamento ${contas.fechamento}` : 'Aguardando a carga do TOTVS'}
+              {contas.disponivel ? `Vencimentos a partir de ${contas.vencimentos_a_partir_de} · fechamento ${contas.fechamento}` : 'Aguardando a carga do TOTVS'}
             </div>
           </div>
         )}
@@ -1066,6 +1069,15 @@ export default function Semanal() {
             {(somas || dados.consistencia).indireto_realizado_sem_categoria > 0 &&
               ` · ${fmtMoeda((somas || dados.consistencia).indireto_realizado_sem_categoria)} lançados em códigos que não existem no planejamento de indiretos`}
           </div>
+        </div>
+      )}
+
+      {abrirAPagar && (
+        <div className="card">
+          <div className="card-title">
+            Contas a pagar — vencimentos a partir de {contas.vencimentos_a_partir_de} · fechamento {contas.fechamento}
+          </div>
+          <ContasAPagarDetalhe />
         </div>
       )}
 

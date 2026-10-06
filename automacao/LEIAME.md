@@ -27,9 +27,15 @@
 ## Contas a pagar (decisão out/26)
 Card separado do custo realizado: nada daqui vai para custos_lancamentos.
 1. Entra só título SEM pagamento (sem VALOR PAGO, Valor Baixado e Data de Baixa) do relatório TOTVS da
-   obra toda com Previsão de Baixa (ou Vencimento) no mês SEGUINTE ao fechamento (fechando 2026-09 →
-   2026-10). Sem pagamento de meses anteriores NÃO entra.
+   obra toda com Previsão de Baixa (ou Vencimento) A PARTIR do mês do fechamento, até a última parcela
+   (fechando 2026-09 → 2026-09, 2026-10, 2026-11...). Sem pagamento com vencimento ANTES do mês do
+   fechamento NÃO entra. Cada linha guarda o mês do próprio vencimento (competencia_vencimento); o card
+   mostra a lista por mês ao clicar.
 2. "Prev. Financ." entra, marcada como previsto sem NF. APORTE e NAO_CUSTO não entram.
+   "Prev. Financ." de OC já faturada NÃO entra (contas_a_pagar.py, LIMIAR_OC_FATURADA = 98%): quando as
+   NFs da OC, pagas ou a pagar no relatório da obra toda, cobrem praticamente o valor da OC, a previsão
+   que sobrou no TOTVS é resto. NFs da OC = relatório de OC + vínculos registrados nas decisões
+   ("... OC 1739 ..."). NAO_CUSTO em decisoes_pontuais vale também para "Prev. Financ.".
    Só entra o que é pago POR ENTREGA: material, serviço por empreitada (pago por serviço pronto/medido)
    e indireto pontual (projetos, taxas, laudos, cartório). RECORRENTE sai do card e do IPC, pela
    marcação que o sistema já tem (o importar.js aplica na prévia e na carga):

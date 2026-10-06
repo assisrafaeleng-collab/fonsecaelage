@@ -717,12 +717,12 @@ async function contasClassificador(db, validos) {
 
   const soma = (ls) => r2(ls.reduce((t, l) => t + l.valor, 0))
   const nTit = (ls) => new Set(ls.map((l) => l.__chave)).size
-  console.log(`\nContas a pagar · fechamento ${fechamento} → vencimento ${linhas[0].competencia_vencimento} · ${path.basename(ARQ_CONTAS_CLASSIF)}`)
+  console.log(`\nContas a pagar · vencimentos a partir de ${fechamento} · fechamento ${fechamento} · ${path.basename(ARQ_CONTAS_CLASSIF)}`)
   console.log(`  relatório: ${nTit(todas)} título(s) sem pagamento · ${fmt(soma(todas))}`)
   const eapsRec = [...new Set(regua.todas().filter((e) => regua(e).recorrente))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
   console.log(`\n  RÉGUA (marcação do sistema): ${eapsRec.length} EAP(s) recorrentes; as demais ${regua.todas().length - eapsRec.length} são por entrega`)
   eapsRec.forEach((e) => console.log(`    ↻ ${e.padEnd(8)} ${regua.descricao(e).slice(0, 60).padEnd(60)} ${regua(e).motivo}`))
-  console.log(`\n  RECORRENTES de ${linhas[0] ? linhas[0].competencia_vencimento : ''} (saem do card e do IPC): ${nTit(recorrentes)} título(s) · ${fmt(soma(recorrentes))}`)
+  console.log(`\n  RECORRENTES (saem do card e do IPC): ${nTit(recorrentes)} título(s) · ${fmt(soma(recorrentes))}`)
   titulosTodos
     .filter((t) => t.todas.some((l) => l.__rec.recorrente))
     .forEach((t) => {
@@ -732,6 +732,16 @@ async function contasClassificador(db, validos) {
       console.log(`    - ${t.num_documento} · ${t.fornecedor} · ${fmt(soma(rec))} · ${eaps}${parcial ? ` (parcial: ${fmt(soma(t.todas.filter((l) => !l.__rec.recorrente)))} fica)` : ''}`)
     })
   console.log(`\n  POR ENTREGA (vão para o card): ${nTit(linhas)} título(s) · ${linhas.length} linha(s) · ${fmt(soma(linhas))}`)
+  ;[...new Set(linhas.map((l) => l.competencia_vencimento))].sort().forEach((m) => {
+    const ls = linhas.filter((l) => l.competencia_vencimento === m)
+    const parte = (f) => fmt(soma(ls.filter(f)))
+    console.log(
+      `    vencimento ${m}: ${String(nTit(ls)).padStart(3)} título(s) · ${fmt(soma(ls))}` +
+        `  (direto ${parte((l) => l.natureza === 'nf' && l.classe === 'direto')}` +
+        ` · indireto ${parte((l) => l.natureza === 'nf' && l.classe === 'indireto')}` +
+        ` · previsto ${parte((l) => l.natureza === 'previsto_sem_nf' && l.classe !== 'pendente')})`
+    )
+  })
   const grupos = [
     ['Direto (com NF)', (l) => l.natureza === 'nf' && l.classe === 'direto'],
     ['Indireto (com NF)', (l) => l.natureza === 'nf' && l.classe === 'indireto'],

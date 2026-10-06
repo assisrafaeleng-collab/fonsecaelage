@@ -1,12 +1,15 @@
 """
-Contas a pagar do mês seguinte ao fechamento (card do dashboard; NÃO é custo realizado).
+Contas a pagar a partir do mês do fechamento (card do dashboard; NÃO é custo realizado).
 Uso: py contas_a_pagar.py <TOTVS da obra toda.xlsx> <pasta_com_relatorios_OC> --fechamento AAAA-MM
 Saída: contas_a_pagar.csv (classificado) e pendencias_contas.csv (precisam de decisão sua)
 
 Regras (decisão out/26):
-- entra todo título SEM pagamento cuja Previsão de Baixa (ou Vencimento) cai no mês seguinte ao
-  fechamento (fechando 2026-09 -> 2026-10). Sem pagamento de meses anteriores NÃO entra.
+- entra todo título SEM pagamento cuja Previsão de Baixa (ou Vencimento) cai a partir do mês do
+  fechamento, até a última parcela (fechando 2026-09 -> setembro, outubro, novembro...). Sem pagamento
+  com vencimento ANTES do mês do fechamento NÃO entra. Recorrente sai na carga (importar.js).
 - "Prev. Financ." entra, marcada como previsto sem NF. APORTE e NAO_CUSTO de decisoes_pontuais não entram.
+- "Prev. Financ." de OC já faturada não entra: NFs da OC (pagas ou a pagar) cobrindo 98% ou mais do valor
+  da OC. NFs da OC = relatório de OC + vínculos registrados nas decisões ("... OC 1739 ...").
 - EAP pelo MESMO classificador e as MESMAS regras do fechamento (regras_manuais, decisões, parcelas).
   O que as regras não cobrem vai para pendencias_contas.csv; a decisão vira regra como no fechamento.
 - direto/indireto pela EAP: 19.x = indireto, o resto = direto.
@@ -27,11 +30,6 @@ def argumento(nome):
     return None
 
 
-def mes_seguinte(comp):
-    ano, mes = map(int, comp.split('-'))
-    return f'{ano + mes // 12}-{mes % 12 + 1:02d}'
-
-
 def mes(d):
     return pd.to_datetime(pd.Series(d)).dt.strftime('%Y-%m')
 
@@ -49,7 +47,8 @@ def natureza(tit):
     try:
         dp = pd.read_csv('decisoes_pontuais.csv', dtype={'cnpj': str, 'documento': str, 'eap': str}).fillna('')
         for r in dp[dp.eap == 'NAO_CUSTO'].itertuples():
-            n[(n == 'nf') & (tit.cnpj == r.cnpj) & (tit.documento == r.documento)] = 'nao_custo'
+            # vale para NF e para "Prev. Financ." (ex.: previsão de OC já faturada)
+            n[n.isin(['nf', 'previsto_sem_nf']) & (tit.cnpj == r.cnpj) & (tit.documento == r.documento)] = 'nao_custo'
     except FileNotFoundError:
         pass
     return n
@@ -58,6 +57,45 @@ def natureza(tit):
 def base_nf(documento):
     """'99222/03' -> '99222': parcelas da mesma NF têm o mesmo número antes da barra"""
     return str(documento).split('/')[0].lstrip('0')
+
+
+# "Prev. Financ." de OC já faturada não entra (decisão out/26): quando as NFs da OC (pagas ou a pagar,
+# no relatório da obra toda) cobrem praticamente o valor da OC, a previsão que sobrou no TOTVS é resto.
+LIMIAR_OC_FATURADA = 0.98
+
+
+def nfs_por_oc(ocs):
+    """NFs de cada OC: as do relatório de OC + as ligadas à OC nas decisões (obs com 'OC 1739')"""
+    m = {}
+    for r in ocs.dropna(subset=['nf']).itertuples():
+        m.setdefault(r.oc, set()).add(str(int(r.nf)))
+    try:
+        dp = pd.read_csv('decisoes_pontuais.csv', dtype=str).fillna('')
+        for r in dp.itertuples():
+            o = re.search(r'\bOC\s*0*(\d+)', r.obs)
+            if o and r.eap != 'NAO_CUSTO' and re.match(r'^\d', r.documento):
+                m.setdefault(o.group(1), set()).add(base_nf(r.documento))
+    except FileNotFoundError:
+        pass
+    return m
+
+
+def previsoes_de_oc_faturada(todos, ocs):
+    """{cnpj|documento: motivo} das "Prev. Financ." cuja OC já está faturada"""
+    total = ocs.groupby('oc').total_item.sum()
+    nfs = nfs_por_oc(ocs)
+    nf_tit = todos[~todos.historico.str.contains(c.NAO_CUSTO['previsão financeira'], regex=True)]
+    out = {}
+    for t in todos[todos.natureza == 'previsto_sem_nf'].itertuples():
+        oc = oc_do_titulo(t.historico)
+        if not oc or oc not in total.index or total[oc] <= 0:
+            continue
+        lista = nfs.get(oc, set())
+        fat = nf_tit[(nf_tit.cnpj == t.cnpj) & nf_tit.documento.map(base_nf).isin(lista)].valor.sum()
+        if lista and fat >= LIMIAR_OC_FATURADA * total[oc]:
+            out[t.cnpj + '|' + t.documento] = (f'OC {oc} já faturada: NF {", ".join(sorted(lista))} '
+                                               f'R$ {fat:,.2f} de R$ {total[oc]:,.2f} ({fat / total[oc]:.0%})')
+    return out
 
 
 def recorrentes():
@@ -107,25 +145,31 @@ if __name__ == '__main__':
     if len(sys.argv) < 3 or not re.fullmatch(r'\d{4}-\d{2}', argumento('--fechamento') or ''):
         sys.exit('Uso: py contas_a_pagar.py <TOTVS obra toda.xlsx> <pasta OC> --fechamento AAAA-MM')
     totvs, pasta_oc, fechamento = sys.argv[1], sys.argv[2], argumento('--fechamento')
-    alvo_mes = mes_seguinte(fechamento)
 
     todos = c.ler_totvs(totvs)
     if todos.pago.isna().any():
         sys.exit('O relatório não tem a coluna VALOR PAGO: não dá para saber o que está em aberto.')
     todos['natureza'] = natureza(todos)
+    ocs, regras = c.ler_ocs(pasta_oc), c.carregar_regras()
+    faturadas = previsoes_de_oc_faturada(todos, ocs)
+    todos.loc[(todos.cnpj + '|' + todos.documento).isin(faturadas.keys()), 'natureza'] = 'oc_faturada'
     em_aberto = todos[todos.pago == False]
-    alvo = em_aberto[mes(em_aberto.competencia).values == alvo_mes].reset_index(drop=True)
-    antigos = em_aberto[mes(em_aberto.competencia).values < alvo_mes]
-    print(f'Fechamento {fechamento} -> contas a pagar de {alvo_mes} (Previsão de Baixa; sem ela, Vencimento)')
-    print(f'  {len(alvo)} título(s) sem pagamento em {alvo_mes} | R$ {alvo.valor.sum():,.2f}')
-    print(f'  fora: {len(antigos)} título(s) sem pagamento de meses anteriores | R$ {antigos.valor.sum():,.2f}')
-    for nat in ['aporte', 'nao_custo']:
+    alvo = em_aberto[mes(em_aberto.competencia).values >= fechamento].reset_index(drop=True)
+    antigos = em_aberto[mes(em_aberto.competencia).values < fechamento]
+    print(f'Fechamento {fechamento} -> vencimentos a partir de {fechamento} (Previsão de Baixa; sem ela, Vencimento)')
+    print(f'  {len(alvo)} título(s) sem pagamento a partir de {fechamento} | R$ {alvo.valor.sum():,.2f}')
+    for m, g in alvo.groupby(mes(alvo.competencia).values):
+        print(f'    {m}: {len(g):3d} título(s) | R$ {g.valor.sum():,.2f}')
+    print(f'  fora: {len(antigos)} título(s) sem pagamento com vencimento antes de {fechamento} | R$ {antigos.valor.sum():,.2f}')
+    for nat in ['aporte', 'nao_custo', 'oc_faturada']:
         x = alvo[alvo.natureza == nat]
         if len(x):
             print(f'  fora ({nat}): {len(x)} título(s) | R$ {x.valor.sum():,.2f}')
+            if nat == 'oc_faturada':
+                for r in x.itertuples():
+                    print(f'    {r.documento:16s} {r.fornecedor[:34]:34s} R$ {r.valor:>10,.2f}  {faturadas[r.cnpj + "|" + r.documento]}')
     entra = alvo[alvo.natureza.isin(['nf', 'previsto_sem_nf'])].reset_index(drop=True)
 
-    ocs, regras = c.ler_ocs(pasta_oc), c.carregar_regras()
     lanc, pend = c.classificar(entra, ocs, regras)
     linhas = pd.concat([lanc, pend]) if len(pend) else lanc
     soma = round(linhas.valor.sum(), 2)
@@ -144,7 +188,7 @@ if __name__ == '__main__':
     linhas['classe'] = linhas.eap.fillna('').map(lambda e: 'pendente' if not e else ('indireto' if e.startswith('19.') else 'direto'))
     linhas['alertas'] = linhas.chave.map(alertas).fillna('')
     linhas['competencia_fechamento'] = fechamento
-    linhas['competencia_vencimento'] = alvo_mes
+    linhas['competencia_vencimento'] = mes(linhas.data_previsao).values
     try:
         orc = set(pd.read_csv('orcamento.csv', dtype=str).eap)
         fora = (linhas.eap.fillna('') != '') & ~linhas.eap.isin(orc)

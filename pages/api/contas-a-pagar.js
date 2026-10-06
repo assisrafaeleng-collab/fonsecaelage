@@ -1,7 +1,8 @@
 // pages/api/contas-a-pagar.js
-// Card de contas a pagar: titulos sem pagamento com vencimento no mes
-// seguinte ao fechamento. Separado do custo realizado (nao entra no IPC
-// como realizado; o IPC soma o a pagar do direto a parte).
+// Card de contas a pagar: titulos sem pagamento com vencimento a partir do
+// mes do fechamento (recorrentes ficam fora, ja na carga). Separado do
+// custo realizado (nao entra no IPC como realizado; o IPC soma o a pagar do
+// direto a parte).
 //   ?resumo=1        so os totais (o card); sem ele vem a lista de titulos
 //   ?fechamento=AAAA-MM  um fechamento especifico (padrao: o mais recente)
 import { supabase } from '../../lib/supabase'
@@ -19,7 +20,10 @@ export default async function handler(req, res) {
     const base = {
       disponivel: true,
       fechamento: c.fechamento,
-      competencia_vencimento: c.linhas[0] ? c.linhas[0].competencia_vencimento : null,
+      // Horizonte (decisao out/26): vencimentos a partir do mes do fechamento
+      vencimentos_a_partir_de: c.fechamento,
+      ultimo_vencimento: r.por_mes.length ? r.por_mes[r.por_mes.length - 1].mes : null,
+      por_mes: r.por_mes,
       importado_em: c.linhas[0] ? c.linhas[0].importado_em : null,
       totais: r.totais,
       n_titulos: r.n_titulos,
