@@ -15,6 +15,19 @@ fica em `automacao/` — leia `automacao/LEIAME.md` antes de mexer nela.
    não altere a lógica de classificação sem perguntar.
 5. Nada vai para o banco sem prévia: `importar.js` sem `--confirmar` primeiro, e `--confirmar` só com
    autorização explícita. Competências até 2026-07 são histórico manual e não são substituídas.
+6. Contas a pagar (card separado, nunca entra em `custos_lancamentos`): só títulos SEM pagamento do relatório
+   TOTVS da obra toda com vencimento/previsão de baixa no mês SEGUINTE ao fechamento (fechando setembro →
+   outubro); sem pagamento de meses anteriores não entra. "Prev. Financ." entra como previsto sem NF; APORTE
+   não entra. EAP pelo mesmo classificador e regras; o que não tiver regra é pendência e a decisão vira regra.
+   Fluxo: `automacao/contas_a_pagar.py` → `importar.js --contas-classificador` (prévia) → `--confirmar`.
+
+## Indicadores (decisões out/26)
+- Avanço físico, em todas as telas = horas executadas ÷ horas orçadas (parcela de produção). Nunca ponderado
+  por valor. O dashboard mensal e a página semanal mostram o mesmo número (`lib/avanco-hh.js`).
+- IPC / eficiência de custo direto (cards, linhas e projeção) = valor agregado do direto ÷ (custo direto
+  realizado + contas a pagar do direto, com NF e "Prev. Financ."). Acima de 1 = economia. Indireto fica fora.
+- Projeção pessimista: IDP limitado a 1 (adiantamento não barateia a obra).
+- Direto × indireto sempre pela EAP: grupo 19 = indireto, o resto = direto.
 
 ## Ambiente
 - Python é `py`, não `python`.

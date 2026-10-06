@@ -620,7 +620,6 @@ async function contasClassificador(db, validos) {
   const doBanco = alertasDoBanco(Object.values(titulos), custos, doRelatorio)
   linhas.forEach((l) => (l.alertas = [...new Set([...l.alertas, ...(doBanco[l.__chave] || [])])]))
 
-  const legado = await existeTabela(db, 'contas_a_pagar')
   const destino = await existeTabela(db, TABELA_CONTAS)
 
   const soma = (ls) => r2(ls.reduce((t, l) => t + l.valor, 0))
@@ -651,7 +650,7 @@ async function contasClassificador(db, validos) {
   pend.forEach((t) => console.log(`    ? ${t.num_documento} · ${t.fornecedor} · ${fmt(soma(t.linhas.filter((l) => l.classe === 'pendente')))} · ${t.linhas.find((l) => l.classe === 'pendente').regra || ''}`))
   const ok = checar(linhas.filter((l) => l.codigo_eap).map((l) => ({ ...l, codigo_eap: l.codigo_eap })), validos)
 
-  console.log(`\n  tabela antiga "contas_a_pagar" no banco: ${legado.existe ? `EXISTE${legado.colunas ? ` (colunas: ${legado.colunas.join(', ')})` : ' (vazia)'}` : 'não existe'}`)
+  console.log('')
   let antigas = []
   if (destino.existe) {
     antigas = await todos(() => db.from(TABELA_CONTAS).select('id, valor').eq('obra_id', OBRA).eq('competencia_fechamento', fechamento))

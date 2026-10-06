@@ -24,6 +24,33 @@
 3. Não são custo: "Prev. Financ." (OC sem NF), APORTE e NF já paga por adiantamento (marcada em
    decisoes_pontuais.csv com eap = NAO_CUSTO). Vão para nao_custo.csv.
 
+## Contas a pagar (decisão out/26)
+Card separado do custo realizado: nada daqui vai para custos_lancamentos.
+1. Entra só título SEM pagamento (sem VALOR PAGO, Valor Baixado e Data de Baixa) do relatório TOTVS da
+   obra toda com Previsão de Baixa (ou Vencimento) no mês SEGUINTE ao fechamento (fechando 2026-09 →
+   2026-10). Sem pagamento de meses anteriores NÃO entra.
+2. "Prev. Financ." entra, marcada como previsto sem NF. APORTE e NAO_CUSTO não entram.
+3. EAP pelo mesmo classificador e as mesmas regras do fechamento. O que as regras não cobrem vai para
+   pendencias_contas.csv; a decisão vira regra (regras_manuais.csv se o fornecedor se repete,
+   decisoes_pontuais.csv se é um título específico). Direto × indireto pela EAP (19.x = indireto).
+4. Alertas (na prévia, no card e no detalhe): fornecedor novo; valor mais de 50% acima da média do
+   fornecedor; "Prev. Financ." sem virar NF há mais de um mês; possível duplicidade com título já pago
+   ou já lançado (mesmo fornecedor e valor). Não contam como duplicidade: parcelas da mesma NF e os
+   fornecedores de pagamento mensal de fornecedores_recorrentes.csv (mesmo valor em outro mês e outro
+   documento).
+Uso:
+    py contas_a_pagar.py "entrada/TOTVS_obra_toda_ate_2026-09.XLSX" oc --fechamento 2026-09
+    node ../ferramentas/fechamento/importar.js --contas-classificador contas_a_pagar.csv            (prévia)
+    node ../ferramentas/fechamento/importar.js --contas-classificador contas_a_pagar.csv --confirmar
+A carga substitui a foto inteira do fechamento (tabela contas_a_pagar, supabase/contas/1-contas-a-pagar.sql).
+Título sem EAP só grava com --aceitar-pendencias (fica fora do IPC).
+
+## Indicadores do dashboard (decisão out/26)
+- Avanço físico = horas executadas ÷ horas orçadas, em todas as telas. Nunca ponderado por valor.
+- IPC = valor agregado do direto ÷ (realizado do direto + contas a pagar do direto, com NF e previsões).
+  Acima de 1 = economia. Indireto fica fora.
+- Projeção pessimista: IDP limitado a 1 (adiantamento não barateia a obra).
+
 ## Uso mensal
     pip install pandas openpyxl xlrd
     python classificador.py "setembro-26.xlsx" oc
