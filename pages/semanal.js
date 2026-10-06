@@ -237,6 +237,12 @@ export default function Semanal() {
   const pRef = dados.curva.find((c) => c.semana === semRef) || p
   const sRef = `S${String(semRef).padStart(2, '0')}`
   const refAtrasada = semRef < p.semana
+  // Avanço físico e IDP (decisão out/26): planejado e realizado SEMPRE na
+  // semana selecionada. Semana sem medição nova usa o realizado acumulado da
+  // última medição (a curva já vem com ele) contra o planejado da própria
+  // semana, como no IPC do mês.
+  const sSel = `S${String(p.semana).padStart(2, '0')}`
+  const sMedicao = `S${String(dados.ultima_semana_com_avanco || p.semana).padStart(2, '0')}`
   // Valor agregado sempre na régua de custo: percentual executado × custo do
   // item. O alternador Hh não muda quanto o serviço feito deveria ter custado.
   const agregado =
@@ -268,8 +274,8 @@ export default function Semanal() {
   // IDP pelo avanço físico em Hh, as duas pontas na mesma semana (a da última
   // medição). Em reais, locação (gasto) e funcionários (tempo) entrariam como
   // "avanço" e distorceriam o índice de prazo.
-  const fisPlanRef = pRef.avanco_plan_hh
-  const fisRealRef = pRef.avanco_real_hh
+  const fisPlanRef = p.avanco_plan_hh
+  const fisRealRef = p.avanco_real_hh
   const idp = fisPlanRef > 0 && fisRealRef != null ? fisRealRef / fisPlanRef : null
 
   // Projeção do custo direto no término (mesma conta da rota, na semana de
@@ -303,8 +309,8 @@ export default function Semanal() {
   // Avanço em Hh. Planejado e realizado na mesma semana: a da ultima medicao
   // (ou a selecionada, se for anterior). Depois da medicao o realizado so
   // repete o ultimo valor, e o planejado continuaria andando.
-  const avancoPlan = pRef.avanco_plan_hh
-  const avancoReal = pRef.avanco_real_hh
+  const avancoPlan = p.avanco_plan_hh
+  const avancoReal = p.avanco_real_hh
   const inicioSem = inicioDe(p)
   const primeira = inicioDe(dados.curva[0])
   const ultima = dados.curva[dados.curva.length - 1].data_fim
@@ -479,7 +485,7 @@ export default function Semanal() {
           <div className="kpi">
             <div className="kpi-label">{nomeAvanco} · Planejado</div>
             <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2' }}>{fmtPerc(avancoPlan)}</div>
-            <div className="kpi-sub">Hh planejado ÷ Hh do projeto · em {sRef}</div>
+            <div className="kpi-sub">Hh planejado ÷ Hh do projeto · em {sSel}</div>
           </div>
         )}
 
@@ -517,7 +523,8 @@ export default function Semanal() {
             {avancoReal == null ? '—' : `${avancoReal >= avancoPlan ? '+' : ''}${(avancoReal - avancoPlan).toFixed(1)}%`}
           </div>
           <div className="kpi-sub">
-            {avancoReal != null && avancoReal >= avancoPlan ? 'Adiantado' : 'Atrasado'} · p.p. do projeto · em {sRef}
+            {avancoReal != null && avancoReal >= avancoPlan ? 'Adiantado' : 'Atrasado'} · p.p. do projeto · em {sSel}
+            {refAtrasada ? ` · medição de ${sMedicao}` : ''}
           </div>
         </div>
         )}
@@ -642,7 +649,7 @@ export default function Semanal() {
         >
           <div className="kpi-label">Projeções de Custo Final {abrirProjecao ? '▴' : '▾'}</div>
           <div className="kpi-sub" style={{ marginTop: 8 }}>
-            {abrirProjecao ? `Custo direto no término · ${rotuloIpc} · IDP ${sRef}` : 'Clique para ver as projeções'}
+            {abrirProjecao ? `Custo direto no término · ${rotuloIpc} · IDP ${sSel}` : 'Clique para ver as projeções'}
           </div>
         </div>
 
@@ -677,7 +684,8 @@ export default function Semanal() {
                 idp == null
                   ? ''
                   : `IDP = avanço físico realizado ÷ avanço físico planejado\n` +
-                    `(hora-homem, ambos em ${sRef}, a última medição)\n` +
+                    `(hora-homem, ambos em ${sSel}` +
+                    (refAtrasada ? `; realizado acumulado da última medição, ${sMedicao})\n` : ')\n') +
                     `= ${fmtPc2(fisRealRef)} ÷ ${fmtPc2(fisPlanRef)}\n` +
                     `= ${fmtIdx(idp)}\n\n` +
                     'Acima de 1: obra adiantada.\nAbaixo de 1: obra atrasada.'
@@ -687,7 +695,7 @@ export default function Semanal() {
               <div className="kpi-value" style={{ fontSize: '18px', lineHeight: '1.2', color: idp == null ? REAL : idp >= 1 ? VERDE : VERMELHO }}>
                 {fmtIdx(idp)}
               </div>
-              <div className="kpi-sub">{idp == null ? 'Sem medição' : idp >= 1 ? 'Adiantado' : 'Atrasado'} · até {sRef}</div>
+              <div className="kpi-sub">{idp == null ? 'Sem medição' : idp >= 1 ? 'Adiantado' : 'Atrasado'} · em {sSel}</div>
             </div>
 
             {[

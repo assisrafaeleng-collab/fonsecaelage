@@ -1385,9 +1385,11 @@ export default async function handler(req, res) {
     // pagar do direto). Substitui a regra de custo encerrado. IDP pelo avanco
     // fisico em Hh, as duas pontas na semana de referencia (igual a tela).
     const comprometidoRef = ref.acwp + aPagarDireto
-    if (agregadoRef != null && agregadoRef > 0 && comprometidoRef > 0 && ref.avanco_plan_hh > 0 && ref.avanco_real_hh != null) {
+    // IDP na semana selecionada: planejado dela e realizado acumulado da
+    // ultima medicao (decisao out/26), o mesmo da tela.
+    if (agregadoRef != null && agregadoRef > 0 && comprometidoRef > 0 && ponto.avanco_plan_hh > 0 && ponto.avanco_real_hh != null) {
       const idc = agregadoRef / comprometidoRef
-      const idp = ref.avanco_real_hh / ref.avanco_plan_hh
+      const idp = ponto.avanco_real_hh / ponto.avanco_plan_hh
       // Adiantamento nao barateia a obra: no pessimista o IDP fica ate 1.
       const idpPess = Math.min(idp, 1)
       // Falta = o que ainda nao foi executado, a preco de orcamento.

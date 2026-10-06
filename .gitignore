@@ -43,6 +43,7 @@ automacao/regras_manuais.csv
 automacao/regras_parcelas.csv
 automacao/decisoes_pontuais.csv
 automacao/fornecedores_recorrentes.csv
+automacao/pedidos_aco.csv
 
 # python
 __pycache__/
