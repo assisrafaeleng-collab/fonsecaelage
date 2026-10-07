@@ -78,6 +78,17 @@ export default function Semanal() {
   const [avancoGrupos, setAvancoGrupos] = useState(null)
   const [mapa, setMapa] = useState(null)
   const [avancoAberto, setAvancoAberto] = useState(null)
+  // Painel de avanço: pavimentos abertos ('3|3.2') e pavimentos com as linhas
+  // não iniciadas à mostra; começa tudo recolhido
+  const [pavAvancoAberto, setPavAvancoAberto] = useState(() => new Set())
+  const [pavNaoIniciados, setPavNaoIniciados] = useState(() => new Set())
+  const alternarEm = (set) => (k) =>
+    set((atual) => {
+      const novo = new Set(atual)
+      if (novo.has(k)) novo.delete(k)
+      else novo.add(k)
+      return novo
+    })
   const [itemAberto, setItemAberto] = useState(null)
   const [editando, setEditando] = useState(null)
   const [form, setForm] = useState({ data: '', incremento: '', acumulado: '' })
@@ -153,14 +164,15 @@ export default function Semanal() {
     if (await garantirSenha()) acao()
   }
 
-  const salvarMedicao = async (cod_eap, id) => {
+  // pavimento: só para código repetido por pavimento (medição por linha)
+  const salvarMedicao = async (cod_eap, id, pavimento = null) => {
     setSalvando(true)
     setErroSalvar(null)
     try {
       const r = await fetchComSenha('/api/avanco-lancamento', {
         method: id ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, codigo_eap: cod_eap, data: form.data, percentual: form.acumulado }),
+        body: JSON.stringify({ id, codigo_eap: cod_eap, pavimento, data: form.data, percentual: form.acumulado }),
       })
       const j = await r.json()
       if (!r.ok) throw new Error(j.message || j.error || 'Falha ao salvar')
@@ -928,7 +940,7 @@ export default function Semanal() {
                         <React.Fragment key={i.chave || i.cod_eap}>
                         <tr
                           key={i.cod_eap}
-                          onClick={() => setItemAberto(itemAberto === `c${i.cod_eap}` ? null : `c${i.cod_eap}`)}
+                          onClick={() => setItemAberto(itemAberto === `c${i.cod_eap}|${i.pavimento || ''}` ? null : `c${i.cod_eap}|${i.pavimento || ''}`)}
                           style={{ cursor: (i.lancamentos || []).length ? 'pointer' : 'default' }}
                         >
                           <td style={{ fontFamily: 'var(--mono)', color: '#8b919c' }}>{i.cod_eap}</td>
@@ -936,7 +948,7 @@ export default function Semanal() {
                             {i.descricao}
                             {(i.lancamentos || []).length > 0 && (
                               <span style={{ color: '#8b919c', fontSize: 11, marginLeft: 8 }}>
-                                {itemAberto === `c${i.cod_eap}` ? '▴' : '▾'} {i.lancamentos.length} lanç.
+                                {itemAberto === `c${i.cod_eap}|${i.pavimento || ''}` ? '▴' : '▾'} {i.lancamentos.length} lanç.
                               </span>
                             )}
                           </td>
@@ -985,7 +997,7 @@ export default function Semanal() {
                             {i.mes_inicio ? `M${i.mes_inicio}–M${i.mes_fim}` : ''}
                           </td>
                         </tr>
-                        {itemAberto === `c${i.cod_eap}` && (i.lancamentos || []).length > 0 && (
+                        {itemAberto === `c${i.cod_eap}|${i.pavimento || ''}` && (i.lancamentos || []).length > 0 && (
                           <tr key={`${i.cod_eap}-det`}>
                             <td colSpan={9} style={{ padding: 0 }}>
                               <div style={{ background: 'var(--bg)', borderRadius: 8, padding: '10px 14px', margin: '0 0 8px' }}>
@@ -1270,30 +1282,78 @@ export default function Semanal() {
                   (g.por_pavimento
                     ? g.pavimentos || []
                     : [{ pavimento: null, itens: g.itens }]
-                  ).map((pv) => (
-                    <div key={pv.pavimento || 'geral'} style={{ marginBottom: 10 }}>
+                  ).map((pv) => {
+                    // Pavimento no mesmo formato do grupo, recolhido; clicando, abrem as linhas
+                    const kPav = `${g.grupo}|${pv.chave}`
+                    const pvAberto = !pv.pavimento || pavAvancoAberto.has(kPav)
+                    const comNaoIniciados = pavNaoIniciados.has(kPav)
+                    const naoIniciados = (pv.itens || []).filter((i) => i.visivel === false).length
+                    const linhas = (pv.itens || []).filter((i) => i.visivel !== false || comNaoIniciados)
+                    const dPv =
+                      pv.perc_planejado != null && pv.perc_realizado != null ? pv.perc_realizado - pv.perc_planejado : null
+                    return (
+                    <div key={pv.chave || pv.pavimento || 'geral'} style={{ marginBottom: pv.pavimento ? 0 : 10 }}>
                       {pv.pavimento && (
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 10,
-                          padding: '8px 4px',
-                          fontFamily: 'var(--mono)',
-                          fontSize: 11,
-                          letterSpacing: '0.08em',
-                          textTransform: 'uppercase',
-                          color: PLAN,
-                          borderTop: '1px solid var(--border)',
-                        }}
-                      >
-                        <span>{pv.pavimento}</span>
-                        <span style={{ color: '#8b919c', textTransform: 'none', letterSpacing: 0 }}>
-                          {pv.hh_real.toLocaleString('pt-BR')} h de {pv.hh_total.toLocaleString('pt-BR')} h ·
-                          planejado {fmtPerc(pv.perc_planejado)} · realizado {fmtPerc(pv.perc_realizado)}
-                        </span>
-                      </div>
+                        <div
+                          onClick={() => alternarEm(setPavAvancoAberto)(kPav)}
+                          style={{
+                            display: 'grid',
+                            gridTemplateColumns: '38px 1fr 110px 110px 110px 90px 28px',
+                            gap: 12,
+                            alignItems: 'center',
+                            padding: '12px 4px',
+                            borderTop: '1px solid var(--border)',
+                            background: 'var(--bg3)',
+                            borderRadius: 6,
+                            cursor: 'pointer',
+                            marginBottom: pvAberto ? 6 : 0,
+                          }}
+                        >
+                          <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: PLAN, textAlign: 'center' }}>
+                            {pv.codigo}
+                          </span>
+                          <div>
+                            <div style={{ fontWeight: 600, fontSize: 13, color: PLAN }}>{pv.pavimento}</div>
+                            <div style={{ fontSize: 11, color: '#8b919c', marginTop: 2 }}>
+                              {pv.em_curso} em curso · {pv.hh_real.toLocaleString('pt-BR')} h de{' '}
+                              {pv.hh_total.toLocaleString('pt-BR')} h
+                              {naoIniciados > 0 ? ` · ${naoIniciados} não iniciados` : ''}
+                            </div>
+                          </div>
+                          <div style={{ textAlign: 'right', fontFamily: 'var(--mono)' }}>
+                            <div style={{ color: PLAN }}>{fmtPerc(pv.perc_planejado)}</div>
+                            <div style={{ fontSize: 10, color: '#8b919c' }}>planejado</div>
+                          </div>
+                          <div style={{ textAlign: 'right', fontFamily: 'var(--mono)' }}>
+                            <div>{fmtPerc(pv.perc_realizado)}</div>
+                            <div style={{ fontSize: 10, color: '#8b919c' }}>realizado</div>
+                          </div>
+                          <div
+                            style={{
+                              textAlign: 'right',
+                              fontFamily: 'var(--mono)',
+                              color: dPv == null ? '#8b919c' : dPv < 0 ? VERMELHO : VERDE,
+                            }}
+                          >
+                            <div>{dPv == null ? '—' : `${dPv > 0 ? '+' : ''}${dPv.toFixed(1).replace('.', ',')} p.p.`}</div>
+                            <div style={{ fontSize: 10, color: '#8b919c' }}>desvio</div>
+                          </div>
+                          <div style={{ textAlign: 'right', fontFamily: 'var(--mono)', color: '#8b919c', fontSize: 11 }}>
+                            {fmtPerc(pv.peso)} do Hh
+                          </div>
+                          <span style={{ color: '#8b919c', textAlign: 'center' }}>{pvAberto ? '▴' : '▾'}</span>
+                        </div>
                       )}
+                      {pvAberto && pv.pavimento && naoIniciados > 0 && (
+                        <div style={{ textAlign: 'right', margin: '0 0 6px' }}>
+                          <button className="btn-sm" onClick={() => alternarEm(setPavNaoIniciados)(kPav)}>
+                            {comNaoIniciados
+                              ? 'Ocultar não iniciados'
+                              : `Mostrar ${naoIniciados} não iniciados (para lançar medição)`}
+                          </button>
+                        </div>
+                      )}
+                      {pvAberto && linhas.length > 0 && (
                       <table style={{ marginBottom: 6 }}>
                         <thead>
                           <tr>
@@ -1307,21 +1367,29 @@ export default function Semanal() {
                           </tr>
                         </thead>
                         <tbody>
-                          {pv.itens.map((i) => {
+                          {linhas.map((i) => {
                             const d = i.perc_realizado - i.perc_planejado
                             return (
                               <React.Fragment key={i.chave || i.cod_eap}>
                                 <tr
                                   onClick={() =>
-                                    setItemAberto(itemAberto === `a${i.cod_eap}` ? null : `a${i.cod_eap}`)
+                                    setItemAberto(itemAberto === `a${i.chave || i.cod_eap}` ? null : `a${i.chave || i.cod_eap}`)
                                   }
                                   style={{ cursor: 'pointer' }}
                                 >
                                   <td style={{ fontFamily: 'var(--mono)', color: '#8b919c' }}>{i.cod_eap}</td>
                                   <td>
                                     {i.descricao}
+                                    {i.medicao_por_pavimento && (
+                                      <span
+                                        style={{ color: PLAN, fontSize: 11, marginLeft: 8 }}
+                                        title="Código repetido por pavimento: a medição vale só para a linha deste pavimento"
+                                      >
+                                        {i.pavimento} pav
+                                      </span>
+                                    )}
                                     <span style={{ color: '#8b919c', fontSize: 11, marginLeft: 8 }}>
-                                      {itemAberto === `a${i.cod_eap}` ? '▴' : '▾'}{' '}
+                                      {itemAberto === `a${i.chave || i.cod_eap}` ? '▴' : '▾'}{' '}
                                       {(i.retratos || []).length === 0
                                         ? 'lançar medição'
                                         : `${i.retratos.length} ${i.retratos.length === 1 ? 'medição' : 'medições'}`}
@@ -1361,7 +1429,7 @@ export default function Semanal() {
                                       : 'sem medição'}
                                   </td>
                                 </tr>
-                                {itemAberto === `a${i.cod_eap}` && (
+                                {itemAberto === `a${i.chave || i.cod_eap}` && (
                                   <tr>
                                     <td colSpan={7} style={{ padding: 0 }}>
                                       <div
@@ -1547,7 +1615,9 @@ export default function Semanal() {
                                             className="btn-primary"
                                             disabled={salvando || !form.data || form.acumulado === ''}
                                             onClick={() =>
-                                              exigirSenha(() => salvarMedicao(i.cod_eap, editando))
+                                              exigirSenha(() =>
+                                                salvarMedicao(i.cod_eap, editando, i.medicao_por_pavimento ? i.pavimento : null)
+                                              )
                                             }
                                           >
                                             {editando ? 'Salvar alteração' : 'Incluir medição'}
@@ -1586,8 +1656,10 @@ export default function Semanal() {
                           })}
                         </tbody>
                       </table>
+                      )}
                     </div>
-                  ))}
+                    )
+                  })}
               </div>
             )
           })}
@@ -2009,7 +2081,8 @@ function CurvaS({ curva, semana, ultMed, onPick, aPagar = 0, semFech = null, mes
   }
 
   const h = hover != null ? pontos[hover] : null
-  const saldo = h && h.va != null && h.cr != null ? h.va - h.cr : null
+  // Saldo = valor agregado − custo comprometido (pago + a pagar), a base do IPC
+  const saldo = h && h.va != null && h.cc != null ? h.va - h.cc : null
   const passoRotulo = span > 60 ? 8 : span > 30 ? 4 : span > 14 ? 2 : 1
   const ticks = [0, 1, 2, 3, 4]
 
@@ -2160,7 +2233,7 @@ function CurvaS({ curva, semana, ultMed, onPick, aPagar = 0, semFech = null, mes
             ))}
             {saldo != null && (
               <div>
-                <div className="kpi-sub">Saldo (VA − CR)</div>
+                <div className="kpi-sub">Saldo (VA − comprometido)</div>
                 <div style={{ font: '600 13px var(--mono)', color: saldo >= 0 ? VERDE : VERMELHO }}>
                   {fmtMoeda(saldo)}
                 </div>

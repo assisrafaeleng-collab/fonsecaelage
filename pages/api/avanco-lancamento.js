@@ -8,12 +8,16 @@
 //
 // A semana e derivada da data escolhida pelo usuario, nunca de now(): o
 // lancamento pode registrar medicao de uma semana anterior.
+//
+// Codigo repetido em varias linhas do orcamento (o mesmo servico por
+// pavimento) e medido por linha: o pavimento e obrigatorio e a medicao vale
+// so para a linha daquele pavimento (lib/medicao-linha.js).
 import { supabase } from '../../lib/supabase'
 import { senhaOk } from '../../lib/senha-servidor'
 
 const iso10 = (v) => String(v || '').slice(0, 10)
 
-async function contexto(obra_id, dataISO, codigo_eap) {
+async function contexto(obra_id, dataISO, codigo_eap, pavimento) {
   const [semanaRes, itemRes] = await Promise.all([
     supabase
       .from('calendario_semanas')
@@ -26,8 +30,7 @@ async function contexto(obra_id, dataISO, codigo_eap) {
       .from('orcamento_planejado')
       .select('cod_eap, descricao, grupo_numero, pavimento, hh')
       .eq('obra_id', obra_id)
-      .eq('cod_eap', codigo_eap)
-      .limit(1),
+      .eq('cod_eap', codigo_eap),
   ])
 
   if (semanaRes.error) throw new Error(`calendario_semanas: ${semanaRes.error.message}`)
@@ -48,7 +51,24 @@ async function contexto(obra_id, dataISO, codigo_eap) {
     }
     throw new Error(`a data ${dataISO} nao cai em nenhuma das ${count} semanas do cronograma`)
   }
-  const item = (itemRes.data && itemRes.data[0]) || null
+  const linhas = itemRes.data || []
+  if (linhas.length > 1) {
+    if (!pavimento) {
+      const err = new Error(
+        `o código ${codigo_eap} se repete em ${linhas.length} pavimentos (${linhas.map((l) => l.pavimento).join(', ')}): informe o pavimento`
+      )
+      err.status = 400
+      throw err
+    }
+    const item = linhas.find((l) => (l.pavimento || '') === pavimento)
+    if (!item) {
+      const err = new Error(`o código ${codigo_eap} não tem linha no pavimento ${pavimento}`)
+      err.status = 400
+      throw err
+    }
+    return { semana, item }
+  }
+  const item = linhas[0] || null
   return { semana, item }
 }
 
@@ -58,7 +78,7 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === 'POST' || req.method === 'PUT') {
-      const { id, codigo_eap, percentual, data } = req.body || {}
+      const { id, codigo_eap, percentual, data, pavimento } = req.body || {}
 
       if (!codigo_eap) return res.status(400).json({ error: 'codigo_eap é obrigatório' })
       const perc = parseFloat(percentual)
@@ -70,7 +90,7 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'data inválida' })
       }
 
-      const { semana, item } = await contexto(obra_id, dataISO, codigo_eap)
+      const { semana, item } = await contexto(obra_id, dataISO, codigo_eap, pavimento || null)
       const hh = item ? parseFloat(item.hh) || 0 : 0
 
       // Meio-dia em UTC: guardar meia-noite faria a data voltar um dia em
@@ -109,6 +129,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' })
   } catch (error) {
     console.error('Erro no lançamento de avanço:', error)
+    if (error.status === 400) return res.status(400).json({ error: error.message })
     return res.status(500).json({ error: 'Não foi possível salvar', message: error.message })
   }
 }
