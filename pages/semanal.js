@@ -613,7 +613,15 @@ export default function Semanal() {
             <span style={PILL}>{indiretoReal == null ? '—' : fmtMoeda(indiretoReal)}</span>
           </div>
           <div className="kpi-sub">
-            {indiretoReal == null || indiretoPlan <= 0 ? '—' : `${fmtPerc((indiretoReal / indiretoPlan) * 100)} do planejado`}
+            {/* Indireto não tem valor agregado: comprometido (pago + a pagar) ÷ planejado */}
+            {indiretoReal == null || indiretoPlan <= 0
+              ? '—'
+              : `${fmtPerc(((indiretoReal + aPagarIndireto) / indiretoPlan) * 100)} do planejado (pago + a pagar)`}
+            {indiretoReal != null && (
+              <div>
+                pago {fmtMoeda(indiretoReal)} · a pagar {fmtMoeda(aPagarIndireto)}
+              </div>
+            )}
           </div>
         </div>
 
@@ -2101,6 +2109,27 @@ const somarMeses = (s, n) => {
   return alvo.toISOString().slice(0, 10)
 }
 
+// Atalhos de comparação da Curva S: [rótulo, séries ligadas]
+const ATALHOS_CURVA = [
+  ['Todas', ['fp', 'fr', 'vp', 'va', 'cr', 'cc']],
+  ['Só físico', ['fp', 'fr']],
+  ['Só financeiro', ['vp', 'va', 'cr', 'cc']],
+  ['Agregado × realizado', ['va', 'cr', 'cc']],
+  ['Agregado × comprometido', ['va', 'cc']],
+  ['Só planejado', ['fp', 'vp']],
+  ['Só realizado', ['fr', 'cr', 'cc']],
+]
+// O que a caixa de valores da semana mostra em cada atalho (decisão out/26)
+const CAIXA_CURVA = {
+  Todas: { campos: ['fp', 'fr', 'vp', 'va', 'cr', 'cc'], desvio: true, saldo: true },
+  'Só físico': { campos: ['fp', 'fr'], desvio: true, saldo: false },
+  'Só financeiro': { campos: ['va', 'cc'], desvio: false, saldo: true },
+  'Agregado × realizado': { campos: ['va', 'cr', 'cc'], desvio: false, saldo: true },
+  'Agregado × comprometido': { campos: ['va', 'cc'], desvio: false, saldo: true },
+  'Só planejado': { campos: ['fp', 'vp'], desvio: false, saldo: false },
+  'Só realizado': { campos: ['fr', 'va', 'cc'], desvio: false, saldo: false },
+}
+
 // aPagar: contas a pagar do direto do último fechamento; semFech: semana do
 // fechamento (a que contém o último dia do mês fechado).
 function CurvaS({ curva, semana, ultMed, onPick, aPagar = 0, semFech = null, mesFech = null }) {
@@ -2221,8 +2250,23 @@ function CurvaS({ curva, semana, ultMed, onPick, aPagar = 0, semFech = null, mes
   }
 
   const h = hover != null ? pontos[hover] : null
+  // Caixa de valores da semana acompanha o filtro (decisão out/26). Filtro
+  // montado à mão (séries ligadas uma a uma): as séries visíveis, o desvio
+  // físico se as duas curvas de físico estão ligadas e o saldo se o valor
+  // agregado e o comprometido estão.
+  const ativoAtalho = ATALHOS_CURVA.find(([, ids]) =>
+    series.every((sr) => (ids.includes(sr.id) ? !ocultas[sr.id] : !!ocultas[sr.id]))
+  )
+  const caixa = (ativoAtalho && CAIXA_CURVA[ativoAtalho[0]]) || {
+    campos: visiveis.map((sr) => sr.id),
+    desvio: !ocultas.fp && !ocultas.fr,
+    saldo: !ocultas.va && !ocultas.cc,
+  }
+  const camposCaixa = caixa.campos.map((id) => series.find((sr) => sr.id === id)).filter(Boolean)
   // Saldo = valor agregado − custo comprometido (pago + a pagar), a base do IPC
-  const saldo = h && h.va != null && h.cc != null ? h.va - h.cc : null
+  const saldo = caixa.saldo && h && h.va != null && h.cc != null ? h.va - h.cc : null
+  // Desvio físico = realizado − planejado, em p.p.
+  const desvioFis = caixa.desvio && h && h.fr != null && h.fp != null ? h.fr - h.fp : null
   const passoRotulo = span > 60 ? 8 : span > 30 ? 4 : span > 14 ? 2 : 1
   const ticks = [0, 1, 2, 3, 4]
 
@@ -2363,7 +2407,7 @@ function CurvaS({ curva, semana, ultMed, onPick, aPagar = 0, semFech = null, mes
             <div style={{ font: '600 12px var(--mono)', color: 'var(--accent)' }}>
               S{String(h.semana).padStart(2, '0')} · {dm(inicioDe(h))} a {dm(h.data_fim)}
             </div>
-            {visiveis.map((sr) => (
+            {camposCaixa.map((sr) => (
               <div key={sr.id}>
                 <div className="kpi-sub">{sr.nome}</div>
                 <div style={{ font: '600 13px var(--mono)', color: sr.cor }}>
@@ -2371,6 +2415,14 @@ function CurvaS({ curva, semana, ultMed, onPick, aPagar = 0, semFech = null, mes
                 </div>
               </div>
             ))}
+            {desvioFis != null && (
+              <div>
+                <div className="kpi-sub">Desvio físico (realizado − planejado)</div>
+                <div style={{ font: '600 13px var(--mono)', color: desvioFis >= 0 ? VERDE : VERMELHO }}>
+                  {`${desvioFis >= 0 ? '+' : ''}${desvioFis.toFixed(2).replace('.', ',')} p.p.`}
+                </div>
+              </div>
+            )}
             {saldo != null && (
               <div>
                 <div className="kpi-sub">Saldo (VA − comprometido)</div>
@@ -2411,15 +2463,7 @@ function CurvaS({ curva, semana, ultMed, onPick, aPagar = 0, semFech = null, mes
 
       {/* atalhos de comparacao */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10, justifyContent: 'center' }}>
-        {[
-          ['Todas', ['fp', 'fr', 'vp', 'va', 'cr', 'cc']],
-          ['Só físico', ['fp', 'fr']],
-          ['Só financeiro', ['vp', 'va', 'cr', 'cc']],
-          ['Agregado × realizado', ['va', 'cr', 'cc']],
-          ['Agregado × comprometido', ['va', 'cc']],
-          ['Só planejado', ['fp', 'vp']],
-          ['Só realizado', ['fr', 'cr', 'cc']],
-        ].map(([l, ids]) => {
+        {ATALHOS_CURVA.map(([l, ids]) => {
           const ativo = series.every((sr) => (ids.includes(sr.id) ? !ocultas[sr.id] : !!ocultas[sr.id]))
           return (
             <button key={l} className="btn-sm" onClick={() => mostrarSo(ids)}

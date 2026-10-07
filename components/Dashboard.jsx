@@ -454,9 +454,19 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
         <div className="kpi" style={{ cursor: 'pointer' }} onClick={() => router.push('/custos-diretos-realizados-lista')}>
           <div className="kpi-label">Custo Direto Realizado</div>
           <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2', color: REAL }}>
-            <span style={PILL}>{fmtMoeda(custoDiretoReal)}</span>
+            <span style={PILL}>{fmtMoeda(kpis.custo_direto_pago_referencia != null ? kpis.custo_direto_pago_referencia : custoDiretoReal)}</span>
           </div>
-          <div className="kpi-sub">{fmtPerc((custoDiretoReal / custoDiretoPlano) * 100)} do planejado</div>
+          {/* Mesma conta da semanal (decisão out/26): comprometido (pago + a pagar) ÷ valor agregado, na semana do avanço */}
+          <div className="kpi-sub">
+            {kpis.custo_direto_comprometido != null && kpis.bcwp > 0
+              ? `${fmtPerc((kpis.custo_direto_comprometido / kpis.bcwp) * 100)} do executado (pago + a pagar) · até S${String(kpis.agregado_semana_referencia || 0).padStart(2, '0')}`
+              : `${fmtPerc((custoDiretoReal / custoDiretoPlano) * 100)} do planejado`}
+            {kpis.custo_direto_comprometido != null && (
+              <div>
+                pago {fmtMoeda(kpis.custo_direto_pago_referencia)} · a pagar {fmtMoeda(kpis.a_pagar_direto)}
+              </div>
+            )}
+          </div>
         </div>
         <div
           className="kpi"
