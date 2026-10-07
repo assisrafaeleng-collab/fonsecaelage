@@ -1065,9 +1065,10 @@ export default function Semanal() {
                 <th style={{ width: 70 }}>EAP</th>
                 <th>Categoria</th>
                 <th style={{ textAlign: 'right', width: 120 }}>Orçado</th>
-                <th style={{ textAlign: 'right', width: 120 }}>Valor agregado</th>
                 <th style={{ textAlign: 'right', width: 120 }}>Realizado</th>
-                <th style={{ textAlign: 'right', width: 80 }}>Eficiência</th>
+                <th style={{ textAlign: 'right', width: 90 }} title="Realizado ÷ orçado da categoria">
+                  % do orçado
+                </th>
                 <th style={{ textAlign: 'right', width: 130 }}>Planejado até aqui</th>
               </tr>
             </thead>
@@ -1096,20 +1097,32 @@ export default function Semanal() {
                     <td style={{ textAlign: 'right', fontFamily: 'var(--mono)', color: PLAN }}>
                       {fmtMoeda(i.planejado_total)}
                     </td>
-                    <td style={{ textAlign: 'right', fontFamily: 'var(--mono)', color: '#8b919c' }} title="Indireto não tem medição de avanço">
-                      —
-                    </td>
                     <td style={{ textAlign: 'right', fontFamily: 'var(--mono)' }}>
                       {i.realizado > 0 ? fmtMoeda(i.realizado) : '—'}
                     </td>
-                    <td style={{ textAlign: 'right', fontFamily: 'var(--mono)', color: '#8b919c' }}>—</td>
+                    {(() => {
+                      // Realizado ÷ orçado da categoria; vermelho acima de 100%
+                      const pct = i.planejado_total > 0 ? (i.realizado / i.planejado_total) * 100 : null
+                      return (
+                        <td
+                          style={{
+                            textAlign: 'right',
+                            fontFamily: 'var(--mono)',
+                            color: pct == null ? '#8b919c' : pct > 100 ? VERMELHO : undefined,
+                          }}
+                          title={pct == null ? '' : `${fmtMoeda(i.realizado)} ÷ ${fmtMoeda(i.planejado_total)}`}
+                        >
+                          {pct == null ? '—' : fmtPerc(pct)}
+                        </td>
+                      )
+                    })()}
                     <td style={{ textAlign: 'right', fontFamily: 'var(--mono)', color: '#8b919c' }}>
                       {i.planejado > 0 ? fmtMoeda(i.planejado) : '—'}
                     </td>
                   </tr>
                   {itemAberto === chave && temLanc && (
                     <tr>
-                      <td colSpan={7} style={{ padding: 0 }}>
+                      <td colSpan={6} style={{ padding: 0 }}>
                         <div style={{ background: 'var(--bg)', borderRadius: 8, padding: '10px 14px', margin: '0 0 8px' }}>
                           {i.lancamentos.map((l, k) => (
                             <div
