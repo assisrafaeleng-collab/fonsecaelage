@@ -17,16 +17,55 @@ const fmtP = (v) => (v == null ? '—' : `${Number(v).toFixed(1).replace('.', ',
 const dmy = (s) => (s ? `${s.slice(8, 10)}/${s.slice(5, 7)}/${s.slice(0, 4)}` : '')
 
 // Código, serviço, pavimento, orçado, % físico, medido, valor agregado, pago,
-// a pagar (TOTVS), eficiência, não pago
-const COLS = '62px minmax(0,1fr) 44px 100px 54px 88px 106px 100px 96px 54px 96px'
+// a pagar (TOTVS), estouro / economia, saldo da verba
+const COLS = '62px minmax(0,1fr) 44px 100px 54px 88px 106px 100px 96px 104px 112px'
 
 const fmtEf = (v) => (v == null ? '—' : v.toFixed(3).replace('.', ','))
 const eficiencia = (agregado, pago, aPagar) => (agregado > 0 && pago + aPagar > 0 ? agregado / (pago + aPagar) : null)
 
+// Estouro / economia = (pago + a pagar) − valor agregado. Positivo = estouro
+// (vermelho), negativo = economia (verde); o % é sobre o valor agregado. Sem
+// valor agregado e sem custo: "—". A eficiência fica só no texto do mouse.
+function Estouro({ agregado, pago, aPagar, peso }) {
+  const ag = agregado || 0
+  const custo = (pago || 0) + (aPagar || 0)
+  if (ag <= 0.005 && custo <= 0.005) return <div style={{ ...dir, color: 'var(--text2)' }}>—</div>
+  const rs = custo - ag
+  const zero = Math.abs(rs) < 0.005
+  const perc = ag > 0.005 ? (rs / ag) * 100 : null
+  const ef = eficiencia(ag, pago || 0, aPagar || 0)
+  return (
+    <div
+      style={{ ...dir, fontWeight: peso, color: zero ? 'var(--text2)' : rs > 0 ? VERMELHO : VERDE }}
+      title={
+        `(Pago + a pagar) − valor agregado\n= (${fmtMoeda(pago || 0)} + ${fmtMoeda(aPagar || 0)}) − ${fmtMoeda(ag)}` +
+        `\nEficiência (valor agregado ÷ custo): ${fmtEf(ef)}`
+      }
+    >
+      {(rs > 0.005 ? '+' : '') + fmtMoeda(zero ? 0 : rs)}
+      <div style={{ fontSize: 10, fontWeight: 500 }}>
+        {perc == null ? '—' : `${perc > 0.05 ? '+' : ''}${perc.toFixed(1).replace('.', ',')}%`}
+      </div>
+    </div>
+  )
+}
+
+// Saldo da verba = orçado − pago − a pagar; vermelho quando negativo (verba estourada)
+function Saldo({ orcado, pago, aPagar, peso }) {
+  const v = (orcado || 0) - (pago || 0) - (aPagar || 0)
+  return (
+    <div
+      style={{ ...dir, fontWeight: peso, color: v < -0.005 ? VERMELHO : 'var(--text)' }}
+      title={`Orçado − pago − a pagar\n= ${fmtMoeda(orcado || 0)} − ${fmtMoeda(pago || 0)} − ${fmtMoeda(aPagar || 0)}`}
+    >
+      {fmtMoeda(Math.abs(v) < 0.005 ? 0 : v)}
+    </div>
+  )
+}
+
 // Subtotal de grupo, subgrupo ou total: todas as colunas somadas
 // onClick/aberto: linha recolhível (grupo ou pavimento); a seta mostra o estado
 function LinhaTotal({ codigo, nome, t, forte, onClick, aberto }) {
-  const ef = eficiencia(t.agregado, t.pago, t.contas)
   const w = forte ? 600 : 500
   return (
     <Linha destaque onClick={onClick}>
@@ -42,13 +81,8 @@ function LinhaTotal({ codigo, nome, t, forte, onClick, aberto }) {
       <div style={{ ...dir, fontWeight: w, color: PLAN }}>{fmtMoeda(t.agregado)}</div>
       <div style={{ ...dir, fontWeight: w }}>{fmtMoeda(t.pago)}</div>
       <div style={{ ...dir, fontWeight: w, color: t.contas > 0 ? AMBAR : 'var(--text2)' }}>{fmtMoeda(t.contas)}</div>
-      <div
-        style={{ ...dir, fontWeight: w, color: ef == null ? 'var(--text2)' : ef < 1 ? VERMELHO : VERDE }}
-        title="Valor agregado ÷ (pago + a pagar)"
-      >
-        {fmtEf(ef)}
-      </div>
-      <div style={{ ...dir, fontWeight: w, color: t.aPagar > 0 ? AMBAR : 'var(--text2)' }}>{fmtMoeda(t.aPagar)}</div>
+      <Estouro agregado={t.agregado} pago={t.pago} aPagar={t.contas} peso={w} />
+      <Saldo orcado={t.custo} pago={t.pago} aPagar={t.contas} peso={w} />
     </Linha>
   )
 }
@@ -303,6 +337,10 @@ export default function ValorAgregado() {
   const naoAchados = (dados.consistencia && dados.consistencia.agregado_pares_nao_encontrados) || []
   const somaB = m.parcela_b.curva
   const custoA = m.parcela_a.itens.reduce((t, i) => t + i.custo_total, 0)
+  const orcadoPorCodigo = {}
+  m.parcela_a.itens.forEach((i) => {
+    orcadoPorCodigo[i.cod_eap] = (orcadoPorCodigo[i.cod_eap] || 0) + i.custo_total
+  })
 
   // Recolher: grupos e pavimentos do grupo 3. Com busca, tudo aparece aberto
   // para o resultado não ficar escondido num grupo recolhido.
@@ -422,7 +460,8 @@ export default function ValorAgregado() {
             Valor agregado = custo do item × % físico · <i>tempo</i>: verba mensal, linear pela obra ·{' '}
             <i>herda</i>: material sem medição, usa o % do serviço · <i>compra antecipada</i>: aço e material de
             forma comprados antes da execução, agregado = custo pago + a pagar até o orçado · <i>a pagar</i>: contas a
-            pagar do último fechamento (TOTVS) · eficiência = valor agregado ÷ (pago + a pagar)
+            pagar do último fechamento (TOTVS) · estouro / economia = (pago + a pagar) − valor agregado · saldo da
+            verba = orçado − pago − a pagar
             {efeitoRegras != null && Math.abs(efeitoRegras) > 1
               ? ` · regras mudam ${fmtMoeda(efeitoRegras)} em relação à view do banco`
               : ''}
@@ -439,8 +478,10 @@ export default function ValorAgregado() {
           <div style={dir}>Valor agregado</div>
           <div style={dir}>Pago</div>
           <div style={dir} title="Contas a pagar do último fechamento (TOTVS), a mesma base do IPC">A pagar</div>
-          <div style={dir} title="Valor agregado ÷ (pago + a pagar)">Efic.</div>
-          <div style={dir} title="Executado ainda não pago (estimativa: valor agregado − pago)">Não pago</div>
+          <div style={dir} title="(Pago + a pagar) − valor agregado. Positivo = estouro (vermelho), negativo = economia (verde); o % é sobre o valor agregado">
+            Estouro / economia
+          </div>
+          <div style={dir} title="Orçado − pago − a pagar. Vermelho: verba estourada">Saldo da verba</div>
         </Linha>
 
         {grupos.map((g) => (
@@ -513,7 +554,6 @@ export default function ValorAgregado() {
                       const primeira = s.itens.findIndex((x) => x.cod_eap === i.cod_eap) === k
                       if (!pc || !primeira) return (<><div /><div /><div /><div /></>)
                       const estouro = pc.pago > pc.agregado && pc.agregado > 0
-                      const ef = eficiencia(pc.agregado, pc.pago, pc.a_pagar || 0)
                       return (
                         <>
                           <div style={{ ...dir, color: estouro ? VERMELHO : 'var(--text)' }} title={estouro ? 'Pago acima do executado' : ''}>
@@ -522,15 +562,8 @@ export default function ValorAgregado() {
                           <div style={{ ...dir, color: pc.a_pagar > 0 ? AMBAR : 'var(--text2)' }}>
                             {pc.a_pagar > 0 ? fmtMoeda(pc.a_pagar) : '—'}
                           </div>
-                          <div
-                            style={{ ...dir, color: ef == null ? 'var(--text2)' : ef < 1 ? VERMELHO : VERDE }}
-                            title={ef == null ? '' : `${fmtMoeda(pc.agregado)} ÷ (${fmtMoeda(pc.pago)} + ${fmtMoeda(pc.a_pagar || 0)})`}
-                          >
-                            {fmtEf(ef)}
-                          </div>
-                          <div style={{ ...dir, color: pc.encerrado ? VERDE : pc.aguardando > 0 ? AMBAR : 'var(--text2)' }}>
-                            {pc.encerrado ? 'encerrado' : fmtMoeda(pc.aguardando)}
-                          </div>
+                          <Estouro agregado={pc.agregado} pago={pc.pago} aPagar={pc.a_pagar || 0} />
+                          <Saldo orcado={orcadoPorCodigo[i.cod_eap]} pago={pc.pago} aPagar={pc.a_pagar || 0} />
                         </>
                       )
                     })()}
@@ -555,15 +588,14 @@ export default function ValorAgregado() {
             agregado: m.parcela_a.soma,
             pago: Object.values(m.parcela_a.por_codigo || {}).reduce((t, x) => t + x.pago, 0),
             contas: Object.values(m.parcela_a.por_codigo || {}).reduce((t, x) => t + (x.a_pagar || 0), 0),
-            aPagar: m.parcela_a.aguardando_pagamento,
           }}
         />
         <div style={{ font: "500 11px 'IBM Plex Sans'", color: 'var(--text2)', marginTop: 10, lineHeight: 1.6 }}>
           <b>A pagar</b> = contas a pagar do último fechamento (relatório do TOTVS), a mesma base do IPC.{' '}
-          <b>Não pago</b> = estimativa do executado ainda não pago (valor agregado − pago: boleto a vencer, parcela,
-          medição do empreiteiro). No saldo, item em aberto entra pelo menor entre executado e pago: mostra estouro,
-          mas não economia. Quando o item estiver quitado, marque <code>custo_encerrado = true</code> no orçamento para
-          o saldo usar o executado cheio. Pago em vermelho: pago acima do executado.
+          <b>Estouro / economia</b> = (pago + a pagar) − valor agregado: positivo (vermelho) custou mais que o orçado
+          pelo que foi executado, negativo (verde) custou menos; o % é sobre o valor agregado e a eficiência aparece
+          ao passar o mouse. <b>Saldo da verba</b> = orçado − pago − a pagar; em vermelho, verba estourada. Pago em
+          vermelho: pago acima do executado.
         </div>
       </div>
 

@@ -31,7 +31,7 @@ const VERDE = '#7fb08a'
 const VERMELHO = '#c77b74'
 const AMBAR = '#c9a45c'
 // Painel de custo direto por grupo: nº, nome, orçado, agregado, custo, eficiência, seta
-const GRUPO_COLS = '38px minmax(0,1fr) 120px 140px 190px 150px 28px'
+const GRUPO_COLS = '38px minmax(0,1fr) 120px 140px 190px 170px 28px'
 
 const FIN_PLAN = '#5f8a6d'
 const FIN_REAL = '#7fb08a'
@@ -766,7 +766,8 @@ export default function Semanal() {
           </div>
           <div style={{ fontSize: 11, color: '#8b919c', margin: '-6px 0 10px' }}>
             Valor agregado pela mesma regra do card (inclusive compra antecipada) · custo = pago + a pagar (base do
-            IPC) · eficiência = valor agregado ÷ custo: acima de 1,00 custou menos que o orçado pelo que foi executado
+            IPC) · estouro / economia = custo − valor agregado: positivo (vermelho) custou mais que o orçado pelo que foi
+            executado, negativo (verde) custou menos; o % é sobre o valor agregado
           </div>
           {carregandoGrupos && <div className="loading">Somando os lançamentos da semana...</div>}
           <div
@@ -788,7 +789,7 @@ export default function Semanal() {
             <span style={{ textAlign: 'right' }}>Orçado</span>
             <span style={{ textAlign: 'right' }}>Valor agregado</span>
             <span style={{ textAlign: 'right' }}>Custo (pago + a pagar)</span>
-            <span style={{ textAlign: 'right' }}>Eficiência</span>
+            <span style={{ textAlign: 'right' }}>Estouro / economia</span>
             <span />
           </div>
           {(abertura || []).map((g) => {
@@ -890,10 +891,10 @@ export default function Semanal() {
                               % do orçado
                             </th>
                             <th
-                              style={{ textAlign: 'right', width: 80 }}
-                              title="Valor agregado ÷ (pago + a pagar). Acima de 1,00: custou menos que o orçado pelo que foi executado"
+                              style={{ textAlign: 'right', width: 120 }}
+                              title="(Pago + a pagar) − valor agregado. Positivo = estouro (vermelho), negativo = economia (verde); o % é sobre o valor agregado"
                             >
-                              Eficiência
+                              Estouro / economia
                             </th>
                             <th style={{ textAlign: 'right', width: 80 }}>Período</th>
                           </tr>
@@ -954,20 +955,7 @@ export default function Semanal() {
                           >
                             {i.perc_orcado == null ? '—' : fmtPerc(i.perc_orcado)}
                           </td>
-                          <td
-                            style={{
-                              textAlign: 'right',
-                              fontFamily: 'var(--mono)',
-                              color: i.eficiencia == null ? '#8b919c' : i.eficiencia < 1 ? VERMELHO : VERDE,
-                            }}
-                            title={
-                              i.eficiencia == null
-                                ? ''
-                                : `Valor agregado ÷ (pago + a pagar)\n= ${fmtMoeda(i.agregado)} ÷ (${fmtMoeda(i.pago)} + ${fmtMoeda(i.a_pagar || 0)})`
-                            }
-                          >
-                            {fmtIdx(i.eficiencia)}
-                          </td>
+                          <CelulaEstouro agregado={i.agregado} pago={i.pago} aPagar={i.a_pagar} />
                           <td
                             style={{ textAlign: 'right', fontFamily: 'var(--mono)', fontSize: 10, color: '#8b919c' }}
                           >
@@ -1028,10 +1016,18 @@ export default function Semanal() {
               <div style={{ paddingTop: 14, fontSize: 12, color: '#8b919c', lineHeight: 1.7 }}>
                 <div>
                   Soma dos grupos: orçado {fmtMoeda(pg.orcado)} · valor agregado {fmtMoeda(pg.agregado)} · pago{' '}
-                  {fmtMoeda(pg.pago)} · a pagar {fmtMoeda(pg.a_pagar)} · eficiência{' '}
-                  <b style={{ color: pg.eficiencia == null ? undefined : pg.eficiencia < 1 ? VERMELHO : VERDE }}>
-                    {fmtIdx(pg.eficiencia)}
-                  </b>
+                  {fmtMoeda(pg.pago)} · a pagar {fmtMoeda(pg.a_pagar)} ·{' '}
+                  {(() => {
+                    const e = estouroDe(pg.agregado, (pg.pago || 0) + (pg.a_pagar || 0))
+                    return (
+                      <span title={tituloEstouro(e, pg.agregado, pg.pago, pg.a_pagar)}>
+                        {e != null && e.rs > 0.005 ? 'estouro' : 'economia'}{' '}
+                        <b style={{ color: corEstouro(e) }}>
+                          {e == null ? '—' : `${fmtEstouroRs(e.rs)} (${fmtEstouroPerc(e.perc)})`}
+                        </b>
+                      </span>
+                    )
+                  })()}
                 </div>
                 <div style={{ color: ok(pg.dif_agregado) && ok(pg.dif_custo) ? '#8b919c' : VERMELHO }}>
                   Card de valor agregado: {fmtMoeda(pg.card_agregado)}
@@ -1043,7 +1039,7 @@ export default function Semanal() {
                 {im && im.ipc != null && (
                   <div>
                     {im.semana_de_fechamento
-                      ? `Semana de fechamento: a eficiência total é o IPC de ${mesIpc} (${fmtIdx(im.ipc)}, corte ${dm(im.data_corte)}).`
+                      ? `Semana de fechamento: a soma dos grupos é a base do IPC de ${mesIpc} (${fmtIdx(im.ipc)}, corte ${dm(im.data_corte)}).`
                       : `IPC de ${mesIpc} (corte ${dm(im.data_corte)}): ${fmtIdx(im.ipc)}. O painel está na semana selecionada; ele dá o IPC do mês na semana de fechamento.`}
                   </div>
                 )}
@@ -1738,8 +1734,42 @@ export default function Semanal() {
 }
 
 /* ─── PAINEL DE CUSTO DIRETO POR GRUPO ───────────────────────── */
-// Orçado, valor agregado, custo (pago + a pagar) e eficiência de um grupo ou
-// pavimento: quatro células do grid GRUPO_COLS.
+// Estouro / economia = custo (pago + a pagar) − valor agregado. Positivo =
+// estouro (vermelho), negativo = economia (verde); o % é sobre o valor
+// agregado. Sem valor agregado e sem custo: null ("—"). A eficiência
+// (agregado ÷ custo) fica só no texto ao passar o mouse.
+function estouroDe(agregado, custo) {
+  const ag = agregado || 0
+  const c = custo || 0
+  if (ag <= 0.005 && c <= 0.005) return null
+  const rs = c - ag
+  return { rs, perc: ag > 0.005 ? (rs / ag) * 100 : null, ef: ag > 0.005 && c > 0.005 ? ag / c : null }
+}
+const corEstouro = (e) => (e == null || Math.abs(e.rs) < 0.005 ? '#8b919c' : e.rs > 0 ? VERMELHO : VERDE)
+const fmtEstouroRs = (rs) => (rs > 0.005 ? '+' : '') + fmtMoeda(Math.abs(rs) < 0.005 ? 0 : rs)
+const fmtEstouroPerc = (p) => (p == null ? '—' : `${p > 0.05 ? '+' : ''}${p.toFixed(1).replace('.', ',')}%`)
+const tituloEstouro = (e, agregado, pago, aPagar) =>
+  e == null
+    ? 'Sem valor agregado e sem custo'
+    : `(Pago + a pagar) − valor agregado\n= (${fmtMoeda(pago || 0)} + ${fmtMoeda(aPagar || 0)}) − ${fmtMoeda(agregado || 0)}` +
+      `\nEficiência (valor agregado ÷ custo): ${e.ef == null ? '—' : fmtIdx(e.ef)}`
+
+// Célula da tabela de itens: R$ em cima, % embaixo
+function CelulaEstouro({ agregado, pago, aPagar }) {
+  const e = estouroDe(agregado, (pago || 0) + (aPagar || 0))
+  return (
+    <td
+      style={{ textAlign: 'right', fontFamily: 'var(--mono)', color: corEstouro(e) }}
+      title={tituloEstouro(e, agregado, pago, aPagar)}
+    >
+      {e == null ? '—' : fmtEstouroRs(e.rs)}
+      {e != null && <span style={{ display: 'block', fontSize: 10 }}>{fmtEstouroPerc(e.perc)}</span>}
+    </td>
+  )
+}
+
+// Orçado, valor agregado, custo (pago + a pagar) e estouro / economia de um
+// grupo ou pavimento: quatro células do grid GRUPO_COLS.
 function ColunasValorCusto({ v, compacto }) {
   const fs = compacto ? 12 : 13
   const sub = { fontSize: 10, color: '#8b919c' }
@@ -1758,28 +1788,40 @@ function ColunasValorCusto({ v, compacto }) {
         {v.custo > 0 && <div style={sub}>pago {fmtMoeda(v.pago || 0)}</div>}
         {v.a_pagar > 0 && <div style={{ ...sub, color: AMBAR }}>a pagar {fmtMoeda(v.a_pagar)}</div>}
       </div>
-      <BarraEficiencia ef={v.eficiencia} />
+      <BarraEstouro v={v} fs={fs} />
     </>
   )
 }
 
-// Eficiência com barra: escala de 0 a 2, marca em 1,00. Verde de 1 para
-// cima, vermelho abaixo.
-function BarraEficiencia({ ef }) {
-  const cor = ef == null ? '#8b919c' : ef < 1 ? VERMELHO : VERDE
-  const largura = ef == null ? 0 : Math.min(Math.max(ef, 0), 2) * 50
+// Estouro / economia com barra divergente: marca no zero, economia (verde)
+// para a esquerda, estouro (vermelho) para a direita; escala de ±50% do
+// valor agregado (estouro sem valor agregado enche a barra).
+function BarraEstouro({ v, fs }) {
+  const e = estouroDe(v.agregado, (v.pago || 0) + (v.a_pagar || 0))
+  const cor = corEstouro(e)
+  const frac = e == null ? 0 : e.perc == null ? 1 : Math.min(Math.abs(e.perc), 50) / 50
+  const estouro = e != null && e.rs > 0
   return (
-    <div
-      style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}
-      title={ef == null ? 'Sem valor agregado ou sem custo' : 'Valor agregado ÷ (pago + a pagar) · a marca é 1,00'}
-    >
-      <span style={{ fontFamily: 'var(--mono)', fontSize: 12, color: cor, minWidth: 42, textAlign: 'right' }}>
-        {fmtIdx(ef)}
-      </span>
-      <span style={{ position: 'relative', width: 70, height: 6, background: 'var(--bg3)', borderRadius: 3, overflow: 'hidden' }}>
-        <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${largura}%`, background: cor }} />
-        <span style={{ position: 'absolute', left: '50%', top: -1, bottom: -1, width: 1, background: 'var(--text2)' }} />
-      </span>
+    <div style={{ textAlign: 'right', fontFamily: 'var(--mono)' }} title={tituloEstouro(e, v.agregado, v.pago, v.a_pagar)}>
+      <div style={{ fontSize: fs, color: cor }}>{e == null ? '—' : fmtEstouroRs(e.rs)}</div>
+      {e != null && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end', marginTop: 3 }}>
+          <span style={{ fontSize: 10, color: cor }}>{fmtEstouroPerc(e.perc)}</span>
+          <span style={{ position: 'relative', width: 70, height: 6, background: 'var(--bg3)', borderRadius: 3, overflow: 'hidden' }}>
+            <span
+              style={{
+                position: 'absolute',
+                top: 0,
+                bottom: 0,
+                [estouro ? 'left' : 'right']: '50%',
+                width: `${frac * 50}%`,
+                background: cor,
+              }}
+            />
+            <span style={{ position: 'absolute', left: '50%', top: -1, bottom: -1, width: 1, background: 'var(--text2)' }} />
+          </span>
+        </div>
+      )}
     </div>
   )
 }
@@ -1795,18 +1837,21 @@ function CurvaS({ curva, semana, ultMed, onPick }) {
   const [hover, setHover] = useState(null)
   const [ocultas, setOcultas] = useState({})
 
+  // Realizado (físico, valor agregado e custo) termina na semana selecionada;
+  // o planejado vai até o fim da obra.
+  const ate = (c) => c.semana <= semana
   // Valor agregado na regua de custo, igual ao card, so ate a ultima medicao.
   const va = (c) =>
-    c.semana > ultMed || c.bcwp_a_custo == null ? null : c.bcwp_a_custo + (c.bcwp_b || 0) + (c.bcwp_c || 0)
+    !ate(c) || c.semana > ultMed || c.bcwp_a_custo == null ? null : c.bcwp_a_custo + (c.bcwp_b || 0) + (c.bcwp_c || 0)
   const pontos = curva.map((c) => ({
     semana: c.semana,
     data_fim: c.data_fim,
     // Físico sempre em Hh (horas executadas ÷ horas orçadas)
     fp: c.avanco_plan_hh,
-    fr: c.medido ? c.avanco_real_hh : null,
+    fr: c.medido && ate(c) ? c.avanco_real_hh : null,
     vp: c.bcws,
     va: va(c),
-    cr: c.medido ? c.acwp : null,
+    cr: c.medido && ate(c) ? c.acwp : null,
   }))
 
   const maxFin = Math.max(...pontos.map((m) => Math.max(m.vp || 0, m.va || 0, m.cr || 0)), 1)
@@ -1990,8 +2035,9 @@ function CurvaS({ curva, semana, ultMed, onPick }) {
       </div>
 
       <div className="kpi-sub" style={{ marginTop: 12, textAlign: 'center' }}>
-        Eixo esquerdo: avanço físico. Eixo direito: custo direto acumulado. O valor agregado vai até a última
-        medição (S{ultMed}); a distância entre ele e o custo realizado é o saldo do card.
+        Eixo esquerdo: avanço físico. Eixo direito: custo direto acumulado. As linhas de realizado terminam na
+        semana selecionada (S{semana}); o planejado vai até o fim da obra. A distância entre o valor agregado e o
+        custo realizado é o saldo do card.
       </div>
     </div>
   )
