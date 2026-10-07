@@ -31,7 +31,7 @@ const VERDE = '#7fb08a'
 const VERMELHO = '#c77b74'
 const AMBAR = '#c9a45c'
 // Painel de custo direto por grupo: nº, nome, orçado, agregado, custo, estouro / economia, seta
-const GRUPO_COLS = '38px minmax(0,1fr) 120px 140px 190px 170px 28px'
+const GRUPO_COLS = '38px minmax(0,1fr) 120px 140px 190px 84px 170px 28px'
 
 const FIN_PLAN = '#5f8a6d'
 const FIN_REAL = '#7fb08a'
@@ -810,6 +810,7 @@ export default function Semanal() {
             <span style={{ textAlign: 'right' }}>Orçado</span>
             <span style={{ textAlign: 'right' }}>Valor agregado</span>
             <span style={{ textAlign: 'right' }}>Custo (pago + a pagar)</span>
+            <span style={{ textAlign: 'right' }} title="(Pago + a pagar) ÷ orçado">% do orçado</span>
             <span style={{ textAlign: 'right' }}>Estouro / economia</span>
             <span />
           </div>
@@ -921,7 +922,7 @@ export default function Semanal() {
                             </th>
                             <th
                               style={{ textAlign: 'right', width: 80 }}
-                              title="Só nas linhas de material (aço e material de forma): (pago + a pagar) ÷ orçado da linha"
+                              title="(Pago + a pagar) ÷ orçado da linha. Vermelho acima de 100%"
                             >
                               % do orçado
                             </th>
@@ -975,22 +976,14 @@ export default function Semanal() {
                           <td style={{ textAlign: 'right', fontFamily: 'var(--mono)', color: i.a_pagar > 0 ? AMBAR : undefined }}>
                             {i.a_pagar > 0 ? fmtMoeda(i.a_pagar) : '—'}
                           </td>
-                          <td
-                            style={{
-                              textAlign: 'right',
-                              fontFamily: 'var(--mono)',
-                              color: i.perc_orcado == null ? '#8b919c' : i.perc_orcado > 100 ? VERMELHO : undefined,
-                            }}
-                            title={
-                              i.perc_orcado == null
-                                ? ''
-                                : `(pago + a pagar) ÷ orçado
-= (${fmtMoeda(i.pago)} + ${fmtMoeda(i.a_pagar || 0)}) ÷ ${fmtMoeda(i.planejado_total)}`
-                            }
-                          >
-                            {i.perc_orcado == null ? '—' : fmtPerc(i.perc_orcado)}
-                          </td>
-                          <CelulaEstouro agregado={i.agregado} pago={i.pago} aPagar={i.a_pagar} />
+                          <CelulaPercOrcado pago={i.pago} aPagar={i.a_pagar} orcado={i.planejado_total} />
+                          <CelulaEstouro
+                            agregado={i.agregado}
+                            pago={i.pago}
+                            aPagar={i.a_pagar}
+                            antecipada={i.material_comprado}
+                            orcado={i.planejado_total}
+                          />
                           <td
                             style={{ textAlign: 'right', fontFamily: 'var(--mono)', fontSize: 10, color: '#8b919c' }}
                           >
@@ -1857,9 +1850,46 @@ const tituloEstouro = (e, agregado, pago, aPagar) =>
     : `(Pago + a pagar) − valor agregado\n= (${fmtMoeda(pago || 0)} + ${fmtMoeda(aPagar || 0)}) − ${fmtMoeda(agregado || 0)}` +
       `\nEficiência (valor agregado ÷ custo): ${e.ef == null ? '—' : fmtIdx(e.ef)}`
 
-// Célula da tabela de itens: R$ em cima, % embaixo
-function CelulaEstouro({ agregado, pago, aPagar }) {
+// % do orçado = (pago + a pagar) ÷ orçado, em todas as linhas, grupos e
+// pavimentos (decisão out/26). Sem custo: "—"; vermelho acima de 100%.
+const percDoOrcado = (pago, aPagar, orcado) => {
+  const c = (pago || 0) + (aPagar || 0)
+  if (c <= 0.005) return null
+  return orcado > 0.005 ? (c / orcado) * 100 : Infinity
+}
+const fmtPercOrcado = (v) => (v == null ? '—' : v === Infinity ? 'sem verba' : fmtPerc(v))
+const tituloPercOrcado = (pago, aPagar, orcado) =>
+  `(Pago + a pagar) ÷ orçado
+= (${fmtMoeda(pago || 0)} + ${fmtMoeda(aPagar || 0)}) ÷ ${fmtMoeda(orcado || 0)}`
+function CelulaPercOrcado({ pago, aPagar, orcado }) {
+  const v = percDoOrcado(pago, aPagar, orcado)
+  return (
+    <td
+      style={{ textAlign: 'right', fontFamily: 'var(--mono)', color: v == null ? '#8b919c' : v > 100 ? VERMELHO : undefined }}
+      title={v == null ? 'Sem custo' : tituloPercOrcado(pago, aPagar, orcado)}
+    >
+      {fmtPercOrcado(v)}
+    </td>
+  )
+}
+
+// Célula da tabela de itens: R$ em cima, % embaixo. Compra antecipada ainda
+// dentro da verba (agregado = custo): "neutro · XX% da verba"; passando de
+// 100% da verba, o estouro normal.
+function CelulaEstouro({ agregado, pago, aPagar, antecipada, orcado }) {
   const e = estouroDe(agregado, (pago || 0) + (aPagar || 0))
+  const pv = percDoOrcado(pago, aPagar, orcado)
+  if (antecipada && e != null && pv != null && pv <= 100 && Math.abs(e.rs) < 0.005)
+    return (
+      <td
+        style={{ textAlign: 'right', fontFamily: 'var(--mono)', color: '#8b919c' }}
+        title={`Compra antecipada dentro da verba: o valor agregado segue o custo, sem estouro nem economia
+${tituloPercOrcado(pago, aPagar, orcado)}`}
+      >
+        neutro
+        <span style={{ display: 'block', fontSize: 10 }}>{fmtPerc(pv)} da verba</span>
+      </td>
+    )
   return (
     <td
       style={{ textAlign: 'right', fontFamily: 'var(--mono)', color: corEstouro(e) }}
@@ -1871,8 +1901,8 @@ function CelulaEstouro({ agregado, pago, aPagar }) {
   )
 }
 
-// Orçado, valor agregado, custo (pago + a pagar) e estouro / economia de um
-// grupo ou pavimento: quatro células do grid GRUPO_COLS.
+// Orçado, valor agregado, custo (pago + a pagar), % do orçado e estouro /
+// economia de um grupo ou pavimento: cinco células do grid GRUPO_COLS.
 function ColunasValorCusto({ v, compacto }) {
   const fs = compacto ? 12 : 13
   const sub = { fontSize: 10, color: '#8b919c' }
@@ -1891,6 +1921,17 @@ function ColunasValorCusto({ v, compacto }) {
         {v.custo > 0 && <div style={sub}>pago {fmtMoeda(v.pago || 0)}</div>}
         {v.a_pagar > 0 && <div style={{ ...sub, color: AMBAR }}>a pagar {fmtMoeda(v.a_pagar)}</div>}
       </div>
+      {(() => {
+        const pv = percDoOrcado(v.pago, v.a_pagar, v.orcado)
+        return (
+          <div
+            style={{ textAlign: 'right', fontFamily: 'var(--mono)', fontSize: fs, color: pv == null ? '#8b919c' : pv > 100 ? VERMELHO : undefined }}
+            title={pv == null ? 'Sem custo' : tituloPercOrcado(v.pago, v.a_pagar, v.orcado)}
+          >
+            {fmtPercOrcado(pv)}
+          </div>
+        )
+      })()}
       <BarraEstouro v={v} fs={fs} />
     </>
   )

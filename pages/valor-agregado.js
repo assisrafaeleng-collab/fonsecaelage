@@ -17,8 +17,8 @@ const fmtP = (v) => (v == null ? '—' : `${Number(v).toFixed(1).replace('.', ',
 const dmy = (s) => (s ? `${s.slice(8, 10)}/${s.slice(5, 7)}/${s.slice(0, 4)}` : '')
 
 // Código, serviço, pavimento, orçado, % físico, medido, valor agregado, pago,
-// a pagar (TOTVS), estouro / economia, saldo da verba
-const COLS = '62px minmax(0,1fr) 44px 100px 54px 88px 106px 100px 96px 104px 112px'
+// a pagar (TOTVS), % do orçado, estouro / economia, saldo da verba
+const COLS = '62px minmax(0,1fr) 44px 100px 54px 88px 106px 100px 96px 62px 104px 112px'
 
 const fmtEf = (v) => (v == null ? '—' : v.toFixed(3).replace('.', ','))
 const eficiencia = (agregado, pago, aPagar) => (agregado > 0 && pago + aPagar > 0 ? agregado / (pago + aPagar) : null)
@@ -26,7 +26,31 @@ const eficiencia = (agregado, pago, aPagar) => (agregado > 0 && pago + aPagar > 
 // Estouro / economia = (pago + a pagar) − valor agregado. Positivo = estouro
 // (vermelho), negativo = economia (verde); o % é sobre o valor agregado. Sem
 // valor agregado e sem custo: "—". A eficiência fica só no texto do mouse.
-function Estouro({ agregado, pago, aPagar, peso }) {
+// % do orçado = (pago + a pagar) ÷ orçado, em todas as linhas, grupos e
+// pavimentos (decisão out/26). Sem custo: "—"; vermelho acima de 100%.
+const percDoOrcado = (pago, aPagar, orcado) => {
+  const c = (pago || 0) + (aPagar || 0)
+  if (c <= 0.005) return null
+  return orcado > 0.005 ? (c / orcado) * 100 : Infinity
+}
+const tituloPercOrcado = (pago, aPagar, orcado) =>
+  `(Pago + a pagar) ÷ orçado
+= (${fmtMoeda(pago || 0)} + ${fmtMoeda(aPagar || 0)}) ÷ ${fmtMoeda(orcado || 0)}`
+function PercOrcado({ orcado, pago, aPagar, peso }) {
+  const v = percDoOrcado(pago, aPagar, orcado)
+  return (
+    <div
+      style={{ ...dir, fontWeight: peso, color: v == null ? 'var(--text2)' : v > 100 ? VERMELHO : 'var(--text)' }}
+      title={v == null ? 'Sem custo' : tituloPercOrcado(pago, aPagar, orcado)}
+    >
+      {v == null ? '—' : v === Infinity ? 'sem verba' : fmtP(v)}
+    </div>
+  )
+}
+
+// antecipada: compra antecipada ainda dentro da verba (agregado = custo)
+// mostra "neutro · XX% da verba"; passando de 100%, o estouro normal.
+function Estouro({ agregado, pago, aPagar, peso, antecipada, orcado }) {
   const ag = agregado || 0
   const custo = (pago || 0) + (aPagar || 0)
   if (ag <= 0.005 && custo <= 0.005) return <div style={{ ...dir, color: 'var(--text2)' }}>—</div>
@@ -34,6 +58,18 @@ function Estouro({ agregado, pago, aPagar, peso }) {
   const zero = Math.abs(rs) < 0.005
   const perc = ag > 0.005 ? (rs / ag) * 100 : null
   const ef = eficiencia(ag, pago || 0, aPagar || 0)
+  const pv = percDoOrcado(pago, aPagar, orcado)
+  if (antecipada && zero && pv != null && pv <= 100)
+    return (
+      <div
+        style={{ ...dir, fontWeight: peso, color: 'var(--text2)' }}
+        title={`Compra antecipada dentro da verba: o valor agregado segue o custo, sem estouro nem economia
+${tituloPercOrcado(pago, aPagar, orcado)}`}
+      >
+        neutro
+        <div style={{ fontSize: 10, fontWeight: 500 }}>{fmtP(pv)} da verba</div>
+      </div>
+    )
   return (
     <div
       style={{ ...dir, fontWeight: peso, color: zero ? 'var(--text2)' : rs > 0 ? VERMELHO : VERDE }}
@@ -81,6 +117,7 @@ function LinhaTotal({ codigo, nome, t, forte, onClick, aberto }) {
       <div style={{ ...dir, fontWeight: w, color: PLAN }}>{fmtMoeda(t.agregado)}</div>
       <div style={{ ...dir, fontWeight: w }}>{fmtMoeda(t.pago)}</div>
       <div style={{ ...dir, fontWeight: w, color: t.contas > 0 ? AMBAR : 'var(--text2)' }}>{fmtMoeda(t.contas)}</div>
+      <PercOrcado orcado={t.custo} pago={t.pago} aPagar={t.contas} peso={w} />
       <Estouro agregado={t.agregado} pago={t.pago} aPagar={t.contas} peso={w} />
       <Saldo orcado={t.custo} pago={t.pago} aPagar={t.contas} peso={w} />
     </Linha>
@@ -498,7 +535,7 @@ export default function ValorAgregado() {
             <i>herda</i>: material sem medição, usa o % do serviço · <i>compra antecipada</i>: aço e material de
             forma comprados antes da execução, agregado = custo pago + a pagar até o orçado · <i>a pagar</i>: contas a
             pagar do último fechamento (TOTVS) · estouro / economia = (pago + a pagar) − valor agregado · saldo da
-            verba = orçado − pago − a pagar
+            verba = orçado − pago − a pagar · % orç. = (pago + a pagar) ÷ orçado
             {efeitoRegras != null && Math.abs(efeitoRegras) > 1
               ? ` · regras mudam ${fmtMoeda(efeitoRegras)} em relação à view do banco`
               : ''}
@@ -515,6 +552,7 @@ export default function ValorAgregado() {
           <div style={dir}>Valor agregado</div>
           <div style={dir}>Pago</div>
           <div style={dir} title="Contas a pagar do último fechamento (TOTVS), a mesma base do IPC">A pagar</div>
+          <div style={dir} title="(Pago + a pagar) ÷ orçado. Vermelho acima de 100%">% orç.</div>
           <div style={dir} title="(Pago + a pagar) − valor agregado. Positivo = estouro (vermelho), negativo = economia (verde); o % é sobre o valor agregado">
             Estouro / economia
           </div>
@@ -576,14 +614,6 @@ export default function ValorAgregado() {
                     </div>
                     <div style={{ ...dir, color: i.agregado > 0 ? PLAN : 'var(--text2)' }}>
                       {fmtMoeda(i.agregado)}
-                      {i.material && i.perc_orcado != null && (
-                        <div
-                          style={{ fontSize: 10, color: i.perc_orcado > 100 ? VERMELHO : 'var(--text2)' }}
-                          title="(pago + a pagar) ÷ orçado da linha"
-                        >
-                          {fmtP(i.perc_orcado)} do orçado
-                        </div>
-                      )}
                     </div>
                     {(() => {
                       // Pago e a pagar da linha: o código repetido por pavimento reparte pelo orçado
@@ -596,7 +626,14 @@ export default function ValorAgregado() {
                           <div style={{ ...dir, color: i.contas > 0.005 ? AMBAR : 'var(--text2)' }}>
                             {i.contas > 0.005 ? fmtMoeda(i.contas) : '—'}
                           </div>
-                          <Estouro agregado={i.agregado} pago={i.pago} aPagar={i.contas} />
+                          <PercOrcado orcado={i.custo_total} pago={i.pago} aPagar={i.contas} />
+                          <Estouro
+                            agregado={i.agregado}
+                            pago={i.pago}
+                            aPagar={i.contas}
+                            antecipada={i.material_comprado}
+                            orcado={i.custo_total}
+                          />
                           <Saldo orcado={i.custo_total} pago={i.pago} aPagar={i.contas} />
                         </>
                       )
