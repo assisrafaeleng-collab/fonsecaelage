@@ -29,6 +29,9 @@ const REAL = '#f2f4f7'
 const PILL = { background: 'rgba(255,255,255,0.07)', padding: '3px 8px', borderRadius: 6 }
 const VERDE = '#7fb08a'
 const VERMELHO = '#c77b74'
+const AMBAR = '#c9a45c'
+// Painel de custo direto por grupo: nº, nome, orçado, agregado, custo, eficiência, seta
+const GRUPO_COLS = '38px minmax(0,1fr) 120px 140px 190px 150px 28px'
 
 const FIN_PLAN = '#5f8a6d'
 const FIN_REAL = '#7fb08a'
@@ -759,21 +762,46 @@ export default function Semanal() {
       {abrirGrupos && (
         <div className="card">
           <div className="card-title">
-            Custo direto por grupo — acumulado até S{String(p.semana).padStart(2, '0')}
+            Custo direto por grupo — valor agregado × custo até S{String(p.semana).padStart(2, '0')}
+          </div>
+          <div style={{ fontSize: 11, color: '#8b919c', margin: '-6px 0 10px' }}>
+            Valor agregado pela mesma regra do card (inclusive compra antecipada) · custo = pago + a pagar (base do
+            IPC) · eficiência = valor agregado ÷ custo: acima de 1,00 custou menos que o orçado pelo que foi executado
           </div>
           {carregandoGrupos && <div className="loading">Somando os lançamentos da semana...</div>}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: GRUPO_COLS,
+              gap: 12,
+              padding: '0 4px 6px',
+              fontFamily: 'var(--mono)',
+              fontSize: 10,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              color: '#8b919c',
+              borderBottom: '1px solid var(--border)',
+            }}
+          >
+            <span />
+            <span>Grupo</span>
+            <span style={{ textAlign: 'right' }}>Orçado</span>
+            <span style={{ textAlign: 'right' }}>Valor agregado</span>
+            <span style={{ textAlign: 'right' }}>Custo (pago + a pagar)</span>
+            <span style={{ textAlign: 'right' }}>Eficiência</span>
+            <span />
+          </div>
           {(abertura || []).map((g) => {
-            const desvio = g.planejado > 0 ? ((g.realizado - g.planejado) / g.planejado) * 100 : null
-            const acima = desvio != null && desvio > 0
-            const largura = g.planejado > 0 ? Math.min(100, (g.realizado / g.planejado) * 100) : 0
             const aberto = grupoAberto === g.grupo
+            // Ritmo de gasto vs cronograma: só informação secundária
+            const ritmo = g.planejado > 0 ? `ritmo de gasto: ${fmtPerc((g.realizado / g.planejado) * 100)} do planejado` : null
             return (
               <div key={g.grupo} style={{ borderBottom: '1px solid var(--border)' }}>
                 <div
                   onClick={() => setGrupoAberto(aberto ? null : g.grupo)}
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: '38px 1fr 140px 140px 150px 28px',
+                    gridTemplateColumns: GRUPO_COLS,
                     gap: 12,
                     alignItems: 'center',
                     padding: '14px 4px',
@@ -791,79 +819,49 @@ export default function Semanal() {
                       textAlign: 'center',
                     }}
                   >
-                    {g.grupo}
+                    {g.fora_do_orcamento ? '—' : g.grupo}
                   </span>
                   <div>
                     <div style={{ fontWeight: 600, fontSize: 13 }}>{g.nome}</div>
                     <div style={{ fontSize: 11, color: '#8b919c', marginTop: 2 }}>
-                      {g.itens.length} itens · M{g.mes_inicio}–M{g.mes_fim}
+                      {g.itens.length} itens{g.fora_do_orcamento ? '' : ` · M${g.mes_inicio}–M${g.mes_fim}`}
+                      {ritmo ? ` · ${ritmo}` : ''}
                     </div>
                   </div>
-                  <div style={{ textAlign: 'right', fontFamily: 'var(--mono)' }}>
-                    <div style={{ color: PLAN }}>{fmtMoeda(g.planejado)}</div>
-                    <div style={{ fontSize: 10, color: '#8b919c' }}>planejado</div>
-                  </div>
-                  <div style={{ textAlign: 'right', fontFamily: 'var(--mono)' }}>
-                    <div>{fmtMoeda(g.realizado)}</div>
-                    <div style={{ fontSize: 10, color: '#8b919c' }}>
-                      {g.planejado > 0 ? `${fmtPerc((g.realizado / g.planejado) * 100)} do planejado` : 'realizado'}
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}>
-                    <span
-                      style={{
-                        fontFamily: 'var(--mono)',
-                        fontSize: 12,
-                        color: desvio == null ? '#8b919c' : acima ? VERMELHO : VERDE,
-                      }}
-                    >
-                      {desvio == null ? '—' : `${acima ? '▲' : '▼'} ${Math.abs(desvio).toFixed(1)}%`}
-                    </span>
-                    <span
-                      style={{
-                        width: 60,
-                        height: 4,
-                        background: 'var(--bg3)',
-                        borderRadius: 3,
-                        overflow: 'hidden',
-                      }}
-                    >
-                      <span
-                        style={{
-                          display: 'block',
-                          height: '100%',
-                          width: `${largura}%`,
-                          background: acima ? VERMELHO : VERDE,
-                        }}
-                      />
-                    </span>
-                  </div>
+                  <ColunasValorCusto v={g} />
                   <span style={{ color: '#8b919c', textAlign: 'center' }}>{aberto ? '▴' : '▾'}</span>
                 </div>
 
                 {aberto &&
                   (g.por_pavimento ? g.pavimentos || [] : [{ pavimento: null, itens: g.itens }]).map((pv) => (
-                    <div key={pv.pavimento || 'geral'}>
+                    <div key={pv.chave || pv.pavimento || 'geral'}>
                       {pv.pavimento && (
                         <div
                           style={{
-                            display: 'flex',
+                            display: 'grid',
+                            gridTemplateColumns: GRUPO_COLS,
+                            gap: 12,
                             alignItems: 'center',
-                            gap: 10,
                             padding: '8px 4px',
-                            fontFamily: 'var(--mono)',
-                            fontSize: 11,
-                            letterSpacing: '0.08em',
-                            textTransform: 'uppercase',
-                            color: PLAN,
                             borderTop: '1px solid var(--border)',
+                            background: 'var(--bg3)',
+                            borderRadius: 6,
                           }}
                         >
-                          <span>{pv.pavimento}</span>
-                          <span style={{ color: '#8b919c', textTransform: 'none', letterSpacing: 0 }}>
-                            planejado {fmtMoeda(pv.planejado)} · realizado {fmtMoeda(pv.realizado)}
-                            {pv.planejado > 0 ? ` · ${fmtPerc((pv.realizado / pv.planejado) * 100)}` : ''}
+                          <span />
+                          <span
+                            style={{
+                              fontFamily: 'var(--mono)',
+                              fontSize: 11,
+                              letterSpacing: '0.08em',
+                              textTransform: 'uppercase',
+                              color: PLAN,
+                            }}
+                          >
+                            {pv.pavimento}
                           </span>
+                          <ColunasValorCusto v={pv} compacto />
+                          <span />
                         </div>
                       )}
                       <table style={{ marginBottom: 10 }}>
@@ -871,24 +869,33 @@ export default function Semanal() {
                           <tr>
                             <th style={{ width: 70 }}>EAP</th>
                             <th>Descrição</th>
-                            <th style={{ textAlign: 'right', width: 120 }}>Orçado</th>
+                            <th style={{ textAlign: 'right', width: 110 }}>Orçado</th>
                             <th
                               style={{ textAlign: 'right', width: 120 }}
-                              title="Orçado da linha × % executado do código na semana (mesma regra do card de valor agregado)"
+                              title="Mesma regra do card de valor agregado: % executado × orçado; aço e material de forma pelo maior entre o avanço do serviço e o custo (compra antecipada); locação pelo gasto até o orçado; funcionários pelo tempo"
                             >
                               Valor agregado
                             </th>
-                            <th style={{ textAlign: 'right', width: 120 }}>Realizado</th>
+                            <th style={{ textAlign: 'right', width: 110 }}>Pago</th>
+                            <th
+                              style={{ textAlign: 'right', width: 110 }}
+                              title="Contas a pagar do último fechamento (TOTVS), a mesma base do IPC"
+                            >
+                              A pagar
+                            </th>
                             <th
                               style={{ textAlign: 'right', width: 80 }}
                               title="Só nas linhas de material (aço e material de forma): (pago + a pagar) ÷ orçado da linha"
                             >
                               % do orçado
                             </th>
-                            <th style={{ textAlign: 'right', width: 80 }} title="Valor agregado ÷ realizado. Acima de 1,00: custou menos que o orçado pelo que foi executado">
+                            <th
+                              style={{ textAlign: 'right', width: 80 }}
+                              title="Valor agregado ÷ (pago + a pagar). Acima de 1,00: custou menos que o orçado pelo que foi executado"
+                            >
                               Eficiência
                             </th>
-                            <th style={{ textAlign: 'right', width: 90 }}>Período</th>
+                            <th style={{ textAlign: 'right', width: 80 }}>Período</th>
                           </tr>
                         </thead>
                     <tbody>
@@ -914,20 +921,23 @@ export default function Semanal() {
                           </td>
                           <td
                             style={{ textAlign: 'right', fontFamily: 'var(--mono)' }}
-                            title={i.perc_executado == null ? 'Sem medição de avanço' : `${fmtPerc(i.perc_executado)} executado`}
+                            title={i.perc_executado == null ? '' : `${fmtPerc(i.perc_executado)} executado`}
                           >
                             {i.agregado > 0 ? fmtMoeda(i.agregado) : '—'}
                             {i.material_comprado && (
                               <span
                                 style={{ display: 'block', fontSize: 10, color: '#8b919c', fontFamily: 'inherit' }}
-                                title={`Material comprado antes da execução: o agregado segue o custo (pago + a pagar, até o orçado), não o avanço do serviço (${fmtMoeda(i.agregado_heranca || 0)})`}
+                                title={`Compra antecipada (material comprado antes da execução): o agregado segue o custo (pago + a pagar, até o orçado), não o avanço do serviço (${fmtMoeda(i.agregado_heranca || 0)})`}
                               >
-                                material comprado
+                                compra antecipada
                               </span>
                             )}
                           </td>
                           <td style={{ textAlign: 'right', fontFamily: 'var(--mono)' }}>
-                            {i.realizado > 0 ? fmtMoeda(i.realizado) : '—'}
+                            {i.pago > 0 ? fmtMoeda(i.pago) : '—'}
+                          </td>
+                          <td style={{ textAlign: 'right', fontFamily: 'var(--mono)', color: i.a_pagar > 0 ? AMBAR : undefined }}>
+                            {i.a_pagar > 0 ? fmtMoeda(i.a_pagar) : '—'}
                           </td>
                           <td
                             style={{
@@ -938,8 +948,8 @@ export default function Semanal() {
                             title={
                               i.perc_orcado == null
                                 ? ''
-                                : `(realizado + a pagar) ÷ orçado
-= (${fmtMoeda(i.realizado)} + ${fmtMoeda(i.a_pagar || 0)}) ÷ ${fmtMoeda(i.planejado_total)}`
+                                : `(pago + a pagar) ÷ orçado
+= (${fmtMoeda(i.pago)} + ${fmtMoeda(i.a_pagar || 0)}) ÷ ${fmtMoeda(i.planejado_total)}`
                             }
                           >
                             {i.perc_orcado == null ? '—' : fmtPerc(i.perc_orcado)}
@@ -953,20 +963,20 @@ export default function Semanal() {
                             title={
                               i.eficiencia == null
                                 ? ''
-                                : `Valor agregado ÷ (realizado + a pagar)\n= ${fmtMoeda(i.agregado)} ÷ (${fmtMoeda(i.realizado)} + ${fmtMoeda(i.a_pagar || 0)})`
+                                : `Valor agregado ÷ (pago + a pagar)\n= ${fmtMoeda(i.agregado)} ÷ (${fmtMoeda(i.pago)} + ${fmtMoeda(i.a_pagar || 0)})`
                             }
                           >
-                            {fmtEficiencia(i.eficiencia)}
+                            {fmtIdx(i.eficiencia)}
                           </td>
                           <td
                             style={{ textAlign: 'right', fontFamily: 'var(--mono)', fontSize: 10, color: '#8b919c' }}
                           >
-                            M{i.mes_inicio}–M{i.mes_fim}
+                            {i.mes_inicio ? `M${i.mes_inicio}–M${i.mes_fim}` : ''}
                           </td>
                         </tr>
                         {itemAberto === `c${i.cod_eap}` && (i.lancamentos || []).length > 0 && (
                           <tr key={`${i.cod_eap}-det`}>
-                            <td colSpan={8} style={{ padding: 0 }}>
+                            <td colSpan={9} style={{ padding: 0 }}>
                               <div style={{ background: 'var(--bg)', borderRadius: 8, padding: '10px 14px', margin: '0 0 8px' }}>
                                 {i.lancamentos.map((l, k) => (
                                   <div
@@ -1008,26 +1018,38 @@ export default function Semanal() {
             )
           })}
 
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              flexWrap: 'wrap',
-              gap: 12,
-              paddingTop: 14,
-              fontSize: 12,
-              color: '#8b919c',
-            }}
-          >
-            <span>
-              Soma dos grupos: planejado {fmtMoeda((somas || dados.consistencia).grupos_planejado_soma)} · realizado{' '}
-              {fmtMoeda((somas || dados.consistencia).grupos_realizado_soma)}
-            </span>
-            <span>
-              Curva planejada (BCWS) na mesma semana: {fmtMoeda(p.bcws)} — a diferença é de régua: aqui cada
-              item é rateado entre mês de início e fim; a curva tem distribuição própria.
-            </span>
-          </div>
+          {(() => {
+            const pg = (somas || dados.consistencia).painel_grupos
+            if (!pg) return null
+            const ok = (d) => d != null && Math.abs(d) < 1
+            const im = pg.ipc_mes
+            const mesIpc = im ? MESES_EXT[Number(im.mes.slice(5, 7)) - 1] : ''
+            return (
+              <div style={{ paddingTop: 14, fontSize: 12, color: '#8b919c', lineHeight: 1.7 }}>
+                <div>
+                  Soma dos grupos: orçado {fmtMoeda(pg.orcado)} · valor agregado {fmtMoeda(pg.agregado)} · pago{' '}
+                  {fmtMoeda(pg.pago)} · a pagar {fmtMoeda(pg.a_pagar)} · eficiência{' '}
+                  <b style={{ color: pg.eficiencia == null ? undefined : pg.eficiencia < 1 ? VERMELHO : VERDE }}>
+                    {fmtIdx(pg.eficiencia)}
+                  </b>
+                </div>
+                <div style={{ color: ok(pg.dif_agregado) && ok(pg.dif_custo) ? '#8b919c' : VERMELHO }}>
+                  Card de valor agregado: {fmtMoeda(pg.card_agregado)}
+                  {ok(pg.dif_agregado) ? ' (bate)' : ` (diferença ${fmtMoeda(pg.dif_agregado)})`} · pago + a pagar do
+                  direto: {fmtMoeda(pg.card_pago + pg.card_a_pagar)}
+                  {ok(pg.dif_custo) ? ' (bate)' : ` (diferença ${fmtMoeda(pg.dif_custo)})`} · IPC na semana:{' '}
+                  {fmtIdx(pg.ipc_semana)}
+                </div>
+                {im && im.ipc != null && (
+                  <div>
+                    {im.semana_de_fechamento
+                      ? `Semana de fechamento: a eficiência total é o IPC de ${mesIpc} (${fmtIdx(im.ipc)}, corte ${dm(im.data_corte)}).`
+                      : `IPC de ${mesIpc} (corte ${dm(im.data_corte)}): ${fmtIdx(im.ipc)}. O painel está na semana selecionada; ele dá o IPC do mês na semana de fechamento.`}
+                  </div>
+                )}
+              </div>
+            )
+          })()}
         </div>
       )}
 
@@ -1698,6 +1720,53 @@ export default function Semanal() {
       )}
 
       <DiarioOcorrencias />
+    </div>
+  )
+}
+
+/* ─── PAINEL DE CUSTO DIRETO POR GRUPO ───────────────────────── */
+// Orçado, valor agregado, custo (pago + a pagar) e eficiência de um grupo ou
+// pavimento: quatro células do grid GRUPO_COLS.
+function ColunasValorCusto({ v, compacto }) {
+  const fs = compacto ? 12 : 13
+  const sub = { fontSize: 10, color: '#8b919c' }
+  return (
+    <>
+      <div style={{ textAlign: 'right', fontFamily: 'var(--mono)', fontSize: fs }}>
+        <div>{fmtMoeda(v.orcado || 0)}</div>
+        {!compacto && <div style={sub}>orçado</div>}
+      </div>
+      <div style={{ textAlign: 'right', fontFamily: 'var(--mono)', fontSize: fs }}>
+        <div style={{ color: PLAN }}>{v.agregado > 0 ? fmtMoeda(v.agregado) : '—'}</div>
+        {v.agregado > 0 && v.orcado > 0 && <div style={sub}>{fmtPerc((v.agregado / v.orcado) * 100)} do orçado</div>}
+      </div>
+      <div style={{ textAlign: 'right', fontFamily: 'var(--mono)', fontSize: fs }}>
+        <div>{v.custo > 0 ? fmtMoeda(v.custo) : '—'}</div>
+        {v.custo > 0 && <div style={sub}>pago {fmtMoeda(v.pago || 0)}</div>}
+        {v.a_pagar > 0 && <div style={{ ...sub, color: AMBAR }}>a pagar {fmtMoeda(v.a_pagar)}</div>}
+      </div>
+      <BarraEficiencia ef={v.eficiencia} />
+    </>
+  )
+}
+
+// Eficiência com barra: escala de 0 a 2, marca em 1,00. Verde de 1 para
+// cima, vermelho abaixo.
+function BarraEficiencia({ ef }) {
+  const cor = ef == null ? '#8b919c' : ef < 1 ? VERMELHO : VERDE
+  const largura = ef == null ? 0 : Math.min(Math.max(ef, 0), 2) * 50
+  return (
+    <div
+      style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}
+      title={ef == null ? 'Sem valor agregado ou sem custo' : 'Valor agregado ÷ (pago + a pagar) · a marca é 1,00'}
+    >
+      <span style={{ fontFamily: 'var(--mono)', fontSize: 12, color: cor, minWidth: 42, textAlign: 'right' }}>
+        {fmtIdx(ef)}
+      </span>
+      <span style={{ position: 'relative', width: 70, height: 6, background: 'var(--bg3)', borderRadius: 3, overflow: 'hidden' }}>
+        <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${largura}%`, background: cor }} />
+        <span style={{ position: 'absolute', left: '50%', top: -1, bottom: -1, width: 1, background: 'var(--text2)' }} />
+      </span>
     </div>
   )
 }

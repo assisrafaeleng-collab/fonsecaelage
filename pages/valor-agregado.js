@@ -16,7 +16,38 @@ const s2 = (n) => `S${String(n).padStart(2, '0')}`
 const fmtP = (v) => (v == null ? '—' : `${Number(v).toFixed(1).replace('.', ',')}%`)
 const dmy = (s) => (s ? `${s.slice(8, 10)}/${s.slice(5, 7)}/${s.slice(0, 4)}` : '')
 
-const COLS = '80px minmax(0,1fr) 80px 120px 70px 120px 120px 120px 110px'
+// Código, serviço, pavimento, orçado, % físico, medido, valor agregado, pago,
+// a pagar (TOTVS), eficiência, não pago
+const COLS = '62px minmax(0,1fr) 44px 100px 54px 88px 106px 100px 96px 54px 96px'
+
+const fmtEf = (v) => (v == null ? '—' : v.toFixed(3).replace('.', ','))
+const eficiencia = (agregado, pago, aPagar) => (agregado > 0 && pago + aPagar > 0 ? agregado / (pago + aPagar) : null)
+
+// Subtotal de grupo, subgrupo ou total: todas as colunas somadas
+function LinhaTotal({ codigo, nome, t, forte }) {
+  const ef = eficiencia(t.agregado, t.pago, t.contas)
+  const w = forte ? 600 : 500
+  return (
+    <Linha destaque>
+      <div style={{ fontWeight: w }}>{codigo}</div>
+      <div style={{ fontWeight: w }}>{nome}</div>
+      <div />
+      <div style={{ ...dir, fontWeight: w }}>{fmtMoeda(t.custo)}</div>
+      <div style={{ ...dir, fontWeight: w }}>{t.custo > 0 ? fmtP((t.agregado / t.custo) * 100) : '—'}</div>
+      <div />
+      <div style={{ ...dir, fontWeight: w, color: PLAN }}>{fmtMoeda(t.agregado)}</div>
+      <div style={{ ...dir, fontWeight: w }}>{fmtMoeda(t.pago)}</div>
+      <div style={{ ...dir, fontWeight: w, color: t.contas > 0 ? AMBAR : 'var(--text2)' }}>{fmtMoeda(t.contas)}</div>
+      <div
+        style={{ ...dir, fontWeight: w, color: ef == null ? 'var(--text2)' : ef < 1 ? VERMELHO : VERDE }}
+        title="Valor agregado ÷ (pago + a pagar)"
+      >
+        {fmtEf(ef)}
+      </div>
+      <div style={{ ...dir, fontWeight: w, color: t.aPagar > 0 ? AMBAR : 'var(--text2)' }}>{fmtMoeda(t.aPagar)}</div>
+    </Linha>
+  )
+}
 
 function Linha({ children, cabecalho, destaque }) {
   return (
@@ -24,7 +55,7 @@ function Linha({ children, cabecalho, destaque }) {
       style={{
         display: 'grid',
         gridTemplateColumns: COLS,
-        gap: 10,
+        gap: 8,
         padding: '7px 0',
         borderBottom: '1px solid var(--border)',
         font: cabecalho ? MONO : "500 12px 'IBM Plex Sans'",
@@ -75,35 +106,57 @@ export default function ValorAgregado() {
     const termo = busca.trim().toLowerCase()
     const mapa = new Map()
     const porCodigo = m.parcela_a.por_codigo || {}
+    const novoTotal = () => ({ custo: 0, agregado: 0, pago: 0, contas: 0, aPagar: 0, codigos: new Set() })
+    // Subtotal sempre com todos os itens: esconder linha nao pode mudar a soma.
+    // Pago, a pagar (TOTVS) e nao pago sao por codigo: uma vez so por codigo.
+    const somar = (t, i) => {
+      t.custo += i.custo_total
+      t.agregado += i.agregado
+      const pc = porCodigo[i.cod_eap]
+      if (pc && !t.codigos.has(i.cod_eap)) {
+        t.codigos.add(i.cod_eap)
+        t.pago += pc.pago
+        t.contas += pc.a_pagar || 0
+        t.aPagar += pc.aguardando
+      }
+    }
     m.parcela_a.itens.forEach((i) => {
       if (!mapa.has(i.grupo))
-        mapa.set(i.grupo, {
-          grupo: i.grupo, nome: i.grupo_nome, custo: 0, agregado: 0, pago: 0, aPagar: 0,
-          codigos: new Set(), itens: [], zerados: 0,
-        })
+        mapa.set(i.grupo, { grupo: i.grupo, nome: i.grupo_nome, ...novoTotal(), subs: new Map() })
       const g = mapa.get(i.grupo)
-      // Subtotal sempre com todos os itens: esconder linha nao pode mudar a soma.
-      g.custo += i.custo_total
-      g.agregado += i.agregado
-      // Pago e a pagar sao por codigo: conta uma vez so por codigo no grupo.
-      const pc = porCodigo[i.cod_eap]
-      if (pc && !g.codigos.has(i.cod_eap)) {
-        g.codigos.add(i.cod_eap)
-        g.pago += pc.pago
-        g.aPagar += pc.aguardando
-      }
+      somar(g, i)
+      // Estrutura abre por subgrupo da EAP: 3.1 = 1º pav ... 3.7 = 7º pav
+      const sub = i.grupo === 3 ? String(i.cod_eap).match(/^3\.(\d+)\./) : null
+      const chave = sub ? `3.${sub[1]}` : ''
+      if (!g.subs.has(chave))
+        g.subs.set(chave, {
+          chave,
+          rotulo: sub ? `${sub[1]}º pavimento${/plat/i.test(i.pavimento || '') ? ' / platibanda' : ''}` : null,
+          ...novoTotal(),
+          itens: [],
+          zerados: 0,
+        })
+      const s = g.subs.get(chave)
+      somar(s, i)
       const casa =
         !termo ||
         String(i.cod_eap).toLowerCase().includes(termo) ||
         String(i.descricao).toLowerCase().includes(termo) ||
         String(i.pavimento || '').toLowerCase().includes(termo)
       if (!casa) return
-      // Material comprado tem agregado (custo pago + a pagar, até o orçado)
+      // Compra antecipada tem agregado (custo pago + a pagar, até o orçado)
       // mesmo com o serviço em 0%: não é item não iniciado.
-      if (i.perc_fisico > 0 || i.agregado > 0 || mostrarZerados) g.itens.push(i)
-      else g.zerados += 1
+      if (i.perc_fisico > 0 || i.agregado > 0 || mostrarZerados) s.itens.push(i)
+      else s.zerados += 1
     })
-    return Array.from(mapa.values()).sort((a, b) => a.grupo - b.grupo)
+    return Array.from(mapa.values())
+      .sort((a, b) => a.grupo - b.grupo)
+      .map((g) => ({
+        ...g,
+        subs: Array.from(g.subs.values()).sort((a, b) =>
+          a.chave.localeCompare(b.chave, 'pt-BR', { numeric: true })
+        ),
+      }))
   }, [m, mostrarZerados, busca])
 
   if (erro)
@@ -340,8 +393,9 @@ export default function ValorAgregado() {
           </button>
           <span style={{ font: "500 11px 'IBM Plex Sans'", color: 'var(--text2)' }}>
             Valor agregado = custo do item × % físico · <i>tempo</i>: verba mensal, linear pela obra ·{' '}
-            <i>herda</i>: material sem medição, usa o % do serviço · <i>material comprado</i>: aço e material de
-            forma comprados antes da execução, agregado = custo pago + a pagar até o orçado
+            <i>herda</i>: material sem medição, usa o % do serviço · <i>compra antecipada</i>: aço e material de
+            forma comprados antes da execução, agregado = custo pago + a pagar até o orçado · <i>a pagar</i>: contas a
+            pagar do último fechamento (TOTVS) · eficiência = valor agregado ÷ (pago + a pagar)
             {efeitoRegras != null && Math.abs(efeitoRegras) > 1
               ? ` · regras mudam ${fmtMoeda(efeitoRegras)} em relação à view do banco`
               : ''}
@@ -351,106 +405,123 @@ export default function ValorAgregado() {
         <Linha cabecalho>
           <div>Código</div>
           <div>Serviço</div>
-          <div>Pavimento</div>
-          <div style={dir}>Custo do item</div>
+          <div>Pav.</div>
+          <div style={dir}>Orçado</div>
           <div style={dir}>% físico</div>
           <div style={dir}>Medido</div>
           <div style={dir}>Valor agregado</div>
           <div style={dir}>Pago</div>
-          <div style={dir}>Não pago</div>
+          <div style={dir} title="Contas a pagar do último fechamento (TOTVS), a mesma base do IPC">A pagar</div>
+          <div style={dir} title="Valor agregado ÷ (pago + a pagar)">Efic.</div>
+          <div style={dir} title="Executado ainda não pago (estimativa: valor agregado − pago)">Não pago</div>
         </Linha>
 
         {grupos.map((g) => (
           <div key={g.grupo}>
-            <Linha destaque>
-              <div style={{ fontWeight: 600 }}>{g.grupo}</div>
-              <div style={{ fontWeight: 600 }}>{g.nome}</div>
-              <div />
-              <div style={{ ...dir, fontWeight: 600 }}>{fmtMoeda(g.custo)}</div>
-              <div style={{ ...dir, fontWeight: 600 }}>{g.custo > 0 ? fmtP((g.agregado / g.custo) * 100) : '—'}</div>
-              <div />
-              <div style={{ ...dir, fontWeight: 600, color: PLAN }}>{fmtMoeda(g.agregado)}</div>
-              <div style={{ ...dir, fontWeight: 600 }}>{fmtMoeda(g.pago)}</div>
-              <div style={{ ...dir, fontWeight: 600, color: g.aPagar > 0 ? AMBAR : 'var(--text2)' }}>{fmtMoeda(g.aPagar)}</div>
-            </Linha>
-            {g.itens.map((i, k) => (
-              <Linha key={`${i.cod_eap}-${i.pavimento || ''}-${k}`}>
-                <div style={{ color: 'var(--text2)' }}>{i.cod_eap}</div>
-                <div>{i.descricao}</div>
-                <div style={{ color: 'var(--text2)' }}>{i.pavimento || '—'}</div>
-                <div style={dir}>{fmtMoeda(i.custo_total)}</div>
-                <div style={dir}>{fmtP(i.perc_fisico)}</div>
-                <div
-                  style={{ ...dir, color: i.regra === 'medido' && !i.material_comprado ? 'var(--text2)' : PLAN }}
-                  title={
-                    i.material_comprado
-                      ? `Material comprado antes da execução: agregado = custo pago + a pagar, até o orçado` +
-                        (i.perc_orcado != null ? ` (${fmtP(i.perc_orcado)} do orçado)` : '') +
-                        `. O serviço está em ${fmtP(i.perc_fisico)}.`
-                      : i.regra === 'tempo'
-                        ? 'Verba mensal: linear pela duração da obra'
-                        : i.regra === 'herda'
-                          ? `Usa o % de ${i.herda_de.join(', ')}, ponderado pelo custo` +
-                            (i.material ? '; ou o custo pago + a pagar até o orçado, se for maior' : '')
-                          : ''
-                  }
-                >
-                  {i.material_comprado
-                    ? 'material comprado'
-                    : i.regra === 'tempo'
-                      ? 'tempo'
-                      : i.regra === 'herda'
-                        ? `herda ${i.herda_de.join('/')}`
-                        : i.medido_na_semana
-                          ? s2(i.medido_na_semana)
-                          : '—'}
-                </div>
-                <div style={{ ...dir, color: i.agregado > 0 ? PLAN : 'var(--text2)' }}>{fmtMoeda(i.agregado)}</div>
-                {(() => {
-                  // Varias linhas do mesmo codigo (pavimentos): pago so na primeira.
-                  const pc = (m.parcela_a.por_codigo || {})[i.cod_eap]
-                  const primeira = g.itens.findIndex((x) => x.cod_eap === i.cod_eap) === k
-                  if (!pc || !primeira) return (<><div /><div /></>)
-                  const estouro = pc.pago > pc.agregado && pc.agregado > 0
-                  return (
-                    <>
-                      <div style={{ ...dir, color: estouro ? VERMELHO : 'var(--text)' }} title={estouro ? 'Pago acima do executado' : ''}>
-                        {fmtMoeda(pc.pago)}
-                      </div>
-                      <div style={{ ...dir, color: pc.encerrado ? VERDE : pc.aguardando > 0 ? AMBAR : 'var(--text2)' }}>
-                        {pc.encerrado ? 'encerrado' : fmtMoeda(pc.aguardando)}
-                      </div>
-                    </>
-                  )
-                })()}
-              </Linha>
-            ))}
-            {g.zerados > 0 && (
-              <div style={{ font: "500 11px 'IBM Plex Sans'", color: 'var(--text2)', padding: '6px 0 10px 100px' }}>
-                {g.zerados} {g.zerados === 1 ? 'item não iniciado' : 'itens não iniciados'} (0%)
+            <LinhaTotal codigo={g.grupo} nome={g.nome} t={g} forte />
+            {g.subs.map((s) => (
+              <div key={s.chave || 'geral'}>
+                {s.rotulo && <LinhaTotal codigo={s.chave} nome={s.rotulo} t={s} />}
+                {s.itens.map((i, k) => (
+                  <Linha key={`${i.cod_eap}-${i.pavimento || ''}-${k}`}>
+                    <div style={{ color: 'var(--text2)' }}>{i.cod_eap}</div>
+                    <div>{i.descricao}</div>
+                    <div style={{ color: 'var(--text2)' }}>{i.pavimento || '—'}</div>
+                    <div style={dir}>{fmtMoeda(i.custo_total)}</div>
+                    <div style={dir}>{fmtP(i.perc_fisico)}</div>
+                    <div
+                      style={{ ...dir, color: i.regra === 'medido' && !i.material_comprado ? 'var(--text2)' : PLAN }}
+                      title={
+                        i.material_comprado
+                          ? `Compra antecipada (material comprado antes da execução): agregado = custo pago + a pagar, até o orçado` +
+                            (i.perc_orcado != null ? ` (${fmtP(i.perc_orcado)} do orçado)` : '') +
+                            `. O serviço está em ${fmtP(i.perc_fisico)}.`
+                          : i.regra === 'tempo'
+                            ? 'Verba mensal: linear pela duração da obra'
+                            : i.regra === 'herda'
+                              ? `Usa o % de ${i.herda_de.join(', ')}, ponderado pelo custo` +
+                                (i.material ? '; ou o custo pago + a pagar até o orçado, se for maior' : '')
+                              : ''
+                      }
+                    >
+                      {i.material_comprado
+                        ? 'compra antecipada'
+                        : i.regra === 'tempo'
+                          ? 'tempo'
+                          : i.regra === 'herda'
+                            ? `herda ${i.herda_de.join('/')}`
+                            : i.medido_na_semana
+                              ? s2(i.medido_na_semana)
+                              : '—'}
+                    </div>
+                    <div style={{ ...dir, color: i.agregado > 0 ? PLAN : 'var(--text2)' }}>
+                      {fmtMoeda(i.agregado)}
+                      {i.material && i.perc_orcado != null && (
+                        <div
+                          style={{ fontSize: 10, color: i.perc_orcado > 100 ? VERMELHO : 'var(--text2)' }}
+                          title="(pago + a pagar) ÷ orçado da linha"
+                        >
+                          {fmtP(i.perc_orcado)} do orçado
+                        </div>
+                      )}
+                    </div>
+                    {(() => {
+                      // Varias linhas do mesmo codigo (pavimentos): pago so na primeira.
+                      const pc = (m.parcela_a.por_codigo || {})[i.cod_eap]
+                      const primeira = s.itens.findIndex((x) => x.cod_eap === i.cod_eap) === k
+                      if (!pc || !primeira) return (<><div /><div /><div /><div /></>)
+                      const estouro = pc.pago > pc.agregado && pc.agregado > 0
+                      const ef = eficiencia(pc.agregado, pc.pago, pc.a_pagar || 0)
+                      return (
+                        <>
+                          <div style={{ ...dir, color: estouro ? VERMELHO : 'var(--text)' }} title={estouro ? 'Pago acima do executado' : ''}>
+                            {fmtMoeda(pc.pago)}
+                          </div>
+                          <div style={{ ...dir, color: pc.a_pagar > 0 ? AMBAR : 'var(--text2)' }}>
+                            {pc.a_pagar > 0 ? fmtMoeda(pc.a_pagar) : '—'}
+                          </div>
+                          <div
+                            style={{ ...dir, color: ef == null ? 'var(--text2)' : ef < 1 ? VERMELHO : VERDE }}
+                            title={ef == null ? '' : `${fmtMoeda(pc.agregado)} ÷ (${fmtMoeda(pc.pago)} + ${fmtMoeda(pc.a_pagar || 0)})`}
+                          >
+                            {fmtEf(ef)}
+                          </div>
+                          <div style={{ ...dir, color: pc.encerrado ? VERDE : pc.aguardando > 0 ? AMBAR : 'var(--text2)' }}>
+                            {pc.encerrado ? 'encerrado' : fmtMoeda(pc.aguardando)}
+                          </div>
+                        </>
+                      )
+                    })()}
+                  </Linha>
+                ))}
+                {s.zerados > 0 && (
+                  <div style={{ font: "500 11px 'IBM Plex Sans'", color: 'var(--text2)', padding: '6px 0 10px 100px' }}>
+                    {s.zerados} {s.zerados === 1 ? 'item não iniciado' : 'itens não iniciados'} (0%)
+                  </div>
+                )}
               </div>
-            )}
+            ))}
           </div>
         ))}
 
-        <Linha destaque>
-          <div />
-          <div style={{ fontWeight: 600 }}>Total da produção</div>
-          <div />
-          <div style={{ ...dir, fontWeight: 600 }}>{fmtMoeda(custoA)}</div>
-          <div style={{ ...dir, fontWeight: 600 }}>{custoA > 0 ? fmtP((m.parcela_a.soma / custoA) * 100) : '—'}</div>
-          <div />
-          <div style={{ ...dir, fontWeight: 600, color: PLAN }}>{fmtMoeda(m.parcela_a.soma)}</div>
-          <div style={{ ...dir, fontWeight: 600 }}>
-            {fmtMoeda(Object.values(m.parcela_a.por_codigo || {}).reduce((t, x) => t + x.pago, 0))}
-          </div>
-          <div style={{ ...dir, fontWeight: 600, color: AMBAR }}>{fmtMoeda(m.parcela_a.aguardando_pagamento)}</div>
-        </Linha>
+        <LinhaTotal
+          codigo=""
+          nome="Total da produção"
+          forte
+          t={{
+            custo: custoA,
+            agregado: m.parcela_a.soma,
+            pago: Object.values(m.parcela_a.por_codigo || {}).reduce((t, x) => t + x.pago, 0),
+            contas: Object.values(m.parcela_a.por_codigo || {}).reduce((t, x) => t + (x.a_pagar || 0), 0),
+            aPagar: m.parcela_a.aguardando_pagamento,
+          }}
+        />
         <div style={{ font: "500 11px 'IBM Plex Sans'", color: 'var(--text2)', marginTop: 10, lineHeight: 1.6 }}>
-          <b>Não pago</b> = executado ainda não pago (boleto a vencer, parcela, medição do empreiteiro). No saldo, item
-          em aberto entra pelo menor entre executado e pago: mostra estouro, mas não economia. Quando o item estiver
-          quitado, marque <code>custo_encerrado = true</code> no orçamento para o saldo usar o executado cheio.
-          Pago em vermelho: pago acima do executado.
+          <b>A pagar</b> = contas a pagar do último fechamento (relatório do TOTVS), a mesma base do IPC.{' '}
+          <b>Não pago</b> = estimativa do executado ainda não pago (valor agregado − pago: boleto a vencer, parcela,
+          medição do empreiteiro). No saldo, item em aberto entra pelo menor entre executado e pago: mostra estouro,
+          mas não economia. Quando o item estiver quitado, marque <code>custo_encerrado = true</code> no orçamento para
+          o saldo usar o executado cheio. Pago em vermelho: pago acima do executado.
         </div>
       </div>
 
