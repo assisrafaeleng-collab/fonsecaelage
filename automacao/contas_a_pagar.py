@@ -197,7 +197,7 @@ if __name__ == '__main__':
         pass
     colunas = ['competencia_fechamento', 'competencia_vencimento', 'cnpj', 'fornecedor', 'documento', 'seq',
                'historico', 'item', 'oc', 'data_emissao', 'data_vencimento', 'data_previsao', 'valor_titulo',
-               'valor', 'eap', 'classe', 'natureza', 'vinculo_oc', 'regra', 'alerta', 'alertas']
+               'valor', 'eap', 'classe', 'natureza', 'vinculo_oc', 'regra', 'alerta', 'alertas', 'pavimento']
     linhas[colunas].to_csv('contas_a_pagar.csv', index=False, encoding='utf-8-sig')
     p = linhas[linhas.classe == 'pendente']
     (p if len(p) else linhas.iloc[0:0])[[x for x in pend.columns] if len(pend) else colunas] \

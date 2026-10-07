@@ -411,7 +411,9 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
   const avancoFisicoReal = kpis.avanco_fisico_realizado || 0
   const custoDiretoReal = kpis.custo_realizado - (kpis.custo_indireto_realizado || 0)
   const custoIndiretoReal = kpis.custo_indireto_realizado || 0
-  const saldoCustoDireto = custoDiretoPlano - custoDiretoReal
+  // Saldo do direto (decisão out/26), igual à semanal: valor agregado − custo
+  // comprometido (pago + a pagar do último fechamento)
+  const saldoCustoDireto = kpis.saldo_custo_direto != null ? kpis.saldo_custo_direto : custoDiretoPlano - custoDiretoReal
   const saldoCustoIndireto = custoIndiretoPlano - custoIndiretoReal
   const projecaoCustoFinal = kpis.eac_total || kpis.eac || 0
   const desvioFinanceiroValor = Math.abs((kpis.acwp_producao || 0) - (dadosOrcamento ? dadosOrcamento.custos_diretos : 0))
@@ -456,10 +458,23 @@ export default function Dashboard({ updates, selectedId, onSelectId, mesLimite =
           </div>
           <div className="kpi-sub">{fmtPerc((custoDiretoReal / custoDiretoPlano) * 100)} do planejado</div>
         </div>
-        <div className="kpi">
+        <div
+          className="kpi"
+          title={
+            kpis.saldo_custo_direto != null
+              ? `Valor agregado: ${fmtMoeda(kpis.bcwp)}
+− Pago: ${fmtMoeda(kpis.custo_direto_pago_referencia)}
+− A pagar: ${fmtMoeda(kpis.a_pagar_direto)}
+= Saldo: ${fmtMoeda(kpis.saldo_custo_direto)}`
+              : ''
+          }
+        >
           <div className="kpi-label">Saldo Custo Direto</div>
           <div className="kpi-value" style={{ fontSize: '20px', lineHeight: '1.2', color: saldoCustoDireto >= 0 ? VERDE : VERMELHO }}>{fmtMoeda(saldoCustoDireto)}</div>
-          <div className="kpi-sub">{saldoCustoDireto >= 0 ? 'Economia' : 'Acima'}</div>
+          <div className="kpi-sub">
+            {saldoCustoDireto >= 0 ? 'Economia' : 'Acima'}
+            {kpis.saldo_custo_direto != null ? ` · valor agregado − comprometido · até S${String(kpis.agregado_semana_referencia || 0).padStart(2, '0')}` : ''}
+          </div>
         </div>
         <div className="kpi" style={{ cursor: 'pointer' }} onClick={() => router.push(`/avanco-fisico-planejado?mes=${mesLimite}`)}>
           <div className="kpi-label">Avanço Físico Planejado</div>

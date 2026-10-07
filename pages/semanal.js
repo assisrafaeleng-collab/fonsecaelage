@@ -451,7 +451,7 @@ export default function Semanal() {
             <span style={PILL}>{fmtMoeda(realizadoRef)}</span>
           </div>
           <div className="kpi-sub">
-            {agregado ? `${fmtPerc((realizadoRef / agregado) * 100)} do executado` : '—'}
+            {agregado ? `${fmtPerc((comprometido / agregado) * 100)} do executado (pago + a pagar)` : '—'}
             {refAtrasada ? ` · até ${sRef}` : ''}
           </div>
         </div>

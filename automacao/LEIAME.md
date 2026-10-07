@@ -133,6 +133,20 @@ com --confirmar; a carga substitui a competência inteira e pode ser desfeita co
   competência. Prego (CONTEM:PREGO) = FORMA_MATERIAL; arame (CONTEM:ARAME) = ACO_MATERIAL (decisão out/26)
 - "Prev. Financ. OC 0001826 ...": o título abre pelos itens da OC do histórico (vínculo "ALTA (OC no histórico)")
 
+## Pavimento do custo (decisão out/26)
+Código de EAP repetido por pavimento (7.1.7 do 1º ao 6º, os serviços dos grupos 4 a 14) grava o pavimento,
+como a medição; os códigos da EAP não mudam.
+- O classificador escreve a coluna pavimento (lancamentos.csv e contas_a_pagar.csv): a de decisoes_pontuais.csv
+  (coluna opcional pavimento, ex.: 2º) ou o pavimento em execução na DATA DA NOTA pelo etapa.csv (a etapa mais
+  recente vigente; EAP 3.N.x → Nº).
+- O importar.js grava o pavimento só em código repetido e só se o código tiver linha nesse pavimento ('6º' casa
+  com '6º/Plat'). Sem pavimento válido fica vazio e o dashboard divide pela verba das linhas, como antes.
+  A prévia mostra o valor por código + pavimento e o que ficou sem pavimento.
+- Banco: supabase/custos/6-pavimento-do-custo.sql (coluna em contas_a_pagar; custos_lancamentos.pavimento
+  passa a aceitar vazio).
+- 7.1.7 (Loja Elétrica, fechamento 2026-09): 2º pav, a mesma linha da medição; a NF 13626 (25/09, já no 3º pela
+  etapa) está no 2º por decisão pontual.
+
 ## Pedidos de aço (pedidos_aco.csv)
 Uma linha por SC e EAP, com a proporção em kg das pranchas do pedido (planilha em projetos/Pedidos de Aço.xlsx):
 2º pedido = SC 96165 (pranchas do 2º pav, pilares e laje forro), 3º = SC 98265 (3º pav → 3.3.8),

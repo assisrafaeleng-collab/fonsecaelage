@@ -143,16 +143,48 @@ async function main() {
   const orc = await todos(() => db.from('orcamento_planejado').select('cod_eap, pavimento').eq('obra_id', OBRA))
   const ind = await todos(() => db.from('custos_indiretos_planejados').select('cod_eap').eq('obra_id', OBRA))
   const validos = new Set([...orc.map((o) => o.cod_eap), ...ind.map((o) => o.cod_eap)])
-  const pavimento = {}
+  const pavimentoUnico = {}
+  const pavsDoCodigo = {}
   orc.forEach((o) => {
-    if (!pavimento[o.cod_eap]) pavimento[o.cod_eap] = o.pavimento || 'Edifício'
+    if (!pavimentoUnico[o.cod_eap]) pavimentoUnico[o.cod_eap] = o.pavimento || 'Edifício'
+    ;(pavsDoCodigo[o.cod_eap] = pavsDoCodigo[o.cod_eap] || []).push(o.pavimento || '')
   })
+  // Pavimento do custo (decisao out/26). Codigo repetido por pavimento (7.1.7
+  // do 1o ao 6o): o do arquivo (decisao pontual ou pavimento em execucao na
+  // data da nota, etapa.csv), se o codigo tiver linha nesse pavimento
+  // ('6º' casa com '6º/Plat'); sem pavimento valido fica vazio e o dashboard
+  // divide pela verba. Codigo de uma linha so: o pavimento da linha, como antes.
+  const pavimento = (eap, doArquivo) => {
+    const pavs = pavsDoCodigo[eap] || []
+    if (pavs.length < 2) return pavimentoUnico[eap] || 'Edifício'
+    const p = txt(doArquivo)
+    if (!p) return null
+    return pavs.find((x) => x === p) || pavs.find((x) => x.startsWith(p + '/')) || null
+  }
+  pavimento.repetido = (eap) => (pavsDoCodigo[eap] || []).length > 1
 
   if (ARQ_CUSTOS) await custos(db, validos, pavimento)
   if (ARQ_CONTAS) await contas(db, validos)
   if (ARQ_CLASSIF) await classificador(db, validos, pavimento)
-  if (ARQ_CONTAS_CLASSIF) await contasClassificador(db, validos)
+  if (ARQ_CONTAS_CLASSIF) await contasClassificador(db, validos, pavimento)
   if (DESFAZER) await desfazer(db)
+}
+
+// Previa: codigo repetido por pavimento com e sem pavimento definido
+function resumoPavimento(linhas, pavimento) {
+  const rep = linhas.filter((l) => l.codigo_eap && pavimento.repetido(l.codigo_eap))
+  if (!rep.length) return
+  const com = rep.filter((l) => l.pavimento)
+  const sem = rep.filter((l) => !l.pavimento)
+  const soma = (ls) => fmt(r2(ls.reduce((t, l) => t + (l.valor || 0), 0)))
+  console.log(`\n  Código repetido por pavimento: ${rep.length} linha(s) · ${soma(rep)}`)
+  const porLinha = {}
+  com.forEach((l) => {
+    const k = `${l.codigo_eap} ${l.pavimento}`
+    porLinha[k] = r2((porLinha[k] || 0) + l.valor)
+  })
+  Object.entries(porLinha).forEach(([k, v]) => console.log(`    ${k}: ${fmt(v)}`))
+  if (sem.length) console.log(`    sem pavimento definido (o dashboard divide pela verba): ${sem.length} linha(s) · ${soma(sem)}`)
 }
 
 function checar(linhas, validos) {
@@ -196,7 +228,8 @@ async function custos(db, validos, pavimento) {
       fase_obra: txt(l['Fase da Obra']) || null,
       status: 'Normal',
     }))
-  linhas.forEach((l) => (l.pavimento = pavimento[l.codigo_eap] || 'Edifício'))
+  // Planilha manual nao informa pavimento: codigo repetido fica sem (divide pela verba)
+  linhas.forEach((l) => (l.pavimento = pavimento(l.codigo_eap, null)))
 
   const existentes = await todos(() => db.from('custos_lancamentos').select('id, valor').eq('obra_id', OBRA).eq('competencia', COMPETENCIA))
   const total = r2(linhas.reduce((t, l) => t + (l.valor || 0), 0))
@@ -383,7 +416,7 @@ async function classificador(db, validos, pavimento) {
       num_documento: txt(b.documento) || null,
       cnpj: txt(b.cnpj) || null,
       classificacao, grupo_custo, fase_obra,
-      pavimento: pavimento[eap] || 'Edifício',
+      pavimento: pavimento(eap, b.pavimento),
       status: 'Normal',
     }
   })
@@ -395,6 +428,7 @@ async function classificador(db, validos, pavimento) {
   console.log(`  arquivo: ${linhas.length} lançamentos · ${fmt(total)}`)
   console.log(`  banco hoje: ${existentes.length} lançamentos · ${fmt(totalAntes)} → serão SUBSTITUÍDOS`)
   console.log(`  diferença no mês: ${fmt(r2(total - totalAntes))}`)
+  resumoPavimento(linhas, pavimento)
 
   // Comparacao documento a documento
   const grupos = (ls, d, f) => {
@@ -651,7 +685,7 @@ function alertasDoBanco(titulos, custos, jaAvisados = {}) {
   return out
 }
 
-async function contasClassificador(db, validos) {
+async function contasClassificador(db, validos, pavimento) {
   const brutas = lerCsv(ARQ_CONTAS_CLASSIF)
   if (!brutas.length) throw new Error(`${ARQ_CONTAS_CLASSIF} está vazio`)
   const faltando = ['competencia_fechamento', 'competencia_vencimento', 'cnpj', 'fornecedor', 'documento', 'seq', 'valor', 'eap', 'classe', 'natureza', 'alertas']
@@ -679,6 +713,8 @@ async function contasClassificador(db, validos) {
     valor_titulo: r2(num(b.valor_titulo)),
     valor: r2(num(b.valor)),
     codigo_eap: txt(b.eap) || null,
+    // So codigo repetido por pavimento grava pavimento (decisao out/26)
+    pavimento: txt(b.eap) && pavimento.repetido(txt(b.eap)) ? pavimento(txt(b.eap), b.pavimento) : null,
     classe: txt(b.classe),
     natureza: txt(b.natureza),
     vinculo_oc: txt(b.vinculo_oc) || null,
@@ -714,11 +750,17 @@ async function contasClassificador(db, validos) {
   })
 
   const destino = await existeTabela(db, TABELA_CONTAS)
+  // Coluna pavimento (supabase/custos/6-pavimento-do-custo.sql)
+  const temPavimento = destino.existe && !(await db.from(TABELA_CONTAS).select('pavimento').limit(1)).error
+  const comPavimento = todas.filter((l) => l.pavimento).length
 
   const soma = (ls) => r2(ls.reduce((t, l) => t + l.valor, 0))
   const nTit = (ls) => new Set(ls.map((l) => l.__chave)).size
   console.log(`\nContas a pagar · vencimentos a partir de ${fechamento} · fechamento ${fechamento} · ${path.basename(ARQ_CONTAS_CLASSIF)}`)
   console.log(`  relatório: ${nTit(todas)} título(s) sem pagamento · ${fmt(soma(todas))}`)
+  resumoPavimento(todas, pavimento)
+  if (destino.existe && !temPavimento)
+    console.log(`  ${comPavimento ? '✗' : '!'} a tabela ${TABELA_CONTAS} ainda não tem a coluna pavimento: rode o supabase/custos/6-pavimento-do-custo.sql${comPavimento ? ` (${comPavimento} linha(s) com pavimento)` : ''}`)
   const eapsRec = [...new Set(regua.todas().filter((e) => regua(e).recorrente))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
   console.log(`\n  RÉGUA (marcação do sistema): ${eapsRec.length} EAP(s) recorrentes; as demais ${regua.todas().length - eapsRec.length} são por entrega`)
   eapsRec.forEach((e) => console.log(`    ↻ ${e.padEnd(8)} ${regua.descricao(e).slice(0, 60).padEnd(60)} ${regua(e).motivo}`))
@@ -785,7 +827,12 @@ async function contasClassificador(db, validos) {
   // Cada carga tem um id proprio: a nova entra inteira e so depois a anterior
   // do mesmo fechamento sai (a chave unica inclui a carga).
   const carga_id = require('crypto').randomUUID()
-  const novas = linhas.map(({ __linha, __chave, __rec, ...l }) => ({ ...l, carga_id }))
+  if (comPavimento && !temPavimento) throw new Error(`a tabela ${TABELA_CONTAS} não tem a coluna pavimento: nada foi gravado`)
+  const novas = linhas.map(({ __linha, __chave, __rec, ...l }) => {
+    const n = { ...l, carga_id }
+    if (!temPavimento) delete n.pavimento
+    return n
+  })
   const r = await db.from(TABELA_CONTAS).insert(novas)
   if (r.error) {
     await db.from(TABELA_CONTAS).delete().eq('carga_id', carga_id)

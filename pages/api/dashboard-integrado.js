@@ -319,6 +319,12 @@ export default async function handler(req, res) {
     const desvioFinanceiroPerc = bcws > 0 ? (desvioFinanceiro / bcws) * 100 : 0
     const cv = bcwp - acwpProducao
     const sv = bcwp - bcws
+    // Saldo do custo direto (decisao out/26), igual a semanal: valor agregado
+    // − custo comprometido (pago + contas a pagar do direto do ultimo
+    // fechamento), na mesma semana do avanco.
+    const aPagarDireto = painel.kpis.a_pagar_direto || 0
+    const comprometidoDireto = (painel.kpis.acwp || 0) + aPagarDireto
+    const saldoCustoDireto = bcwp - comprometidoDireto
 
     const mesAtual = Math.max(finRealizada.length, fisRealizada.length, 1)
     const velocidadeAtual = avancoFisicoReal > 0 ? avancoFisicoReal / mesAtual : 0
@@ -356,6 +362,10 @@ export default async function handler(req, res) {
       hh_orcado: parseFloat(avancoMes.hh_total.toFixed(2)),
       bcwp: parseFloat(bcwp.toFixed(2)),
       agregado_semana_referencia: painel.kpis.semana,
+      custo_direto_pago_referencia: parseFloat((painel.kpis.acwp || 0).toFixed(2)),
+      a_pagar_direto: parseFloat(aPagarDireto.toFixed(2)),
+      custo_direto_comprometido: parseFloat(comprometidoDireto.toFixed(2)),
+      saldo_custo_direto: parseFloat(saldoCustoDireto.toFixed(2)),
       ipc_mes: painel.kpis.ipc_mes ? painel.kpis.ipc_mes.mes : null,
       bcws: parseFloat(bcws.toFixed(2)),
       acwp: parseFloat(acwp.toFixed(2)),

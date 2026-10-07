@@ -180,7 +180,13 @@ export default function ValorAgregado() {
     m.parcela_a.itens.forEach((orig) => {
       const pc = porCodigo[orig.cod_eap]
       const f = fatia(orig)
-      const i = { ...orig, pago: pc ? pc.pago * f : 0, contas: pc ? (pc.a_pagar || 0) * f : 0 }
+      // Pago e a pagar da linha vêm do servidor (pavimento definido vai para a
+      // linha dele); sem eles, reparte pela verba
+      const i = {
+        ...orig,
+        pago: orig.pago_linha != null ? orig.pago_linha : pc ? pc.pago * f : 0,
+        contas: orig.a_pagar_linha != null ? orig.a_pagar_linha : pc ? (pc.a_pagar || 0) * f : 0,
+      }
       if (!mapa.has(i.grupo))
         mapa.set(i.grupo, { grupo: i.grupo, nome: i.grupo_nome, ...novoTotal(), subs: new Map() })
       const g = mapa.get(i.grupo)

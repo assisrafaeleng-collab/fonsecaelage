@@ -249,6 +249,19 @@ def resolver_etapa(eap, alerta, competencia=None, emissao=None):
         return e.eap, (alerta + ' | ' if alerta else '') + f'EAP pela etapa ({cat} = {e.eap}' + (f', nota de {data}' if por_nota else '') + ')'
     return eap, alerta
 
+def pavimento_na_data(data):
+    """Pavimento em execução na data da nota (decisão out/26), pelo etapa.csv: a etapa
+    mais recente vigente na data; EAP 3.N.x -> 'Nº'. Sem data ou sem etapa -> ''.
+    O importar.js só usa o pavimento em código repetido por pavimento (7.1.7 do 1º ao
+    6º) e só se o código tiver linha nesse pavimento; sem pavimento, divide pela verba."""
+    if data is None or pd.isna(data) or str(data).strip() == '':
+        return ''
+    e = ETAPA[(ETAPA.vigente_desde == '') | (ETAPA.vigente_desde <= str(data)[:10])]
+    if len(e) == 0:
+        return ''
+    m = re.match(r'^3\.(\d+)\.', str(e.sort_values('vigente_desde', kind='stable').iloc[-1].eap))
+    return f'{m.group(1)}º' if m else ''
+
 def aplicar_regra(regras, cnpj, fornecedor, item, valor, competencia=None, emissao=None):
     manuais, geradas = regras
     eap, motivo, alerta = _aplicar(manuais, cnpj, fornecedor, item, valor, competencia)
@@ -331,7 +344,8 @@ def classificar(tit, ocs, regras):
                            regra=f'decisão: {r.obs}' + (f' (herdada da parcela {herdada})' if herdada else ''),
                            alerta=getattr(r, 'alerta', ''),
                            data_emissao=t.emissao, cnpj=t.cnpj,
-                           classificacao=getattr(r, 'classificacao', ''))   # opcional, vai para o banco
+                           classificacao=getattr(r, 'classificacao', ''),   # opcional, vai para o banco
+                           pavimento=str(getattr(r, 'pavimento', '') or ''))  # opcional: decisão sua de pavimento
                 (lanc if r.eap else pend).append(row)
             continue
         m = re.match(r'^0*(\d+)/\d+$', t.documento)
@@ -369,6 +383,11 @@ def classificar(tit, ocs, regras):
                            vinculo_oc=conf or 'sem OC', regra=motivo, alerta=alerta,
                            data_emissao=t.emissao, cnpj=t.cnpj)
                 (lanc if eap_r else pend).append(row)
+    # Pavimento: o da decisão pontual (coluna opcional pavimento) ou o em
+    # execução na data da nota (etapa.csv). Decisão out/26.
+    for row in lanc + pend:
+        if not row.get('pavimento'):
+            row['pavimento'] = pavimento_na_data(row.get('data_emissao'))
     return pd.DataFrame(lanc), pd.DataFrame(pend)
 
 if __name__ == '__main__':

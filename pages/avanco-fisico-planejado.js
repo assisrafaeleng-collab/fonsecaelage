@@ -7,6 +7,24 @@ const PAVS = ['1º','2º','3º','4º','5º','6º/Plat','Edifício']
 const NOMES_MESES = ['jul','ago','set','out','nov','dez','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez','jan','fev']
 const ANOS = [2026,2026,2026,2026,2026,2026,2027,2027,2027,2027,2027,2027,2027,2027,2027,2027,2027,2027,2028,2028]
 
+// Mesma divisão por pavimento das outras telas (decisão out/26): estrutura
+// pelo subgrupo da EAP (3.1 = 1º pav ... 3.7 = 7º pav); alvenaria e grupos que
+// repetem o mesmo código por pavimento, pelo pavimento do cadastro; os
+// demais em lista única.
+const GRUPOS_POR_PAVIMENTO = [3, 4]
+const pavimentoDaLinha = (r) => {
+  const sub = r.g === 3 ? String(r.i).match(/^3\.(\d+)\./) : null
+  if (sub)
+    return { chave: `3.${sub[1]}`, codigo: `3.${sub[1]}`, rotulo: `${sub[1]}º pavimento${/plat/i.test(r.p || '') ? ' / platibanda' : ''}` }
+  const p = r.p || 'Sem pavimento'
+  const n = p.match(/^(\d+)º/)
+  return {
+    chave: p,
+    codigo: n ? `${n[1]}º` : '—',
+    rotulo: n ? `${n[1]}º pavimento${/plat/i.test(p) ? ' / platibanda' : ''}` : p === 'Edifício' ? 'Edifício (geral)' : p,
+  }
+}
+
 const fmtR = v => 'R$ ' + Math.round(v).toLocaleString('pt-BR')
 const fmtH = v => Math.round(v).toLocaleString('pt-BR') + ' Hh'
 const fmtP = v => (v*100).toFixed(1).replace('.',',') + '%'
@@ -78,6 +96,8 @@ export default function AvancoFisicoPlanejado() {
   const [statusF, setStatusF] = useState('todos')
   const [q, setQ] = useState('')
   const [open, setOpen] = useState({})
+  // Pavimentos abertos ('7|2º'); começam recolhidos
+  const [openPav, setOpenPav] = useState({})
   const [metric, setMetric] = useState('pct') // 'pct' | 'custo' | 'hh'
   const [hhPlanejadoMes, setHhPlanejadoMes] = useState(null)
 
@@ -186,6 +206,19 @@ export default function AvancoFisicoPlanejado() {
   const pctAvanco = getPercentualPlanejadoAcumulado(mes) * 100
 
   const toggle = key => setOpen(o => ({...o, [key]: !o[key]}))
+  const togglePav = key => setOpenPav(o => ({...o, [key]: !o[key]}))
+
+  // Grupos divididos por pavimento: 3, 4 e os que repetem código (orçamento inteiro)
+  const gruposPorPavimento = useMemo(() => {
+    const set = new Set(GRUPOS_POR_PAVIMENTO)
+    const vistos = new Set()
+    dados.forEach(r => {
+      const k = `${r.g}|${r.i}`
+      if (vistos.has(k)) set.add(r.g)
+      vistos.add(k)
+    })
+    return set
+  }, [dados])
 
   if (loading) return <div style={S.page}><div style={{padding:40,color:'#a09a90'}}>Carregando...</div></div>
 
@@ -283,16 +316,18 @@ export default function AvancoFisicoPlanejado() {
           const stLabel = gSt==='concluido'?'Concluído':gSt==='andamento'?'Em andamento':'Programado'
           const isOpen = !!open[g.key]
 
-          // Subgroups por pavimento
+          // Pavimentos (recolhidos) só nos grupos divididos por pavimento
+          const porPav = gruposPorPavimento.has(g.gNum)
           const subMap = {}
           g.rows.forEach(r => {
-            if (!subMap[r.p]) subMap[r.p] = {key:r.p, rows:[]}
-            subMap[r.p].rows.push(r)
+            const pv = porPav ? pavimentoDaLinha(r) : { chave: '', codigo: '', rotulo: null }
+            if (!subMap[pv.chave]) subMap[pv.chave] = { key: pv.chave, codigo: pv.codigo, rotulo: pv.rotulo, rows: [], aMin: r.a, bMax: r.b }
+            const sb = subMap[pv.chave]
+            sb.rows.push(r)
+            sb.aMin = Math.min(sb.aMin, r.a)
+            sb.bMax = Math.max(sb.bMax, r.b)
           })
-          const subs = Object.values(subMap).sort((a,b) => {
-            const ia=PAVS.indexOf(a.key), ib=PAVS.indexOf(b.key)
-            return (ia===-1?99:ia)-(ib===-1?99:ib)
-          })
+          const subs = Object.values(subMap).sort((a,b) => String(a.key).localeCompare(String(b.key), 'pt-BR', { numeric: true }))
 
           return (
             <div key={g.key} style={{...S.card, borderLeft:`3px solid ${stColor}`}}>
@@ -320,9 +355,34 @@ export default function AvancoFisicoPlanejado() {
                 <div style={S.body}>
                   {subs.map(sub => {
                     const subVal = sub.rows.reduce((s,r) => s+valItem(r), 0)
+                    const kPav = `${g.key}|${sub.key}`
+                    const pvOpen = !sub.rotulo || !!openPav[kPav]
+                    const pSt = getStatus(sub.aMin, sub.bMax)
+                    const pColor = pSt==='concluido'?'#4D9B6A':pSt==='andamento'?'#e6a338':'#6d675e'
                     return (
-                      <div key={sub.key}>
-                        <div style={S.subsec}>📐 {sub.key}</div>
+                      <div key={sub.key || 'geral'}>
+                        {sub.rotulo && (
+                          <div style={{...S.chead, background:'#1b1b20', borderBottom:'1px solid #1a1a20', padding:'10px 16px'}} onClick={() => togglePav(kPav)}>
+                            <div style={{...S.badge, color:'#5B9BD5', fontSize:10}}>{sub.codigo}</div>
+                            <div style={{flex:1}}>
+                              <div style={{fontSize:12, fontWeight:600, color:'#5B9BD5'}}>{sub.rotulo}</div>
+                              <div style={{fontSize:10, color:'#6d675e', marginTop:1, display:'flex', gap:8}}>
+                                <span style={{color:pColor}}>●</span>
+                                <span>M{sub.aMin}–M{sub.bMax}</span>
+                                <span>{sub.rows.length} itens</span>
+                              </div>
+                            </div>
+                            <div style={{flex:1, maxWidth:200, padding:'0 12px'}}>
+                              <TimelineBar a={sub.aMin} b={sub.bMax} mes={mes} />
+                            </div>
+                            <div style={{textAlign:'right', minWidth:100}}>
+                              <div style={{fontSize:12, fontWeight:600, color:'#5B9BD5'}}>{fmtVal(subVal)}</div>
+                              <div style={{fontSize:9, color:'#6d675e'}}>planejado</div>
+                            </div>
+                            <div style={{color:'#6d675e', fontSize:12, marginLeft:8}}>{pvOpen?'▲':'▼'}</div>
+                          </div>
+                        )}
+                        {pvOpen && (<>
                         {/* Header */}
                         <div style={{display:'grid', gridTemplateColumns:'50px 1fr 100px 80px 120px', gap:6, padding:'5px 16px', fontSize:9, color:'#6d675e', textTransform:'uppercase', letterSpacing:.5, borderBottom:'1px solid #1a1a20'}}>
                           <span>EAP</span><span>Descrição</span><span>Período</span><span>Timeline</span><span style={{textAlign:'right'}}>Valor</span>
@@ -345,9 +405,12 @@ export default function AvancoFisicoPlanejado() {
                             </div>
                           )
                         })}
+                        {sub.rotulo && (
                         <div style={{display:'flex', justifyContent:'flex-end', gap:8, padding:'8px 16px', borderTop:'1px solid #2a2a31', fontSize:12, color:'#6d675e'}}>
-                          subtotal {sub.key}: <span style={{color:'#5B9BD5', fontWeight:600}}>{fmtVal(subVal)}</span>
+                          subtotal {sub.rotulo}: <span style={{color:'#5B9BD5', fontWeight:600}}>{fmtVal(subVal)}</span>
                         </div>
+                        )}
+                        </>)}
                       </div>
                     )
                   })}
