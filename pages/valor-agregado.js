@@ -24,12 +24,16 @@ const fmtEf = (v) => (v == null ? '—' : v.toFixed(3).replace('.', ','))
 const eficiencia = (agregado, pago, aPagar) => (agregado > 0 && pago + aPagar > 0 ? agregado / (pago + aPagar) : null)
 
 // Subtotal de grupo, subgrupo ou total: todas as colunas somadas
-function LinhaTotal({ codigo, nome, t, forte }) {
+// onClick/aberto: linha recolhível (grupo ou pavimento); a seta mostra o estado
+function LinhaTotal({ codigo, nome, t, forte, onClick, aberto }) {
   const ef = eficiencia(t.agregado, t.pago, t.contas)
   const w = forte ? 600 : 500
   return (
-    <Linha destaque>
-      <div style={{ fontWeight: w }}>{codigo}</div>
+    <Linha destaque onClick={onClick}>
+      <div style={{ fontWeight: w }}>
+        {onClick && <span style={{ color: 'var(--text2)', marginRight: 6 }}>{aberto ? '▾' : '▸'}</span>}
+        {codigo}
+      </div>
       <div style={{ fontWeight: w }}>{nome}</div>
       <div />
       <div style={{ ...dir, fontWeight: w }}>{fmtMoeda(t.custo)}</div>
@@ -49,10 +53,12 @@ function LinhaTotal({ codigo, nome, t, forte }) {
   )
 }
 
-function Linha({ children, cabecalho, destaque }) {
+function Linha({ children, cabecalho, destaque, onClick }) {
   return (
     <div
+      onClick={onClick}
       style={{
+        cursor: onClick ? 'pointer' : 'default',
         display: 'grid',
         gridTemplateColumns: COLS,
         gap: 8,
@@ -79,6 +85,8 @@ export default function ValorAgregado() {
   const [erro, setErro] = useState(null)
   const [mostrarZerados, setMostrarZerados] = useState(false)
   const [busca, setBusca] = useState('')
+  // Grupos ('g3') e pavimentos do grupo 3 ('s3.2') abertos; começa tudo recolhido
+  const [abertos, setAbertos] = useState(() => new Set())
 
   const semana = router.query.semana ? parseInt(router.query.semana, 10) : null
   // Executado nao pago (agregado acima do pago). Nao confundir com o card de
@@ -296,6 +304,22 @@ export default function ValorAgregado() {
   const somaB = m.parcela_b.curva
   const custoA = m.parcela_a.itens.reduce((t, i) => t + i.custo_total, 0)
 
+  // Recolher: grupos e pavimentos do grupo 3. Com busca, tudo aparece aberto
+  // para o resultado não ficar escondido num grupo recolhido.
+  const chavesRecolhiveis = grupos.flatMap((g) => [
+    `g${g.grupo}`,
+    ...g.subs.filter((s) => s.rotulo).map((s) => `s${s.chave}`),
+  ])
+  const todosAbertos = chavesRecolhiveis.every((k) => abertos.has(k))
+  const estaAberto = (k) => !!busca.trim() || abertos.has(k)
+  const alternar = (k) =>
+    setAbertos((atual) => {
+      const novo = new Set(atual)
+      if (novo.has(k)) novo.delete(k)
+      else novo.add(k)
+      return novo
+    })
+
   return (
     <div className="page">
       <div className="header">
@@ -388,6 +412,9 @@ export default function ValorAgregado() {
             placeholder="Buscar código, serviço ou pavimento"
             style={{ maxWidth: 320 }}
           />
+          <button className="btn-sm" onClick={() => setAbertos(todosAbertos ? new Set() : new Set(chavesRecolhiveis))}>
+            {todosAbertos ? 'Recolher todos' : 'Abrir todos'}
+          </button>
           <button className="btn-sm" onClick={() => setMostrarZerados((v) => !v)}>
             {mostrarZerados ? 'Ocultar itens não iniciados' : 'Mostrar itens não iniciados'}
           </button>
@@ -418,11 +445,26 @@ export default function ValorAgregado() {
 
         {grupos.map((g) => (
           <div key={g.grupo}>
-            <LinhaTotal codigo={g.grupo} nome={g.nome} t={g} forte />
-            {g.subs.map((s) => (
+            <LinhaTotal
+              codigo={g.grupo}
+              nome={g.nome}
+              t={g}
+              forte
+              onClick={() => alternar(`g${g.grupo}`)}
+              aberto={estaAberto(`g${g.grupo}`)}
+            />
+            {estaAberto(`g${g.grupo}`) && g.subs.map((s) => (
               <div key={s.chave || 'geral'}>
-                {s.rotulo && <LinhaTotal codigo={s.chave} nome={s.rotulo} t={s} />}
-                {s.itens.map((i, k) => (
+                {s.rotulo && (
+                  <LinhaTotal
+                    codigo={s.chave}
+                    nome={s.rotulo}
+                    t={s}
+                    onClick={() => alternar(`s${s.chave}`)}
+                    aberto={estaAberto(`s${s.chave}`)}
+                  />
+                )}
+                {(!s.rotulo || estaAberto(`s${s.chave}`)) && s.itens.map((i, k) => (
                   <Linha key={`${i.cod_eap}-${i.pavimento || ''}-${k}`}>
                     <div style={{ color: 'var(--text2)' }}>{i.cod_eap}</div>
                     <div>{i.descricao}</div>
@@ -494,7 +536,7 @@ export default function ValorAgregado() {
                     })()}
                   </Linha>
                 ))}
-                {s.zerados > 0 && (
+                {(!s.rotulo || estaAberto(`s${s.chave}`)) && s.zerados > 0 && (
                   <div style={{ font: "500 11px 'IBM Plex Sans'", color: 'var(--text2)', padding: '6px 0 10px 100px' }}>
                     {s.zerados} {s.zerados === 1 ? 'item não iniciado' : 'itens não iniciados'} (0%)
                   </div>
