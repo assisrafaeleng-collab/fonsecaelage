@@ -86,6 +86,26 @@ ${tituloPercOrcado(pago, aPagar, orcado)}`}
   )
 }
 
+// Locação: dentro da verba o agregado é o gasto, então fica neutra
+// ("neutro · XX% da verba"); acima dela, o estouro (gasto − verba) em vermelho.
+function NeutroVerba({ gasto, verba, peso }) {
+  if (!(gasto > 0.005)) return <div style={{ ...dir, fontWeight: peso, color: 'var(--text2)' }}>—</div>
+  const pv = verba > 0.005 ? (gasto / verba) * 100 : null
+  if (pv == null || pv > 100)
+    return (
+      <div style={{ ...dir, fontWeight: peso, color: VERMELHO }} title={`Gasto ${fmtMoeda(gasto)} acima da verba ${fmtMoeda(verba)}`}>
+        +{fmtMoeda(gasto - verba)}
+        <div style={{ fontSize: 10, fontWeight: 500 }}>{pv == null ? 'sem verba' : `${fmtP(pv)} da verba`}</div>
+      </div>
+    )
+  return (
+    <div style={{ ...dir, fontWeight: peso, color: 'var(--text2)' }} title={`Gasto ${fmtMoeda(gasto)} ÷ verba ${fmtMoeda(verba)}`}>
+      neutro
+      <div style={{ fontSize: 10, fontWeight: 500 }}>{fmtP(pv)} da verba</div>
+    </div>
+  )
+}
+
 // Saldo da verba = orçado − pago − a pagar; vermelho quando negativo (verba estourada)
 function Saldo({ orcado, pago, aPagar, peso }) {
   const v = (orcado || 0) - (pago || 0) - (aPagar || 0)
@@ -482,7 +502,18 @@ export default function ValorAgregado() {
         <div className="kpi">
           <div className="kpi-label">Locação · grupo 17</div>
           <div className="kpi-value" style={{ fontSize: 20, color: PLAN }}>{fmtMoeda(somaB)}</div>
-          <div className="kpi-sub">Gasto, limitado ao orçado</div>
+          <div className="kpi-sub">
+            Gasto, limitado ao orçado
+            {(() => {
+              const gasto = m.parcela_b.itens.reduce((t, i) => t + i.incorrido, 0)
+              const verba = m.parcela_b.itens.reduce((t, i) => t + i.teto, 0)
+              return verba > 0 ? (
+                <div style={{ color: gasto > verba ? VERMELHO : undefined }}>
+                  gasto {fmtMoeda(gasto)} de {fmtMoeda(verba)} · {fmtP((gasto / verba) * 100)} da verba
+                </div>
+              ) : null
+            })()}
+          </div>
         </div>
         <div className="kpi">
           <div className="kpi-label">Funcionários · grupo 18</div>
@@ -675,7 +706,7 @@ export default function ValorAgregado() {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: '90px minmax(0,1fr) 140px 140px 140px',
+            gridTemplateColumns: '90px minmax(0,1fr) 140px 140px 140px 150px',
             gap: 10,
             padding: '7px 0',
             borderBottom: '1px solid var(--border)',
@@ -690,13 +721,16 @@ export default function ValorAgregado() {
           <div style={dir}>Orçado</div>
           <div style={dir}>Gasto</div>
           <div style={dir}>Valor agregado</div>
+          <div style={dir} title="Gasto ÷ orçado. Dentro da verba: neutro; acima: estouro (gasto − orçado)">
+            Estouro / % da verba
+          </div>
         </div>
         {m.parcela_b.itens.map((i) => (
           <div
             key={i.cod_eap}
             style={{
               display: 'grid',
-              gridTemplateColumns: '90px minmax(0,1fr) 140px 140px 140px',
+              gridTemplateColumns: '90px minmax(0,1fr) 140px 140px 140px 150px',
               gap: 10,
               padding: '7px 0',
               borderBottom: '1px solid var(--border)',
@@ -708,8 +742,34 @@ export default function ValorAgregado() {
             <div style={dir}>{fmtMoeda(i.teto)}</div>
             <div style={{ ...dir, color: i.incorrido > i.teto ? VERMELHO : 'var(--text)' }}>{fmtMoeda(i.incorrido)}</div>
             <div style={{ ...dir, color: PLAN }}>{fmtMoeda(i.agregado)}</div>
+            <NeutroVerba gasto={i.incorrido} verba={i.teto} />
           </div>
         ))}
+        {(() => {
+          const gasto = m.parcela_b.itens.reduce((t, i) => t + i.incorrido, 0)
+          const verba = m.parcela_b.itens.reduce((t, i) => t + i.teto, 0)
+          const ag = m.parcela_b.itens.reduce((t, i) => t + i.agregado, 0)
+          return (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '90px minmax(0,1fr) 140px 140px 140px 150px',
+                gap: 10,
+                padding: '7px 0',
+                borderBottom: '1px solid var(--border)',
+                font: "600 12px 'IBM Plex Sans'",
+                background: 'var(--bg3)',
+              }}
+            >
+              <div />
+              <div>Total da locação (grupo 17 sem a bandeja)</div>
+              <div style={dir}>{fmtMoeda(verba)}</div>
+              <div style={{ ...dir, color: gasto > verba ? VERMELHO : 'var(--text)' }}>{fmtMoeda(gasto)}</div>
+              <div style={{ ...dir, color: PLAN }}>{fmtMoeda(ag)}</div>
+              <NeutroVerba gasto={gasto} verba={verba} peso={600} />
+            </div>
+          )
+        })()}
         <div style={{ font: "500 11px 'IBM Plex Sans'", color: 'var(--text2)', marginTop: 10 }}>
           Locação não tem medição física: o que foi gasto conta como executado, até o limite do orçado de cada item.
           Gasto acima do orçado (em vermelho) não vira valor agregado e aparece como estouro no saldo.

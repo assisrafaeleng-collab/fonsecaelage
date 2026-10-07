@@ -278,6 +278,38 @@ export default function Semanal() {
   // mostrar economia que e so conta em aberto.
   const comprometido = realizadoRef + aPagarDireto
   const saldoDireto = agregado == null ? null : agregado - comprometido
+
+  // Adiantamento (decisão out/26): semana em que a curva de físico planejado
+  // atinge o físico realizado acumulado, menos a semana da última medição.
+  // Interpolação linear entre as semanas (data_fim), para dar também os dias.
+  // Término projetado = término do cronograma − adiantamento.
+  const adiantamento = (() => {
+    const curva = dados.curva
+    const iMed = curva.findIndex((c) => c.semana === semMedida)
+    const real = iMed >= 0 ? curva[iMed].avanco_real_hh : null
+    if (real == null || !(real > 0)) return null
+    const dia = (s) => Date.parse(iso(s)) / 864e5
+    let wEq = null
+    let diaEq = null
+    for (let i = 0; i < curva.length; i += 1) {
+      const pl = curva[i].avanco_plan_hh || 0
+      if (pl < real) continue
+      const ant = i > 0 ? curva[i - 1] : null
+      const plAnt = ant ? ant.avanco_plan_hh || 0 : 0
+      const f = pl - plAnt > 1e-9 ? (real - plAnt) / (pl - plAnt) : 1
+      const wAnt = ant ? ant.semana : curva[i].semana - 1
+      const dAnt = ant ? dia(ant.data_fim) : dia(inicioDe(curva[i])) - 1
+      wEq = wAnt + f * (curva[i].semana - wAnt)
+      diaEq = dAnt + f * (dia(curva[i].data_fim) - dAnt)
+      break
+    }
+    if (wEq == null) return null
+    const semanas = wEq - semMedida
+    const dias = Math.round(diaEq - dia(curva[iMed].data_fim))
+    const fim = curva[curva.length - 1].data_fim
+    const termino = new Date((dia(fim) - dias) * 864e5).toISOString().slice(0, 10)
+    return { semanas, dias, real, wEq, termino, fim, semMed: semMedida }
+  })()
   const pctDireto = saldoDireto == null || !(agregado > 0) ? null : (saldoDireto / agregado) * 100
   // Total: soma dos dois saldos sobre a soma das duas bases.
   const saldoTotal = saldoDireto == null || saldoIndireto == null ? null : saldoDireto + saldoIndireto
@@ -452,6 +484,9 @@ export default function Semanal() {
           </div>
           <div className="kpi-sub">
             {agregado ? `${fmtPerc((comprometido / agregado) * 100)} do executado (pago + a pagar)` : '—'}
+            <div>
+              pago {fmtMoeda(realizadoRef)} · a pagar {fmtMoeda(aPagarDireto)}
+            </div>
             {refAtrasada ? ` · até ${sRef}` : ''}
           </div>
         </div>
@@ -654,6 +689,44 @@ export default function Semanal() {
             </div>
           </div>
         )}
+
+        {base !== 'custo' && (
+          <div
+            className="kpi"
+            title={
+              adiantamento == null
+                ? 'Sem medição'
+                : `Físico realizado acumulado na última medição (S${String(adiantamento.semMed).padStart(2, '0')}): ${fmtPc2(adiantamento.real)}
+` +
+                  `A curva de físico planejado atinge esse valor na S${adiantamento.wEq.toFixed(1).replace('.', ',')} (interpolada)
+` +
+                  `Adiantamento = S${adiantamento.wEq.toFixed(1).replace('.', ',')} − S${adiantamento.semMed} = ${adiantamento.semanas.toFixed(1).replace('.', ',')} semanas (${adiantamento.dias} dias)
+` +
+                  `Término projetado = término do cronograma (${dmy(adiantamento.fim)}) − ${adiantamento.dias} dias = ${dmy(adiantamento.termino)}
+` +
+                  'Vale se o ritmo for mantido.'
+            }
+          >
+            <div className="kpi-label">Adiantamento</div>
+            <div
+              className="kpi-value"
+              style={{
+                fontSize: '20px',
+                lineHeight: '1.2',
+                color: adiantamento == null ? REAL : adiantamento.semanas >= 0 ? VERDE : VERMELHO,
+              }}
+            >
+              {adiantamento == null
+                ? '—'
+                : `${adiantamento.semanas >= 0 ? '+' : ''}${adiantamento.semanas.toFixed(1).replace('.', ',')} semanas`}
+            </div>
+            <div className="kpi-sub">
+              {adiantamento == null
+                ? 'Sem medição'
+                : `${adiantamento.semanas >= 0 ? 'Adiantado' : 'Atrasado'} ${Math.abs(adiantamento.dias)} dias · término projetado ${dmy(adiantamento.termino)} se o ritmo for mantido`}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Linha 3 — projeção do custo direto no término. Fechada: só o orçado;
@@ -851,7 +924,7 @@ export default function Semanal() {
                       {ritmo ? ` · ${ritmo}` : ''}
                     </div>
                   </div>
-                  <ColunasValorCusto v={g} />
+                  <ColunasValorCusto v={g} neutroVerba={g.grupo === 17} />
                   <span style={{ color: '#8b919c', textAlign: 'center' }}>{aberto ? '▴' : '▾'}</span>
                 </div>
 
@@ -982,6 +1055,7 @@ export default function Semanal() {
                             pago={i.pago}
                             aPagar={i.a_pagar}
                             antecipada={i.material_comprado}
+                            locacao={i.locacao}
                             orcado={i.planejado_total}
                           />
                           <td
@@ -1876,14 +1950,14 @@ function CelulaPercOrcado({ pago, aPagar, orcado }) {
 // Célula da tabela de itens: R$ em cima, % embaixo. Compra antecipada ainda
 // dentro da verba (agregado = custo): "neutro · XX% da verba"; passando de
 // 100% da verba, o estouro normal.
-function CelulaEstouro({ agregado, pago, aPagar, antecipada, orcado }) {
+function CelulaEstouro({ agregado, pago, aPagar, antecipada, locacao, orcado }) {
   const e = estouroDe(agregado, (pago || 0) + (aPagar || 0))
   const pv = percDoOrcado(pago, aPagar, orcado)
-  if (antecipada && e != null && pv != null && pv <= 100 && Math.abs(e.rs) < 0.005)
+  if ((antecipada || locacao) && e != null && pv != null && pv <= 100 && Math.abs(e.rs) < 0.005)
     return (
       <td
         style={{ textAlign: 'right', fontFamily: 'var(--mono)', color: '#8b919c' }}
-        title={`Compra antecipada dentro da verba: o valor agregado segue o custo, sem estouro nem economia
+        title={`${locacao ? 'Locação dentro da verba: o valor agregado é o gasto até o orçado' : 'Compra antecipada dentro da verba: o valor agregado segue o custo'}, sem estouro nem economia
 ${tituloPercOrcado(pago, aPagar, orcado)}`}
       >
         neutro
@@ -1903,7 +1977,9 @@ ${tituloPercOrcado(pago, aPagar, orcado)}`}
 
 // Orçado, valor agregado, custo (pago + a pagar), % do orçado e estouro /
 // economia de um grupo ou pavimento: cinco células do grid GRUPO_COLS.
-function ColunasValorCusto({ v, compacto }) {
+// neutroVerba: grupo da locação (17) mostra "neutro · XX% da verba" até
+// passar da verba; acima dela, o estouro (custo − orçado) em vermelho.
+function ColunasValorCusto({ v, compacto, neutroVerba }) {
   const fs = compacto ? 12 : 13
   const sub = { fontSize: 10, color: '#8b919c' }
   return (
@@ -1932,8 +2008,31 @@ function ColunasValorCusto({ v, compacto }) {
           </div>
         )
       })()}
-      <BarraEstouro v={v} fs={fs} />
+      {neutroVerba ? <NeutroVerba v={v} fs={fs} /> : <BarraEstouro v={v} fs={fs} />}
     </>
+  )
+}
+
+function NeutroVerba({ v, fs }) {
+  const pv = percDoOrcado(v.pago, v.a_pagar, v.orcado)
+  const custo = (v.pago || 0) + (v.a_pagar || 0)
+  const e = estouroDe(v.agregado, custo)
+  const titulo =
+    'Locação: o valor agregado é o gasto até a verba, sem estouro nem economia enquanto o grupo estiver dentro dela\n' +
+    tituloPercOrcado(v.pago, v.a_pagar, v.orcado) +
+    (e ? `\nCusto − valor agregado (inclui a bandeja, medida por unidade): ${fmtEstouroRs(e.rs)}` : '')
+  if (pv != null && pv > 100)
+    return (
+      <div style={{ textAlign: 'right', fontFamily: 'var(--mono)', color: VERMELHO }} title={titulo}>
+        <div style={{ fontSize: fs }}>{fmtEstouroRs(custo - v.orcado)}</div>
+        <div style={{ fontSize: 10 }}>{fmtPercOrcado(pv)} da verba</div>
+      </div>
+    )
+  return (
+    <div style={{ textAlign: 'right', fontFamily: 'var(--mono)', color: '#8b919c' }} title={titulo}>
+      <div style={{ fontSize: fs }}>{pv == null ? '—' : 'neutro'}</div>
+      {pv != null && <div style={{ fontSize: 10 }}>{fmtPerc(pv)} da verba</div>}
+    </div>
   )
 }
 
