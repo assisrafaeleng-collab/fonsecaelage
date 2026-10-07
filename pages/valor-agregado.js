@@ -148,38 +148,72 @@ export default function ValorAgregado() {
     const termo = busca.trim().toLowerCase()
     const mapa = new Map()
     const porCodigo = m.parcela_a.por_codigo || {}
-    const novoTotal = () => ({ custo: 0, agregado: 0, pago: 0, contas: 0, aPagar: 0, codigos: new Set() })
+    // Pago e a pagar (TOTVS) são por código. O código repetido em várias
+    // linhas (o mesmo serviço por pavimento) reparte pelo orçado de cada uma,
+    // como no painel semanal: a soma do grupo não muda e cada pavimento fica
+    // com a sua parte.
+    const orcCod = {}
+    const nCod = {}
+    const gruposPorPav = new Set([3, 4])
+    const vistos = new Set()
+    m.parcela_a.itens.forEach((i) => {
+      orcCod[i.cod_eap] = (orcCod[i.cod_eap] || 0) + i.custo_total
+      nCod[i.cod_eap] = (nCod[i.cod_eap] || 0) + 1
+      const k = `${i.grupo}|${i.cod_eap}`
+      if (vistos.has(k)) gruposPorPav.add(i.grupo)
+      vistos.add(k)
+    })
+    const fatia = (i) => (orcCod[i.cod_eap] > 0 ? i.custo_total / orcCod[i.cod_eap] : 1 / (nCod[i.cod_eap] || 1))
+    const novoTotal = () => ({ custo: 0, agregado: 0, pago: 0, contas: 0 })
     // Subtotal sempre com todos os itens: esconder linha nao pode mudar a soma.
-    // Pago, a pagar (TOTVS) e nao pago sao por codigo: uma vez so por codigo.
     const somar = (t, i) => {
       t.custo += i.custo_total
       t.agregado += i.agregado
-      const pc = porCodigo[i.cod_eap]
-      if (pc && !t.codigos.has(i.cod_eap)) {
-        t.codigos.add(i.cod_eap)
-        t.pago += pc.pago
-        t.contas += pc.a_pagar || 0
-        t.aPagar += pc.aguardando
-      }
+      t.pago += i.pago
+      t.contas += i.contas
     }
-    m.parcela_a.itens.forEach((i) => {
+    const rotuloPav = (p) => {
+      const n = String(p || '').match(/^(\d+)º/)
+      if (n) return `${n[1]}º pavimento${/plat/i.test(p) ? ' / platibanda' : ''}`
+      return p === 'Edifício' ? 'Edifício (geral)' : p || 'Sem pavimento'
+    }
+    m.parcela_a.itens.forEach((orig) => {
+      const pc = porCodigo[orig.cod_eap]
+      const f = fatia(orig)
+      const i = { ...orig, pago: pc ? pc.pago * f : 0, contas: pc ? (pc.a_pagar || 0) * f : 0 }
       if (!mapa.has(i.grupo))
         mapa.set(i.grupo, { grupo: i.grupo, nome: i.grupo_nome, ...novoTotal(), subs: new Map() })
       const g = mapa.get(i.grupo)
       somar(g, i)
-      // Estrutura abre por subgrupo da EAP: 3.1 = 1º pav ... 3.7 = 7º pav
+      // Estrutura abre por subgrupo da EAP (3.1 = 1º pav ... 3.7 = 7º pav);
+      // alvenaria e os grupos com o mesmo código repetido por pavimento, pelo
+      // pavimento do cadastro.
       const sub = i.grupo === 3 ? String(i.cod_eap).match(/^3\.(\d+)\./) : null
-      const chave = sub ? `3.${sub[1]}` : ''
+      const pav = i.pavimento || 'Sem pavimento'
+      const chave = sub ? `3.${sub[1]}` : gruposPorPav.has(i.grupo) ? `${i.grupo}|${pav}` : ''
       if (!g.subs.has(chave))
         g.subs.set(chave, {
           chave,
-          rotulo: sub ? `${sub[1]}º pavimento${/plat/i.test(i.pavimento || '') ? ' / platibanda' : ''}` : null,
+          codigo: sub ? `3.${sub[1]}` : /^\d+º/.test(pav) ? pav.replace(/\/plat/i, '') : '—',
+          rotulo: sub
+            ? `${sub[1]}º pavimento${/plat/i.test(i.pavimento || '') ? ' / platibanda' : ''}`
+            : chave
+              ? rotuloPav(pav)
+              : null,
           ...novoTotal(),
           itens: [],
           zerados: 0,
+          titulos: 0,
         })
       const s = g.subs.get(chave)
       somar(s, i)
+      s.linhas = (s.linhas || 0) + 1
+      // Linha de título do orçamento (orçado zero, sem custo e sem agregado):
+      // não aparece, mas continua nas somas (onde não altera nada).
+      if (i.custo_total <= 0.005 && Math.abs(i.pago + i.contas) <= 0.005 && i.agregado <= 0.005) {
+        s.titulos += 1
+        return
+      }
       const casa =
         !termo ||
         String(i.cod_eap).toLowerCase().includes(termo) ||
@@ -195,9 +229,10 @@ export default function ValorAgregado() {
       .sort((a, b) => a.grupo - b.grupo)
       .map((g) => ({
         ...g,
-        subs: Array.from(g.subs.values()).sort((a, b) =>
-          a.chave.localeCompare(b.chave, 'pt-BR', { numeric: true })
-        ),
+        subs: Array.from(g.subs.values())
+          // Pavimento só com linhas de título não aparece
+          .filter((x) => !(x.titulos > 0 && x.titulos === x.linhas && x.custo <= 0.005 && Math.abs(x.pago + x.contas) <= 0.005))
+          .sort((a, b) => a.chave.localeCompare(b.chave, 'pt-BR', { numeric: true })),
       }))
   }, [m, mostrarZerados, busca])
 
@@ -337,12 +372,8 @@ export default function ValorAgregado() {
   const naoAchados = (dados.consistencia && dados.consistencia.agregado_pares_nao_encontrados) || []
   const somaB = m.parcela_b.curva
   const custoA = m.parcela_a.itens.reduce((t, i) => t + i.custo_total, 0)
-  const orcadoPorCodigo = {}
-  m.parcela_a.itens.forEach((i) => {
-    orcadoPorCodigo[i.cod_eap] = (orcadoPorCodigo[i.cod_eap] || 0) + i.custo_total
-  })
 
-  // Recolher: grupos e pavimentos do grupo 3. Com busca, tudo aparece aberto
+  // Recolher: grupos e pavimentos (grupo 3 e grupos divididos por pavimento). Com busca, tudo aparece aberto
   // para o resultado não ficar escondido num grupo recolhido.
   const chavesRecolhiveis = grupos.flatMap((g) => [
     `g${g.grupo}`,
@@ -498,7 +529,7 @@ export default function ValorAgregado() {
               <div key={s.chave || 'geral'}>
                 {s.rotulo && (
                   <LinhaTotal
-                    codigo={s.chave}
+                    codigo={s.codigo}
                     nome={s.rotulo}
                     t={s}
                     onClick={() => alternar(`s${s.chave}`)}
@@ -549,21 +580,18 @@ export default function ValorAgregado() {
                       )}
                     </div>
                     {(() => {
-                      // Varias linhas do mesmo codigo (pavimentos): pago so na primeira.
-                      const pc = (m.parcela_a.por_codigo || {})[i.cod_eap]
-                      const primeira = s.itens.findIndex((x) => x.cod_eap === i.cod_eap) === k
-                      if (!pc || !primeira) return (<><div /><div /><div /><div /></>)
-                      const estouro = pc.pago > pc.agregado && pc.agregado > 0
+                      // Pago e a pagar da linha: o código repetido por pavimento reparte pelo orçado
+                      const estouro = i.pago > i.agregado + 0.005 && i.agregado > 0
                       return (
                         <>
                           <div style={{ ...dir, color: estouro ? VERMELHO : 'var(--text)' }} title={estouro ? 'Pago acima do executado' : ''}>
-                            {fmtMoeda(pc.pago)}
+                            {fmtMoeda(i.pago)}
                           </div>
-                          <div style={{ ...dir, color: pc.a_pagar > 0 ? AMBAR : 'var(--text2)' }}>
-                            {pc.a_pagar > 0 ? fmtMoeda(pc.a_pagar) : '—'}
+                          <div style={{ ...dir, color: i.contas > 0.005 ? AMBAR : 'var(--text2)' }}>
+                            {i.contas > 0.005 ? fmtMoeda(i.contas) : '—'}
                           </div>
-                          <Estouro agregado={pc.agregado} pago={pc.pago} aPagar={pc.a_pagar || 0} />
-                          <Saldo orcado={orcadoPorCodigo[i.cod_eap]} pago={pc.pago} aPagar={pc.a_pagar || 0} />
+                          <Estouro agregado={i.agregado} pago={i.pago} aPagar={i.contas} />
+                          <Saldo orcado={i.custo_total} pago={i.pago} aPagar={i.contas} />
                         </>
                       )
                     })()}

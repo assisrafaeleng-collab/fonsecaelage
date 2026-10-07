@@ -30,7 +30,7 @@ const PILL = { background: 'rgba(255,255,255,0.07)', padding: '3px 8px', borderR
 const VERDE = '#7fb08a'
 const VERMELHO = '#c77b74'
 const AMBAR = '#c9a45c'
-// Painel de custo direto por grupo: nº, nome, orçado, agregado, custo, eficiência, seta
+// Painel de custo direto por grupo: nº, nome, orçado, agregado, custo, estouro / economia, seta
 const GRUPO_COLS = '38px minmax(0,1fr) 120px 140px 190px 170px 28px'
 
 const FIN_PLAN = '#5f8a6d'
@@ -86,6 +86,15 @@ export default function Semanal() {
   const [recarregar, setRecarregar] = useState(0)
   const [indiretos, setIndiretos] = useState(null)
   const [grupoAberto, setGrupoAberto] = useState(null)
+  // Pavimentos abertos no painel de custo direto ('3|3.2', '7|2º'); começam recolhidos
+  const [pavAberto, setPavAberto] = useState(() => new Set())
+  const alternarPav = (k) =>
+    setPavAberto((atual) => {
+      const novo = new Set(atual)
+      if (novo.has(k)) novo.delete(k)
+      else novo.add(k)
+      return novo
+    })
   const [abertura, setAbertura] = useState(null)
   const [somas, setSomas] = useState(null)
   const [carregandoGrupos, setCarregandoGrupos] = useState(false)
@@ -825,7 +834,7 @@ export default function Semanal() {
                   <div>
                     <div style={{ fontWeight: 600, fontSize: 13 }}>{g.nome}</div>
                     <div style={{ fontSize: 11, color: '#8b919c', marginTop: 2 }}>
-                      {g.itens.length} itens{g.fora_do_orcamento ? '' : ` · M${g.mes_inicio}–M${g.mes_fim}`}
+                      {g.itens.filter(linhaVisivel).length} itens{g.fora_do_orcamento ? '' : ` · M${g.mes_inicio}–M${g.mes_fim}`}
                       {ritmo ? ` · ${ritmo}` : ''}
                     </div>
                   </div>
@@ -836,35 +845,49 @@ export default function Semanal() {
                 {aberto &&
                   (g.por_pavimento ? g.pavimentos || [] : [{ pavimento: null, itens: g.itens }]).map((pv) => (
                     <div key={pv.chave || pv.pavimento || 'geral'}>
-                      {pv.pavimento && (
-                        <div
-                          style={{
-                            display: 'grid',
-                            gridTemplateColumns: GRUPO_COLS,
-                            gap: 12,
-                            alignItems: 'center',
-                            padding: '8px 4px',
-                            borderTop: '1px solid var(--border)',
-                            background: 'var(--bg3)',
-                            borderRadius: 6,
-                          }}
-                        >
-                          <span />
-                          <span
+                      {pv.pavimento && (() => {
+                        // Pavimento no mesmo formato do grupo, recolhido; clicando, abrem as linhas
+                        const k = `${g.grupo}|${pv.chave}`
+                        const pvAberto = pavAberto.has(k)
+                        return (
+                          <div
+                            onClick={() => alternarPav(k)}
                             style={{
-                              fontFamily: 'var(--mono)',
-                              fontSize: 11,
-                              letterSpacing: '0.08em',
-                              textTransform: 'uppercase',
-                              color: PLAN,
+                              display: 'grid',
+                              gridTemplateColumns: GRUPO_COLS,
+                              gap: 12,
+                              alignItems: 'center',
+                              padding: '12px 4px',
+                              borderTop: '1px solid var(--border)',
+                              background: 'var(--bg3)',
+                              borderRadius: 6,
+                              cursor: 'pointer',
+                              marginBottom: pvAberto ? 6 : 0,
                             }}
                           >
-                            {pv.pavimento}
-                          </span>
-                          <ColunasValorCusto v={pv} compacto />
-                          <span />
-                        </div>
-                      )}
+                            <span
+                              style={{
+                                fontFamily: 'var(--mono)',
+                                fontSize: 11,
+                                color: PLAN,
+                                textAlign: 'center',
+                              }}
+                            >
+                              {pv.codigo}
+                            </span>
+                            <div>
+                              <div style={{ fontWeight: 600, fontSize: 13, color: PLAN }}>{pv.pavimento}</div>
+                              <div style={{ fontSize: 11, color: '#8b919c', marginTop: 2 }}>
+                                {pv.itens.filter(linhaVisivel).length} itens
+                                {pv.mes_inicio ? ` · M${pv.mes_inicio}–M${pv.mes_fim}` : ''}
+                              </div>
+                            </div>
+                            <ColunasValorCusto v={pv} />
+                            <span style={{ color: '#8b919c', textAlign: 'center' }}>{pvAberto ? '▴' : '▾'}</span>
+                          </div>
+                        )
+                      })()}
+                      {(!pv.pavimento || pavAberto.has(`${g.grupo}|${pv.chave}`)) && (
                       <table style={{ marginBottom: 10 }}>
                         <thead>
                           <tr>
@@ -900,7 +923,7 @@ export default function Semanal() {
                           </tr>
                         </thead>
                     <tbody>
-                      {pv.itens.map((i) => {
+                      {pv.itens.filter(linhaVisivel).map((i) => {
                         return (
                         <React.Fragment key={i.chave || i.cod_eap}>
                         <tr
@@ -1000,6 +1023,7 @@ export default function Semanal() {
                       })}
                     </tbody>
                       </table>
+                      )}
                     </div>
                   ))}
               </div>
@@ -1580,6 +1604,9 @@ export default function Semanal() {
           semana={p.semana}
           ultMed={dados.ultima_semana_com_avanco || p.semana}
           onPick={setSemana}
+          aPagar={(dados.kpis.ipc_fechamento && dados.kpis.ipc_fechamento.a_pagar_direto) || 0}
+          semFech={dados.kpis.ipc_fechamento ? dados.kpis.ipc_fechamento.semana_do_corte : null}
+          mesFech={dados.kpis.ipc_fechamento ? dados.kpis.ipc_fechamento.mes : null}
         />
       </div>
 
@@ -1734,6 +1761,10 @@ export default function Semanal() {
 }
 
 /* ─── PAINEL DE CUSTO DIRETO POR GRUPO ───────────────────────── */
+// Linha de título do orçamento (orçado zero, sem custo e sem agregado) não
+// aparece na tela; continua nas somas, onde não altera nada.
+const linhaVisivel = (i) => i.planejado_total > 0.005 || Math.abs(i.custo || 0) > 0.005 || (i.agregado || 0) > 0.005
+
 // Estouro / economia = custo (pago + a pagar) − valor agregado. Positivo =
 // estouro (vermelho), negativo = economia (verde); o % é sobre o valor
 // agregado. Sem valor agregado e sem custo: null ("—"). A eficiência
@@ -1828,14 +1859,46 @@ function BarraEstouro({ v, fs }) {
 
 /* ─── CURVA S SEMANAL (mesmo layout do Sirius 60) ───────────── */
 const fmtK = (v) =>
-  v >= 1e6 ? `R$ ${(v / 1e6).toFixed(2).replace('.', ',')}M` : `R$ ${Math.round(v / 1000)}k`
+  Math.abs(v) >= 1e6 ? `R$ ${(v / 1e6).toFixed(2).replace('.', ',')}M` : `R$ ${Math.round(v / 1000)}k`
 const fmtPc2 = (v) => `${v.toFixed(2).replace('.', ',')}%`
+const fmtPcEixo = (v) => `${Number(v.toFixed(1)).toString().replace('.', ',')}%`
 
-function CurvaS({ curva, semana, ultMed, onPick }) {
+// Faixa "redonda" para o eixo: 4 intervalos de 1, 2, 2,5 ou 5 × 10^n que
+// cobrem [min, max] dos valores visíveis.
+function faixaDoEixo(min, max, padrao) {
+  if (!Number.isFinite(min) || !Number.isFinite(max)) return padrao
+  if (max - min < 1e-9) {
+    const folga = Math.max(Math.abs(max) * 0.05, padrao[1] * 0.01)
+    min -= folga
+    max += folga
+  }
+  const bruto = (max - min) / 4
+  const pot = Math.pow(10, Math.floor(Math.log10(bruto)))
+  const passo = [1, 2, 2.5, 5, 10].map((k) => k * pot).find((p) => Math.ceil(max / p) - Math.floor(min / p) <= 4) || 10 * pot
+  let lo = Math.floor(min / passo) * passo
+  if (lo < 0 && min >= 0) lo = 0
+  return [lo, lo + 4 * passo]
+}
+
+// Data ISO + n meses (dia limitado ao fim do mês)
+const somarMeses = (s, n) => {
+  const [y, m, d] = iso(s).split('-').map(Number)
+  const alvo = new Date(Date.UTC(y, m - 1 + n, 1))
+  const fim = new Date(Date.UTC(alvo.getUTCFullYear(), alvo.getUTCMonth() + 1, 0)).getUTCDate()
+  alvo.setUTCDate(Math.min(d, fim))
+  return alvo.toISOString().slice(0, 10)
+}
+
+// aPagar: contas a pagar do direto do último fechamento; semFech: semana do
+// fechamento (a que contém o último dia do mês fechado).
+function CurvaS({ curva, semana, ultMed, onPick, aPagar = 0, semFech = null, mesFech = null }) {
   const W = 900, H = 340, PADL = 52, PADR = 66, PADT = 26, PADB = 40
   const n = curva.length
   const [hover, setHover] = useState(null)
   const [ocultas, setOcultas] = useState({})
+  // Trecho visível: modo dos botões ('atual', '3m', 'toda') ou faixa arrastada
+  const [zoom, setZoom] = useState({ modo: '3m' })
+  const [arraste, setArraste] = useState(null)
 
   // Realizado (físico, valor agregado e custo) termina na semana selecionada;
   // o planejado vai até o fim da obra.
@@ -1843,38 +1906,84 @@ function CurvaS({ curva, semana, ultMed, onPick }) {
   // Valor agregado na regua de custo, igual ao card, so ate a ultima medicao.
   const va = (c) =>
     !ate(c) || c.semana > ultMed || c.bcwp_a_custo == null ? null : c.bcwp_a_custo + (c.bcwp_b || 0) + (c.bcwp_c || 0)
-  const pontos = curva.map((c) => ({
-    semana: c.semana,
-    data_fim: c.data_fim,
-    // Físico sempre em Hh (horas executadas ÷ horas orçadas)
-    fp: c.avanco_plan_hh,
-    fr: c.medido && ate(c) ? c.avanco_real_hh : null,
-    vp: c.bcws,
-    va: va(c),
-    cr: c.medido && ate(c) ? c.acwp : null,
-  }))
-
-  const maxFin = Math.max(...pontos.map((m) => Math.max(m.vp || 0, m.va || 0, m.cr || 0)), 1)
-  const x = (i) => PADL + (i / (n - 1)) * (W - PADL - PADR)
-  const yPct = (v) => H - PADB - (v / 100) * (H - PADT - PADB)
-  const yFin = (v) => H - PADB - (v / maxFin) * (H - PADT - PADB)
+  const pontos = curva.map((c) => {
+    const cr = c.medido && ate(c) ? c.acwp : null
+    return {
+      semana: c.semana,
+      data_inicio: c.data_inicio,
+      data_fim: c.data_fim,
+      // Físico sempre em Hh (horas executadas ÷ horas orçadas)
+      fp: c.avanco_plan_hh,
+      fr: c.medido && ate(c) ? c.avanco_real_hh : null,
+      vp: c.bcws,
+      va: va(c),
+      cr,
+      // Comprometido = pago + contas a pagar do último fechamento, a partir da
+      // semana do fechamento; antes dela coincide com o pago. Na semana do
+      // fechamento é o custo do IPC.
+      cc: cr == null ? null : semFech != null && c.semana >= semFech ? cr + aPagar : cr,
+    }
+  })
 
   const series = [
-    { id: 'fp', nome: 'Físico planejado', cor: '#5B9BD5', campo: 'fp', esc: yPct, dash: '5,4', tipo: 'pct' },
-    { id: 'fr', nome: 'Físico realizado', cor: '#4D9B6A', campo: 'fr', esc: yPct, dash: null, tipo: 'pct' },
-    { id: 'vp', nome: 'Valor planejado (VP)', cor: '#C9B38A', campo: 'vp', esc: yFin, dash: '5,4', tipo: 'rs' },
-    { id: 'va', nome: 'Valor agregado (VA)', cor: '#E8B04B', campo: 'va', esc: yFin, dash: null, tipo: 'rs' },
-    { id: 'cr', nome: 'Custo realizado (CR)', cor: '#D9734E', campo: 'cr', esc: yFin, dash: null, tipo: 'rs' },
+    { id: 'fp', nome: 'Físico planejado', cor: '#5B9BD5', campo: 'fp', dash: '5,4', tipo: 'pct' },
+    { id: 'fr', nome: 'Físico realizado', cor: '#4D9B6A', campo: 'fr', dash: null, tipo: 'pct' },
+    { id: 'vp', nome: 'Valor planejado (VP)', cor: '#C9B38A', campo: 'vp', dash: '5,4', tipo: 'rs' },
+    { id: 'va', nome: 'Valor agregado (VA)', cor: '#E8B04B', campo: 'va', dash: null, tipo: 'rs' },
+    { id: 'cr', nome: 'Custo pago', cor: '#D9734E', campo: 'cr', dash: null, tipo: 'rs' },
+    { id: 'cc', nome: 'Custo comprometido (pago + a pagar)', cor: '#B05A8C', campo: 'cc', dash: '2,3', tipo: 'rs' },
   ]
   const visiveis = series.filter((sr) => !ocultas[sr.id])
 
-  const linha = (campo, esc) => {
+  // Índices do trecho visível
+  const iSel = Math.max(0, pontos.findIndex((m) => m.semana === semana))
+  const [i0, i1] = (() => {
+    if (zoom.modo === 'faixa') return [zoom.i0, zoom.i1]
+    if (zoom.modo === 'toda') return [0, n - 1]
+    if (zoom.modo === 'atual') return [0, Math.max(iSel, 1)]
+    const ref = pontos[iSel].data_fim
+    const de = somarMeses(ref, -3)
+    const ateData = somarMeses(ref, 3)
+    let a = pontos.findIndex((m) => iso(m.data_fim) >= de)
+    let b = pontos.length - 1 - [...pontos].reverse().findIndex((m) => iso(m.data_fim) <= ateData)
+    if (a < 0) a = 0
+    if (b < a + 1) b = Math.min(n - 1, a + 1)
+    return [a, b]
+  })()
+  const span = Math.max(i1 - i0, 1)
+
+  // Eixos ajustados ao trecho visível (só as séries ligadas)
+  const faixa = (tipo, padrao) => {
+    let min = Infinity
+    let max = -Infinity
+    visiveis
+      .filter((sr) => sr.tipo === tipo)
+      .forEach((sr) => {
+        for (let i = i0; i <= i1; i += 1) {
+          const v = pontos[i][sr.campo]
+          if (v == null) continue
+          min = Math.min(min, v)
+          max = Math.max(max, v)
+        }
+      })
+    return faixaDoEixo(min, max, padrao)
+  }
+  const maxFinObra = Math.max(...pontos.map((m) => Math.max(m.vp || 0, m.va || 0, m.cr || 0, m.cc || 0)), 1)
+  const [pLo, pHi] = faixa('pct', [0, 100])
+  const [rLo, rHi] = faixa('rs', [0, maxFinObra])
+
+  const x = (i) => PADL + ((i - i0) / span) * (W - PADL - PADR)
+  const yPct = (v) => H - PADB - ((v - pLo) / (pHi - pLo || 1)) * (H - PADT - PADB)
+  const yFin = (v) => H - PADB - ((v - rLo) / (rHi - rLo || 1)) * (H - PADT - PADB)
+  const esc = (sr) => (sr.tipo === 'pct' ? yPct : yFin)
+
+  const linha = (campo, f) => {
     let d = ''
-    pontos.forEach((m, i) => {
-      const v = m[campo]
-      if (v == null) return
-      d += (d === '' ? 'M' : 'L') + x(i).toFixed(1) + ',' + esc(v).toFixed(1)
-    })
+    for (let i = i0; i <= i1; i += 1) {
+      const v = pontos[i][campo]
+      if (v == null) continue
+      d += (d === '' ? 'M' : 'L') + x(i).toFixed(1) + ',' + f(v).toFixed(1)
+    }
     return d
   }
 
@@ -1895,57 +2004,129 @@ function CurvaS({ curva, semana, ultMed, onPick }) {
     const r = e.currentTarget.getBoundingClientRect()
     const px = ((e.clientX - r.left) / r.width) * W
     if (px < PADL - 10 || px > W - PADR + 10) return null
-    const i = Math.round(((px - PADL) / (W - PADL - PADR)) * (n - 1))
-    return Math.max(0, Math.min(i, n - 1))
+    const i = i0 + Math.round(((px - PADL) / (W - PADL - PADR)) * span)
+    return Math.max(i0, Math.min(i, i1))
   }
 
-  const iSel = Math.max(0, pontos.findIndex((m) => m.semana === semana))
   const h = hover != null ? pontos[hover] : null
   const saldo = h && h.va != null && h.cr != null ? h.va - h.cr : null
+  const passoRotulo = span > 60 ? 8 : span > 30 ? 4 : span > 14 ? 2 : 1
+  const ticks = [0, 1, 2, 3, 4]
+
+  const botaoZoom = (rotulo, modo) => (
+    <button
+      key={modo}
+      className="btn-sm"
+      onClick={() => setZoom({ modo })}
+      style={zoom.modo === modo ? { color: 'var(--text)', borderColor: 'var(--accent)' } : null}
+    >
+      {rotulo}
+    </button>
+  )
 
   return (
     <div>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8, alignItems: 'center' }}>
+        {botaoZoom('Até a semana atual', 'atual')}
+        {botaoZoom('± 3 meses', '3m')}
+        {botaoZoom('Obra toda', 'toda')}
+        {zoom.modo !== '3m' && (
+          <button className="btn-sm" onClick={() => setZoom({ modo: '3m' })}>
+            Voltar ao normal
+          </button>
+        )}
+        <span className="kpi-sub" style={{ marginLeft: 'auto' }}>
+          S{pontos[i0].semana}–S{pontos[i1].semana} · arraste sobre o gráfico para ampliar um trecho
+        </span>
+      </div>
       <svg
         viewBox={`0 0 ${W} ${H}`}
-        style={{ width: '100%', height: 'auto', cursor: 'pointer' }}
-        onMouseMove={(e) => setHover(indiceDo(e))}
-        onMouseLeave={() => setHover(null)}
-        onClick={(e) => {
+        style={{ width: '100%', height: 'auto', cursor: arraste ? 'col-resize' : 'crosshair', userSelect: 'none' }}
+        onMouseDown={(e) => {
           const i = indiceDo(e)
-          if (i != null && onPick) onPick(pontos[i].semana)
+          if (i != null) setArraste({ de: i, ate: i })
+        }}
+        onMouseMove={(e) => {
+          const i = indiceDo(e)
+          setHover(i)
+          if (arraste && i != null) setArraste({ ...arraste, ate: i })
+        }}
+        onMouseLeave={() => {
+          setHover(null)
+          setArraste(null)
+        }}
+        onMouseUp={(e) => {
+          const i = indiceDo(e)
+          const a = arraste
+          setArraste(null)
+          if (!a) return
+          const fim = i == null ? a.ate : i
+          const lo = Math.min(a.de, fim)
+          const hi = Math.max(a.de, fim)
+          // Arrasto de 2 semanas ou mais amplia; clique simples vai à semana
+          if (hi - lo >= 2) setZoom({ modo: 'faixa', i0: lo, i1: hi })
+          else if (onPick) onPick(pontos[a.de].semana)
         }}
       >
-        {[0, 25, 50, 75, 100].map((pc) => (
-          <g key={pc}>
-            <line x1={PADL} y1={yPct(pc)} x2={W - PADR} y2={yPct(pc)} stroke="var(--border)" strokeWidth="1" />
-            <text x={PADL - 8} y={yPct(pc) + 3} fill="var(--text3)" fontSize="9" textAnchor="end">
-              {pc}%
-            </text>
-            <text x={W - PADR + 8} y={yPct(pc) + 3} fill="var(--text3)" fontSize="9">
-              {fmtK((maxFin * pc) / 100)}
-            </text>
-          </g>
-        ))}
+        {ticks.map((k) => {
+          const vp = pLo + ((pHi - pLo) * k) / 4
+          const vr = rLo + ((rHi - rLo) * k) / 4
+          const y = H - PADB - (k / 4) * (H - PADT - PADB)
+          return (
+            <g key={k}>
+              <line x1={PADL} y1={y} x2={W - PADR} y2={y} stroke="var(--border)" strokeWidth="1" />
+              <text x={PADL - 8} y={y + 3} fill="var(--text3)" fontSize="9" textAnchor="end">
+                {fmtPcEixo(vp)}
+              </text>
+              <text x={W - PADR + 8} y={y + 3} fill="var(--text3)" fontSize="9">
+                {fmtK(vr)}
+              </text>
+            </g>
+          )
+        })}
         {pontos.map(
           (m, i) =>
-            (m.semana % 8 === 0 || m.semana === 1) && (
+            i >= i0 &&
+            i <= i1 &&
+            (m.semana % passoRotulo === 0 || m.semana === 1) && (
               <text key={i} x={x(i)} y={H - PADB + 15} fill="var(--text3)" fontSize="8" textAnchor="middle">
                 S{m.semana}
               </text>
             )
         )}
 
-        <line x1={x(iSel)} y1={PADT - 10} x2={x(iSel)} y2={H - PADB}
-              stroke="var(--accent)" strokeWidth="1.5" strokeDasharray="5,4" />
-        <text x={x(iSel)} y={PADT - 14} fill="var(--accent)" fontSize="9" textAnchor="middle" fontWeight="bold">
-          S{semana}
-        </text>
+        {iSel >= i0 && iSel <= i1 && (
+          <g>
+            <line x1={x(iSel)} y1={PADT - 10} x2={x(iSel)} y2={H - PADB}
+                  stroke="var(--accent)" strokeWidth="1.5" strokeDasharray="5,4" />
+            <text x={x(iSel)} y={PADT - 14} fill="var(--accent)" fontSize="9" textAnchor="middle" fontWeight="bold">
+              S{semana}
+            </text>
+          </g>
+        )}
 
-        {visiveis.map((sr) => (
-          <path key={sr.id} d={linha(sr.campo, sr.esc)} fill="none" stroke={sr.cor} strokeWidth="2"
-                strokeDasharray={sr.dash || 'none'} opacity={sr.dash ? 0.62 : 1}
-                strokeLinejoin="round" strokeLinecap="round" />
-        ))}
+        <clipPath id="curva-s-area">
+          <rect x={PADL} y={PADT - 12} width={W - PADL - PADR} height={H - PADT - PADB + 12} />
+        </clipPath>
+        <g clipPath="url(#curva-s-area)">
+          {/* comprometido por baixo: antes do fechamento ele coincide com o pago */}
+          {[...visiveis].sort((p, q) => (q.id === 'cc') - (p.id === 'cc')).map((sr) => (
+            <path key={sr.id} d={linha(sr.campo, esc(sr))} fill="none" stroke={sr.cor} strokeWidth="2"
+                  strokeDasharray={sr.dash || 'none'} opacity={sr.dash === '5,4' ? 0.62 : 1}
+                  strokeLinejoin="round" strokeLinecap="round" />
+          ))}
+        </g>
+
+        {arraste && arraste.ate !== arraste.de && (
+          <rect
+            x={Math.min(x(arraste.de), x(arraste.ate))}
+            y={PADT - 10}
+            width={Math.abs(x(arraste.ate) - x(arraste.de))}
+            height={H - PADB - PADT + 10}
+            fill="var(--accent)"
+            opacity="0.12"
+          />
+        )}
 
         {h && (
           <g>
@@ -1953,7 +2134,7 @@ function CurvaS({ curva, semana, ultMed, onPick }) {
                   stroke="var(--text3)" strokeWidth="1" opacity=".55" />
             {visiveis.map((sr) =>
               h[sr.campo] == null ? null : (
-                <circle key={sr.id} cx={x(hover)} cy={sr.esc(h[sr.campo])} r="3.5"
+                <circle key={sr.id} cx={x(hover)} cy={esc(sr)(h[sr.campo])} r="3.5"
                         fill={sr.cor} stroke="var(--bg)" strokeWidth="1.5" />
               )
             )}
@@ -1988,7 +2169,8 @@ function CurvaS({ curva, semana, ultMed, onPick }) {
           </div>
         ) : (
           <div className="kpi-sub" style={{ textAlign: 'center', padding: '14px 0' }}>
-            Passe o mouse sobre o gráfico para ver os valores de cada semana · clique para ir à semana.
+            Passe o mouse sobre o gráfico para ver os valores de cada semana · clique para ir à semana · arraste
+            para ampliar.
           </div>
         )}
       </div>
@@ -2017,12 +2199,13 @@ function CurvaS({ curva, semana, ultMed, onPick }) {
       {/* atalhos de comparacao */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10, justifyContent: 'center' }}>
         {[
-          ['Todas', ['fp', 'fr', 'vp', 'va', 'cr']],
+          ['Todas', ['fp', 'fr', 'vp', 'va', 'cr', 'cc']],
           ['Só físico', ['fp', 'fr']],
-          ['Só financeiro', ['vp', 'va', 'cr']],
-          ['Agregado × realizado', ['va', 'cr']],
+          ['Só financeiro', ['vp', 'va', 'cr', 'cc']],
+          ['Agregado × realizado', ['va', 'cr', 'cc']],
+          ['Agregado × comprometido', ['va', 'cc']],
           ['Só planejado', ['fp', 'vp']],
-          ['Só realizado', ['fr', 'cr']],
+          ['Só realizado', ['fr', 'cr', 'cc']],
         ].map(([l, ids]) => {
           const ativo = series.every((sr) => (ids.includes(sr.id) ? !ocultas[sr.id] : !!ocultas[sr.id]))
           return (
@@ -2036,8 +2219,11 @@ function CurvaS({ curva, semana, ultMed, onPick }) {
 
       <div className="kpi-sub" style={{ marginTop: 12, textAlign: 'center' }}>
         Eixo esquerdo: avanço físico. Eixo direito: custo direto acumulado. As linhas de realizado terminam na
-        semana selecionada (S{semana}); o planejado vai até o fim da obra. A distância entre o valor agregado e o
-        custo realizado é o saldo do card.
+        semana selecionada (S{semana}); o planejado vai até o fim da obra. Custo comprometido = pago + contas a pagar
+        do direto do último fechamento
+        {semFech != null ? ` (${mesFech ? rotuloMes(`${mesFech}-01`) + ', ' : ''}a partir da S${semFech}: ${fmtMoeda(aPagar)})` : ''}
+        ; antes do fechamento coincide com o pago e, na semana do fechamento, é o custo do IPC. Os eixos se ajustam ao
+        trecho visível.
       </div>
     </div>
   )
