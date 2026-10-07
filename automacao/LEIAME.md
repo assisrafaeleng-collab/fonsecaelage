@@ -63,6 +63,10 @@ Título sem EAP só grava com --aceitar-pendencias (fica fora do IPC).
 - Valor agregado do material (aço e material de forma "Apenas Material"; concreto fica fora): o maior entre
   avanço do serviço × orçado e custo da linha (pago + a pagar) limitado ao orçado.
 - Avanço físico = horas executadas ÷ horas orçadas, em todas as telas. Nunca ponderado por valor.
+- Bandeja (17.1.10, verba R$ 41.887,00): avanço por unidade, 3 bandejas = 33,33% cada (a primária medida em
+  30/09/26; a 2ª e a 3ª como 66,67% e 100%). Agregado = % medido × verba. Compra por entrega (entra_evm = true):
+  entra no contas a pagar e no IPC, sem a regra da locação. Vale para linha do grupo 17 com entra_evm = true
+  (supabase/custos/5-bandeja-17-1-10.sql).
 - IPC = valor agregado do direto ÷ (realizado do direto + contas a pagar do direto por entrega, com NF e
   previsões). Acima de 1 = economia. Indireto e recorrentes ficam fora do a pagar.
 - Projeção pessimista: IDP limitado a 1 (adiantamento não barateia a obra).
@@ -118,7 +122,13 @@ com --confirmar; a carga substitui a competência inteira e pode ser desfeita co
 - eap = 'PEDIDO_ACO' → compra de aço dividida pelo pedido: a SC da OC (coluna "Nº SC FLUIG" do relatório
   de OC) é procurada em pedidos_aco.csv (sc, pedido, eap, proporcao em kg das pranchas). Título sem OC ou
   SC fora da planilha → pendência para você informar o pedido (decisão out/26)
-- madeira de forma (Nova Esperança, Madeireira BH): rateio fixo pelo orçado de forma do 2º ao 7º pav
+- madeira de forma (Nova Esperança, Madeireira BH), sem pregos: proporção das VERBAS dos destinos (decisão
+  out/26: "madeira usada também no bandejamento e na escada do 1º pav, redistribuída pela proporção das verbas").
+  Já comprada (decisões pontuais 2067/01 a 2444/01; as parcelas /02 herdam): forma 2º ao 7º pav + bandeja
+  primária 17.1.10 (R$ 13.029,00) + forma da escada 1º pav 3.1.5 (R$ 1.263,87), todos no mesmo % da verba; a
+  parte da 2067/01 na 3.1.6 fica. Compra nova (regra '*' dos dois fornecedores): só destinos ainda não
+  executados — forma 3º ao 7º pav, 2ª e 3ª bandejas (17.1.10, 2 × R$ 13.029,00) e escadas 3.2.5, 3.3.6, 3.4.6,
+  3.5.5 (R$ 1.263,87 cada). Destino executado sai do rateio: refaça as proporções da regra.
 - eap = 'ETAPA_NF:CAT' → como ETAPA:, mas o pavimento é o de etapa.csv na DATA DE EMISSÃO da nota, não na
   competência. Prego (CONTEM:PREGO) = FORMA_MATERIAL; arame (CONTEM:ARAME) = ACO_MATERIAL (decisão out/26)
 - "Prev. Financ. OC 0001826 ...": o título abre pelos itens da OC do histórico (vínculo "ALTA (OC no histórico)")

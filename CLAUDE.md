@@ -44,11 +44,21 @@ fica em `automacao/` — leia `automacao/LEIAME.md` antes de mexer nela.
   concreto usinado fica FORA e entra pela medição): agregado = o MAIOR entre (a) avanço do serviço × orçado
   (herança) e (b) custo da linha (pago + a pagar) limitado ao orçado. Linha executada mostra a economia real;
   material comprado antes da execução fica neutro; o que passar do orçado aparece no IPC.
+- Bandeja (17.1.10, verba R$ 41.887,00): avanço por UNIDADE — são 3 bandejas; medição de 33,33% por bandeja
+  pronta (a primária em 30/09/26; a 2ª e a 3ª entram como 66,67% e 100%, lançadas pelo usuário). Valor agregado
+  = % medido × verba da linha. É compra POR ENTREGA (`entra_evm = true`): entra no contas a pagar e no IPC e NÃO
+  usa a regra da locação (gasto limitado à verba). Vale para qualquer linha do grupo 17 com `entra_evm = true`
+  (`lib/painel-semanal.js`; `supabase/custos/5-bandeja-17-1-10.sql`).
 
 ## Classificação de material (decisões out/26)
-- Madeira de forma (Madeiras Nova Esperança, Madeireira BH): compra nova é diluída na proporção do orçado
-  de forma do 2º ao 7º pav (3.2.6 42,18% · 3.3.7 12,77% · 3.4.7 12,30% · 3.5.6 12,80% · 3.6.5 10,25% ·
-  3.7.5 9,68%).
+- Madeira de forma (Madeiras Nova Esperança, Madeireira BH), sem pregos: dividida pela PROPORÇÃO DAS VERBAS
+  dos destinos, porque a madeira é usada também no bandejamento e nas escadas. Madeira já comprada até out/26
+  (decisões pontuais 2067/01 a 2444/01): forma do 2º ao 7º pav (cada um pela sua verba), bandeja primária
+  (17.1.10, verba R$ 13.029,00) e forma da escada do 1º pav (3.1.5, R$ 1.263,87) — todos no mesmo % da verba;
+  a parte da 2067/01 na 3.1.6 (R$ 3.780,48) fica. Compra nova: só entre os destinos ainda não executados —
+  forma do 3º ao 7º pav, 2ª e 3ª bandejas (17.1.10, 2 × R$ 13.029,00) e escadas 3.2.5, 3.3.6, 3.4.6, 3.5.5
+  (R$ 1.263,87 cada) — na regra dos dois fornecedores em `regras_manuais.csv`. Quando um destino for
+  executado, ele sai do rateio das compras novas.
 - Parcelas seguintes de uma NF seguem a decisão pontual da primeira parcela (2141/02 usa a de 2141/01).
 - Aço (Takono, Santa Mônica): compra dividida pelo pedido (SC da OC) e pelas pranchas, em kg, conforme
   `automacao/pedidos_aco.csv` (planilha de pedidos em `automacao/projetos`). Pedido fora da planilha ou
