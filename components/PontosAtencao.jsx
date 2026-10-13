@@ -9,7 +9,7 @@
 // cabeçalho e confirmação DENTRO da página (sem alert/confirm/prompt).
 import React, { useEffect, useState } from 'react'
 import { fmtMoeda } from '../lib/constants'
-import { calcularTermino, pctNoPeriodo, caixaAtividade, equipesDoCaixa, horasDaLinha, PREMISSA } from '../lib/pontos-atencao'
+import { calcularTermino, planoPeriodo, caixaAtividade, horasDaLinha, PREMISSA } from '../lib/pontos-atencao'
 import { fetchComSenhaSemJanela, temSenha } from '../lib/fetch-com-senha'
 import Desbloqueio from './Desbloqueio'
 
@@ -118,13 +118,14 @@ export default function PontosAtencao({ semana }) {
       duracaoDias: mudouDur ? Number(e.duracao) : a.duracao_dias, oficiais, horasDia: J ? J.horas_dia : null })
     const equipes = e.equipes !== undefined && e.equipes !== '' ? e.equipes : a.equipes_definidas
     const x = a.calc   // percentuais sem arredondar (a mesma conta do servidor)
+    const proj = a.modo === 'projecao'
     const t = calcularTermino({ base, real: x.real, oficiais, equipes, equipesCronograma: a.equipes_cronograma,
-      fimCrono: a.fim_crono, hoje: d.hoje, jornada: J, feriados: d.feriados })
+      fimCrono: a.fim_crono, hoje: d.hoje, jornada: J, feriados: d.feriados,
+      inicio: proj ? x.inicio_trabalho : null, alvoFim: proj ? (a.proj ? a.proj.fim : a.fim_crono) : null })
     const caixa = (per) => {
-      const P = d.periodos[per], M = d.periodos.mes
-      const det = pctNoPeriodo({ real: x.real, planHoje: x.plan_hoje,
-        planFim: per === 'semana' ? x.plan_fim_semana : x.plan_fim_mes, base: t.base, oficiais, equipes: equipesDoCaixa(t),
-        diasPeriodo: J ? P.dias_uteis : P.dias_corridos, diasMes: J ? M.dias_uteis : M.dias_corridos, horasDia: J ? J.horas_dia : null })
+      const M = d.periodos.mes
+      const det = planoPeriodo({ modo: a.modo, calc: x, per, periodo: d.periodos[per], diasMes: J ? M.dias_uteis : M.dias_corridos,
+        termino: t, oficiais, jornada: J, feriados: d.feriados })
       return { pct: det.pct, detalhe: det, ...caixaAtividade({ pct: det.pct, orcado: a.orcado, excessoProprio: a.excesso_proprio,
         materiais: a.materiais, proprioEhMaterial: a.proprio_material }) }
     }
@@ -218,6 +219,8 @@ export default function PontosAtencao({ semana }) {
             <span style={{ fontFamily: 'var(--mono)', color: CINZA }}>{a.cod_eap}</span> {a.descricao.length > 40 ? a.descricao.slice(0, 38) + '…' : a.descricao}
             <span style={{ color: CINZA }}> · {pav(a.pavimento)}</span>
             {a.aguarda_medicao && <span style={{ color: AMBAR }}> · aguardando medição</span>}
+            {a.status === 'ADIANTADA' && <span style={{ color: VERDE }}> · adiantada</span>}
+            {!a.atrasada && a.motivo && a.motivo !== 'planejada no período' && <span style={{ color: CINZA }}> · {a.motivo}</span>}
             {a.conferir && <span style={{ color: AMBAR }} title={a.observacao || ''}> · conferir índice</span>}
           </td>
           <td style={num}>{nf(a.quantidade, 2)} {a.unidade}</td>
@@ -293,9 +296,15 @@ export default function PontosAtencao({ semana }) {
           </td>
           <td style={{ fontSize: 11, whiteSpace: 'nowrap' }}>
             <div style={{ color: CINZA }}>planejado {dm(a.inicio_crono)} → {dm(a.fim_crono)}</div>
-            <div style={{ color: rt.nao_iniciada ? (rt.deveria_desde ? VERMELHO : CINZA) : rt.cumpre ? VERDE : VERMELHO }}>
+            {a.modo === 'projecao' && a.proj && (
+              <div style={{ color: CINZA }} title={a.proj.fonte === 'frente' ? `adiantamento da frente (grupo + pavimento): ${a.proj.dias} dias` : `adiantamento da obra: ${a.proj.dias} dias`}>
+                projetado {dm(a.proj.inicio)} → {dm(a.proj.fim)} ({a.proj.fonte === 'frente' ? 'pavimento' : 'obra'} {a.proj.dias > 0 ? '+' : ''}{a.proj.dias} d)
+              </div>
+            )}
+            <div style={{ color: rt.nao_iniciada ? (rt.deveria_desde ? VERMELHO : CINZA) : rt.confiavel === false ? CINZA : rt.cumpre ? VERDE : VERMELHO }}>
               {rt.nao_iniciada
                 ? (rt.aguarda_medicao ? 'aguardando a medição real' : rt.deveria_desde ? `não iniciada · deveria ter começado em ${dm(rt.deveria_desde)}` : 'não iniciada')
+                : rt.confiavel === false ? `ritmo atual: poucas medições (${diasUt(rt.dias_uteis)})`
                 : `no ritmo atual ${dm(rt.fim_ritmo)} (${rt.cumpre ? 'cumpre' : `atrasa ${diasUt(rt.atrasa)}`})`}
             </div>
             <div style={{ color: t.termino ? (t.cumpre ? VERDE : VERMELHO) : AMBAR }}>
@@ -320,7 +329,10 @@ export default function PontosAtencao({ semana }) {
               {a.hh_cpu != null && <> · CPU {ixTxt(a.hh_cpu_oficial ?? a.hh_cpu)} do oficial ({ixTxt(a.hh_cpu)} total)</>}
               {a.observacao && <><br /><span style={{ color: CINZA }}>{a.observacao}</span></>}
               <br />Ritmo atual: {rt.nao_iniciada ? 'sem medição' : rt.ritmo == null ? `concluída em ${dmy(rt.ultima)}` : `${nf(rt.ritmo, 2)}% por dia útil, de ${dmy(rt.inicio_real)} até a última medição ${dmy(rt.ultima)}`}
-              <br />Caixa {perDaAba === 'semana' ? 'da semana' : 'em 30 dias'}: {det.modo === 'equipes'
+              <br />Caixa {perDaAba === 'semana' ? 'da semana' : 'em 30 dias'}{det.modo === 'projecao' ? ` (projeção: ${det.fonte}, a partir de ${dmy(det.inicio)})` : ''}: {det.modo === 'projecao' && det.fonte === 'ritmo real'
+                ? <>{nf(det.ritmo_dia, 2)}% por dia útil × {diasUt(det.dias)}</>
+                : det.modo === 'projecao' && det.fonte === 'começa depois do período' ? <>começa depois do período</>
+                : det.hh != null
                 ? <>{t.definida ? `${det.equipes} equipe${det.equipes === 1 ? '' : 's'}` : `${nf(det.equipes, 2)} equipes (necessárias para terminar em ${dmy(t.alvo)})`} × {det.oficiais} oficial(is) × {det.horas_dia} h × {diasUt(det.dias)} = {nf(det.hh, 0)} Hh
                   ÷ {nf(det.horas_por_pct, 3)} Hh por 1% = {nf(det.hh / det.horas_por_pct, 1)}%{det.limitado ? ` (limitado ao que falta)` : ''}</>
                 : <>ritmo do cronograma {nf(det.ritmo, 1)}% + recuperação do atraso {nf(det.atraso, 1)}% ({nf(det.atraso_total, 1)}% × {det.dias}/{det.dias_mes} dias){det.limitado ? ', limitado ao que falta' : ''}</>}

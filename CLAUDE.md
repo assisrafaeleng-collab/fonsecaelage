@@ -97,6 +97,16 @@ fica em `automacao/` — leia `automacao/LEIAME.md` antes de mexer nela.
   % a executar: com equipes, (equipes × oficiais × 8 h × dias úteis) ÷ horas por 1%, limitado ao que falta; equipe só
   sugerida → as necessárias com fração; sem índice/equipe → ritmo do cronograma + atraso diluído em 30 dias.
 - 2.1.11, 2.1.12 e 15.1.1: aguardando a medição real — não contam como atraso até lá.
+- Atividades adiantadas (14/10/26): as abas "Próxima semana" e "Próximos 30 dias" incluem também as EM ANDAMENTO
+  (medição > 0% e < 100%) e as com JANELA PROJETADA no período. Janela projetada = planejada deslocada pelo
+  adiantamento da FRENTE (grupo + pavimento) quando a frente tem 2 ou mais linhas medidas
+  (`FRENTE_MIN_LINHAS_MEDIDAS`; uma linha só, como o eletroduto da laje, não representa a frente), senão pelo
+  adiantamento da obra (card da semanal). Status: ATRASADA (realizado < planejado), ADIANTADA (realizado > planejado),
+  A INICIAR, EM DIA; adiantada nunca é atrasada. ADIANTADA e A INICIAR usam o modo projeção no caixa, contando a partir
+  do início projetado (em andamento: a partir de amanhã), nesta ordem: (1) equipes salvas; (2) ritmo real, só com 5 ou
+  mais dias úteis entre o início e a última medição; (3) equipes necessárias para terminar no fim projetado; (4) janela
+  projetada (ritmo dela + o que ficou para trás diluído em 30 dias). Atrasada e em dia seguem o cronograma. A tela
+  mostra "projetado DD/MM → DD/MM (obra/pavimento ±N d)" e recalcula com a mesma função (`planoPeriodo`).
 - Compras: data projetada = início planejado − adiantamento da obra (mesma conta do card); pedir até = projetada −
   antecedência. Elevador: 12 meses (ainda não contratado; aparece vencido). Os outros itens: antecedência no site.
 
