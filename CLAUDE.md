@@ -107,6 +107,21 @@ fica em `automacao/` — leia `automacao/LEIAME.md` antes de mexer nela.
   mais dias úteis entre o início e a última medição; (3) equipes necessárias para terminar no fim projetado; (4) janela
   projetada (ritmo dela + o que ficou para trás diluído em 30 dias). Atrasada e em dia seguem o cronograma. A tela
   mostra "projetado DD/MM → DD/MM (obra/pavimento ±N d)" e recalcula com a mesma função (`planoPeriodo`).
+- Ciclo do pavimento na Estrutura (14/10/26; `aplicarCicloEstrutura`, a mesma função no servidor e na tela):
+  a FORMA é o caminho crítico — dita o ritmo e o término do pavimento (equipes salvas ou ritmo histórico). A ARMAÇÃO
+  acompanha a forma: mesmo % no período e mesmo término, sem histórico próprio; equipe sugerida = armadores necessários
+  para acompanhar a forma (horas pelo índice do cronograma ÷ dias úteis do ciclo). A CONCRETAGEM (lançamento + concreto
+  usinado) só depois de forma e armação: não se distribui — o % e o caixa caem inteiros no dia útil seguinte ao término
+  da forma, no período em que essa data cair. O pavimento entra junto nas abas. Escada fora do ciclo.
+- Produtividade histórica (14/10/26): em cada pavimento CONCLUÍDO, quantidade executada entre a 1ª e a última medição
+  ((100% − % da 1ª) × quantidade) ÷ dias úteis entre elas (só com 5 ou mais); média dos pavimentos válidos (ritmo em
+  un/dia, com as equipes que a obra usou em cada um). Serviço = grupo + descrição sem o sufixo " - Apenas MO/Material"
+  + unidade. Índice exibido = oficiais × 8 h ÷ ritmo por equipe; ordem do índice: (a) editado no site; (b) histórico;
+  (c) cronograma. A armação não usa histórico. A tela mostra "histórico (2º e 3º pav): X un/dia por equipe · Y Hh/un"
+  e a CPU só como referência.
+- Ordem do % a executar e do término (14/10/26): (a) equipes salvas pelo Rafael; (b) ritmo histórico do serviço com as
+  equipes que a obra usou; (c) ritmo real da própria atividade (5+ dias úteis de medição); (d) equipes necessárias para
+  terminar no fim projetado; (e) janela projetada (adiantada/a iniciar) ou cronograma + atraso diluído (atrasada/em dia).
 - Compras: data projetada = início planejado − adiantamento da obra (mesma conta do card); pedir até = projetada −
   antecedência. Elevador: 12 meses (ainda não contratado; aparece vencido). Os outros itens: antecedência no site.
 

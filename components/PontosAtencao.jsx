@@ -9,7 +9,7 @@
 // cabeçalho e confirmação DENTRO da página (sem alert/confirm/prompt).
 import React, { useEffect, useState } from 'react'
 import { fmtMoeda } from '../lib/constants'
-import { calcularTermino, planoPeriodo, caixaAtividade, horasDaLinha, PREMISSA } from '../lib/pontos-atencao'
+import { calcularTermino, planoPeriodo, horasDaLinha, aplicarCicloEstrutura, PREMISSA } from '../lib/pontos-atencao'
 import { fetchComSenhaSemJanela, temSenha } from '../lib/fetch-com-senha'
 import Desbloqueio from './Desbloqueio'
 
@@ -25,7 +25,9 @@ const pc = (v) => (v == null ? '—' : `${nf(v, 1)}%`)
 const rs = (v) => (v == null ? '—' : fmtMoeda(v))
 const ixTxt = (v) => String(Number(Number(v).toFixed(4))).replace('.', ',')   // até 4 casas, sem zeros à direita
 const pav = (p) => (!p ? '' : /^\d/.test(p) ? `${p} pav.` : p)
-const ORIGEM = { cronograma: 'cronograma', rafael: 'Rafael', 'rafael-site': 'Rafael (site)' }
+const ORIGEM = { cronograma: 'cronograma', rafael: 'Rafael', 'rafael-site': 'Rafael (site)', historico: 'histórico' }
+// "histórico (2º e 3º pav): 14,9 m²/dia por equipe · 0,537 Hh/m²"
+const txtHist = (H, ix, und) => `histórico (${H.pavimentos_validos.join(' e ')} pav): ${nf(H.ritmo_equipe, 1)} ${und}/dia por equipe${ix != null ? ` · ${ixTxt(ix)} Hh/${und}` : ''}`
 const ABAS = [['atrasadas', 'Atrasadas'], ['semana', 'Próxima semana'], ['mes', 'Próximos 30 dias']]
 const inp = (pend, w = 70) => ({ width: w, padding: '3px 6px', fontFamily: 'var(--mono)', fontSize: 12, background: pend ? AMARELO_FUNDO : undefined })
 const btnMini = { fontSize: 10, padding: '1px 6px' }
@@ -114,25 +116,37 @@ export default function PontosAtencao({ semana }) {
     const mudouDur = e.duracao !== undefined && e.duracao !== ''
     const regra = mudouIx ? 'indice' : mudouDur ? 'duracao' : a.regra
     const oficiais = e.oficiais !== undefined ? Number(e.oficiais) || 0 : a.equipe ? a.equipe.oficiais : null
-    const base = horasDaLinha({ regra, quantidade: a.quantidade, indice: mudouIx ? e.indice : a.indice,
+    // índice: editado agora > salvo no site > histórico real (convertido pelos oficiais desta linha) > tabela
+    const H = a.produtividade_hist
+    const usaHist = !mudouIx && regra === 'indice' && a.indice_origem !== 'rafael-site' && H && H.ritmo_equipe > 0 && oficiais > 0 && J
+    const indiceEf = mudouIx ? e.indice : usaHist ? (oficiais * J.horas_dia) / H.ritmo_equipe : a.indice
+    const base = horasDaLinha({ regra, quantidade: a.quantidade, indice: indiceEf,
       duracaoDias: mudouDur ? Number(e.duracao) : a.duracao_dias, oficiais, horasDia: J ? J.horas_dia : null })
     const equipes = e.equipes !== undefined && e.equipes !== '' ? e.equipes : a.equipes_definidas
     const x = a.calc   // percentuais sem arredondar (a mesma conta do servidor)
     const proj = a.modo === 'projecao'
     const t = calcularTermino({ base, real: x.real, oficiais, equipes, equipesCronograma: a.equipes_cronograma,
       fimCrono: a.fim_crono, hoje: d.hoje, jornada: J, feriados: d.feriados,
-      inicio: proj ? x.inicio_trabalho : null, alvoFim: proj ? (a.proj ? a.proj.fim : a.fim_crono) : null })
+      inicio: proj ? x.inicio_trabalho : null, alvoFim: proj ? (a.proj ? a.proj.fim : a.fim_crono) : null,
+      // ritmo histórico (ordem do caixa, item b): só sem índice digitado agora; equipes salvas/digitadas vêm antes dele
+      ritmoHist: !mudouIx && x.ritmo_hist > 0 ? { ritmo: x.ritmo_hist, equipes: x.equipes_hist } : null, quantidade: a.quantidade })
+    const xCx = mudouIx ? { ...x, ritmo_hist: null } : x
     const caixa = (per) => {
       const M = d.periodos.mes
-      const det = planoPeriodo({ modo: a.modo, calc: x, per, periodo: d.periodos[per], diasMes: J ? M.dias_uteis : M.dias_corridos,
+      const det = planoPeriodo({ modo: a.modo, calc: xCx, per, periodo: d.periodos[per], diasMes: J ? M.dias_uteis : M.dias_corridos,
         termino: t, oficiais, jornada: J, feriados: d.feriados })
       return { pct: det.pct, detalhe: det, ...caixaAtividade({ pct: det.pct, orcado: a.orcado, excessoProprio: a.excesso_proprio,
         materiais: a.materiais, proprioEhMaterial: a.proprio_material }) }
     }
-    return { t, regra, oficiais, cxSemana: caixa('semana'), cxMes: caixa('mes') }
+    return { t, regra, oficiais, indice: indiceEf, origem: mudouIx ? 'digitado' : usaHist ? 'historico' : a.indice_origem, cxSemana: caixa('semana'), cxMes: caixa('mes') }
   }
 
   const ativs = d.atividades.map((a) => ({ ...a, ef: efetivo(a) }))
+  // ciclo do pavimento na Estrutura (forma dita ritmo e término; armação acompanha; concretagem no dia seguinte ao fim
+  // da forma) — a mesma função do servidor, também quando o Rafael muda as equipes da forma na tela
+  const recsCiclo = ativs.map((a) => ({ a, t: a.ef.t, cx: { semana: a.ef.cxSemana, mes: a.ef.cxMes } }))
+  aplicarCicloEstrutura(recsCiclo, { periodos: d.periodos, jornada: J, feriados: d.feriados })
+  recsCiclo.forEach((r) => { if (r.ciclo) r.a.ef = { ...r.a.ef, t: r.t, cxSemana: r.cx.semana, cxMes: r.cx.mes, ciclo: r.ciclo } })
   const naAba = (a, k) => (k === 'atrasadas' ? a.atrasada : k === 'semana' ? a.na_semana : a.em_30)
   const perDaAba = aba === 'semana' ? 'semana' : 'mes'
   const cxDe = (a, per) => (per === 'semana' ? a.ef.cxSemana : a.ef.cxMes)
@@ -146,6 +160,9 @@ export default function PontosAtencao({ semana }) {
   }
   const cxS = caixaTopo('semana'), cxM = caixaTopo('mes')
   const equipesTopo = ativs.filter((a) => a.em_30).reduce((s, a) => s + (a.ef.t.usadas || 0), 0)
+  // exibição arredondada para cima (o ritmo histórico dá fração de equipe); a conta continua exata — fração no title
+  const equipesTopoTxt = Math.ceil(equipesTopo - 1e-9)
+  const equipesTopoTitle = `${nf(equipesTopo, 1)} equipes (exato, somando o ritmo histórico de cada serviço)`
   const em6m = new Date(Date.parse(d.hoje + 'T00:00:00Z') + 183 * 864e5).toISOString().slice(0, 10)
   const alertasCompra = d.compras.filter((c) => c.pedir_ate && c.pedir_ate <= em6m)
   const atrasoDe = (a) => Math.max(a.ritmo ? a.ritmo.atrasa || 0 : 0, a.ef.t.atrasa || 0)
@@ -170,8 +187,8 @@ export default function PontosAtencao({ semana }) {
   const gruposAba = Object.values(porGrupo).map((g) => ({ ...g, r: resumoGrupo(g.itens) }))
     .sort((a, b) => (b.r.atraso > 0) - (a.r.atraso > 0) || b.r.atraso - a.r.atraso || String(a.r.inicio).localeCompare(String(b.r.inicio)))
 
-  const numero = (l, v, cor, onClick, sub) => (
-    <div key={l} className={'kpi' + (onClick ? ' kpi-clickable' : '')} style={{ flex: 1, minWidth: 140 }} onClick={onClick}>
+  const numero = (l, v, cor, onClick, sub, title) => (
+    <div key={l} className={'kpi' + (onClick ? ' kpi-clickable' : '')} style={{ flex: 1, minWidth: 140 }} onClick={onClick} title={title}>
       <div className="kpi-label">{l}</div>
       <div className="kpi-value" style={{ fontSize: 20, color: cor }}>{v}</div>
       {sub && <div className="kpi-sub">{sub}</div>}
@@ -220,6 +237,7 @@ export default function PontosAtencao({ semana }) {
             <span style={{ color: CINZA }}> · {pav(a.pavimento)}</span>
             {a.aguarda_medicao && <span style={{ color: AMBAR }}> · aguardando medição</span>}
             {a.status === 'ADIANTADA' && <span style={{ color: VERDE }}> · adiantada</span>}
+            {a.ciclo && <span style={{ color: CINZA }} title="Estrutura: o pavimento anda junto — mesmo % no período da linha que dita o ritmo"> · segue {a.ciclo.lider_cod}</span>}
             {!a.atrasada && a.motivo && a.motivo !== 'planejada no período' && <span style={{ color: CINZA }}> · {a.motivo}</span>}
             {a.conferir && <span style={{ color: AMBAR }} title={a.observacao || ''}> · conferir índice</span>}
           </td>
@@ -238,11 +256,13 @@ export default function PontosAtencao({ semana }) {
               </span>
             ) : (
               <input type="text" inputMode="decimal" style={inp(semIndice)} placeholder={semIndice ? 'preencher' : ''}
-                     value={mudouIx ? String(e.indice).replace('.', ',') : a.indice == null ? '' : ixTxt(a.indice)}
+                     value={mudouIx ? String(e.indice).replace('.', ',') : a.ef.indice == null ? '' : ixTxt(a.ef.indice)}
                      onChange={(ev) => setCampo(a.chave, 'indice', ev.target.value.replace(',', '.'))} />
             )}
             <div style={{ color: CINZA, fontSize: 10 }}>
-              {porDuracao ? 'serviço por duração' : a.indice_origem ? `sugerido ${a.indice != null ? ixTxt(a.indice) : ''} (${ORIGEM[a.indice_origem] || a.indice_origem})` : 'sem índice'}
+              {porDuracao ? 'serviço por duração'
+                : a.ef.origem === 'historico' ? txtHist(a.produtividade_hist, a.ef.indice, a.unidade)
+                : a.indice_origem ? `sugerido ${a.indice != null ? ixTxt(a.indice) : ''} (${ORIGEM[a.indice_origem] || a.indice_origem})` : 'sem índice'}
               {a.hh_cpu_oficial != null && !porDuracao ? ` · CPU ${ixTxt(a.hh_cpu_oficial)}` : ''}
             </div>
             {(mudouIx || mudouDur) && (
@@ -279,7 +299,7 @@ export default function PontosAtencao({ semana }) {
                      value={mudouEq ? e.equipes : t.usadas ?? ''} onChange={(ev) => setCampo(a.chave, 'equipes', ev.target.value)} />
             )}
             <div style={{ color: CINZA, fontSize: 10 }}>
-              sugerido {t.sugeridas ?? '—'}{t.sugeridas != null && t.sugeridas_origem === 'cronograma' ? ' (cronograma)' : ''}{a.equipe ? ` · ${a.equipe.composicao}` : ''}
+              {t.acompanha_forma ? `sugerido ${t.sugeridas ?? '—'} para acompanhar a forma` : t.pelo_historico && !t.definida ? `ritmo histórico ≈${nf(t.usadas, 1)} equipes` : `sugerido ${t.sugeridas ?? '—'}${t.sugeridas != null && t.sugeridas_origem === 'cronograma' ? ' (cronograma)' : ''}`}{a.equipe ? ` · ${a.equipe.composicao}` : ''}
             </div>
             {!semEquipe && (mudouEq || a.equipes_definidas != null) && (
               <div>
@@ -308,7 +328,10 @@ export default function PontosAtencao({ semana }) {
                 : `no ritmo atual ${dm(rt.fim_ritmo)} (${rt.cumpre ? 'cumpre' : `atrasa ${diasUt(rt.atrasa)}`})`}
             </div>
             <div style={{ color: t.termino ? (t.cumpre ? VERDE : VERMELHO) : AMBAR }}>
-              {t.termino ? `com ${t.usadas} equipe${t.usadas === 1 ? '' : 's'} ${dm(t.termino)} (${t.cumpre ? 'cumpre' : `atrasa ${diasUt(t.atrasa)}`})`
+              {t.termino && t.concretagem ? `concretagem em ${dm(t.concretagem)}, depois de forma e armação (${t.cumpre ? 'cumpre' : `atrasa ${diasUt(t.atrasa)}`})`
+                : t.termino && t.acompanha_forma ? `acompanha a forma: ${dm(t.termino)} com ${t.usadas ?? '—'} armador(es) (${t.cumpre ? 'cumpre' : `atrasa ${diasUt(t.atrasa)}`})`
+                : t.termino && t.pelo_historico ? `no ritmo histórico (≈${nf(t.usadas, 1)} equipes) ${dm(t.termino)} (${t.cumpre ? 'cumpre' : `atrasa ${diasUt(t.atrasa)}`})`
+                : t.termino ? `com ${t.usadas} equipe${t.usadas === 1 ? '' : 's'} ${dm(t.termino)} (${t.cumpre ? 'cumpre' : `atrasa ${diasUt(t.atrasa)}`})`
                 : `preencha ${semIndice ? (porDuracao ? 'a duração' : 'o índice') : ''}${semIndice && semEquipe ? ' e ' : ''}${semEquipe ? 'a equipe' : ''}`}
             </div>
           </td>
@@ -326,10 +349,16 @@ export default function PontosAtencao({ semana }) {
               {' '}= {nf(t.horas, 0)} Hh · 1 equipe = {a.ef.oficiais ?? '—'} oficial(is) × {J ? J.horas_dia : '—'} h = {t.capacidade_dia ?? '—'} Hh/dia
               {' '}· data-alvo {dmy(t.alvo)} ({t.dias_ate_alvo == null ? '—' : diasUt(t.dias_ate_alvo)}) · necessárias {nf(t.necessarias, 2)} · sugerido {t.sugeridas ?? '—'} equipe(s)
               {a.hh_cronograma != null && <> · cronograma {ixTxt(a.hh_cronograma)} Hh/{a.unidade}</>}
+              {a.produtividade_hist && <><br />Produtividade histórica: {a.produtividade_hist.pavimentos.map((p) => `${pav(p.pavimento)} ${dm(p.primeira)}→${dm(p.ultima)}: ${nf(p.quantidade, 1)} ${a.unidade} em ${diasUt(p.dias_uteis)} com ${p.equipes ?? '—'} equipe(s) = ${nf(p.ritmo, 1)} ${a.unidade}/dia${p.valido ? '' : ' (não vale: menos de 5 dias úteis ou sem equipes)'}`).join(' · ')}
+                {a.produtividade_hist.ritmo_equipe != null && ` → média ${nf(a.produtividade_hist.ritmo_equipe, 1)} ${a.unidade}/dia por equipe`}</>}
               {a.hh_cpu != null && <> · CPU {ixTxt(a.hh_cpu_oficial ?? a.hh_cpu)} do oficial ({ixTxt(a.hh_cpu)} total)</>}
               {a.observacao && <><br /><span style={{ color: CINZA }}>{a.observacao}</span></>}
               <br />Ritmo atual: {rt.nao_iniciada ? 'sem medição' : rt.ritmo == null ? `concluída em ${dmy(rt.ultima)}` : `${nf(rt.ritmo, 2)}% por dia útil, de ${dmy(rt.inicio_real)} até a última medição ${dmy(rt.ultima)}`}
-              <br />Caixa {perDaAba === 'semana' ? 'da semana' : 'em 30 dias'}{det.modo === 'projecao' ? ` (projeção: ${det.fonte}, a partir de ${dmy(det.inicio)})` : ''}: {det.modo === 'projecao' && det.fonte === 'ritmo real'
+              <br />Caixa {perDaAba === 'semana' ? 'da semana' : 'em 30 dias'}{det.modo === 'projecao' ? ` (projeção: ${det.fonte}, a partir de ${dmy(det.inicio)})` : ''}: {det.modo === 'ciclo'
+                ? <>{det.fonte}: o mesmo % da forma ({nf(det.pct_lider, 1)}%){cx.pct < det.pct_lider - 1e-9 ? ', limitado ao que falta nesta linha' : ''} · armadores para acompanhar: {nf(t.horas, 0)} Hh (índice do cronograma) ÷ ({t.dias_ate_alvo == null ? '—' : diasUt(t.dias_ate_alvo)} × {J ? J.horas_dia : '—'} h) = {nf(t.necessarias, 2)} → {t.sugeridas ?? '—'}</>
+                : det.modo === 'concretagem' ? <>concretagem não se distribui: cai inteira em {dmy(det.data)} (dia útil seguinte ao fim da forma){det.dentro ? ', dentro do período' : ', fora do período'}</>
+                : det.fonte === 'ritmo histórico' ? <>ritmo histórico {nf(det.ritmo_hist, 1)} {a.unidade}/dia (≈{nf(det.equipes, 1)} equipes, como nos pavimentos já feitos) × {diasUt(det.dias)} desde {dmy(det.inicio)} ÷ {nf(a.quantidade, 2)} {a.unidade}</>
+                : det.modo === 'projecao' && det.fonte === 'ritmo real'
                 ? <>{nf(det.ritmo_dia, 2)}% por dia útil × {diasUt(det.dias)}</>
                 : det.modo === 'projecao' && det.fonte === 'começa depois do período' ? <>começa depois do período</>
                 : det.hh != null
@@ -418,7 +447,7 @@ export default function PontosAtencao({ semana }) {
            style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', userSelect: 'none' }}>
         <span>⚠️ Pontos de atenção</span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <span className="kpi-sub">{d.topo.atrasadas} atrasadas · {equipesTopo} equipes sugeridas</span>
+          <span className="kpi-sub" title={equipesTopoTitle}>{d.topo.atrasadas} atrasadas · {equipesTopoTxt} equipes sugeridas</span>
           <span style={{ fontSize: 12, color: 'var(--text3)' }}>▲</span>
         </span>
       </div>
@@ -426,7 +455,7 @@ export default function PontosAtencao({ semana }) {
         {numero('Atrasadas', d.topo.atrasadas, d.topo.atrasadas ? VERMELHO : undefined)}
         {numero('A executar na semana', d.topo.semana)}
         {numero('A executar em 30 dias', d.topo.mes)}
-        {numero('Equipes sugeridas (30 dias)', equipesTopo)}
+        {numero('Equipes sugeridas (30 dias)', equipesTopoTxt, undefined, undefined, undefined, equipesTopoTitle)}
         {numero('Caixa próxima semana', rs(cxS.total), undefined, () => setVerCaixa(verCaixa === 'semana' ? null : 'semana'), `curva: ${rs(cxS.curva)}`)}
         {numero('Caixa 30 dias', rs(cxM.total), undefined, () => setVerCaixa(verCaixa === 'mes' ? null : 'mes'), `curva: ${rs(cxM.curva)}`)}
       </div>
