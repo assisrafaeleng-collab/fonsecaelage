@@ -126,6 +126,10 @@ fica em `automacao/` — leia `automacao/LEIAME.md` antes de mexer nela.
   antecedência. Elevador: 12 meses (ainda não contratado; aparece vencido). Os outros itens: antecedência no site.
 
 ## Ambiente
+- Toda mudança na TELA (components/, pages/) é testada no NAVEGADOR antes do commit, não só por script: `npm run
+  build && npm start`, abrir a página, clicar no que mudou e conferir que o console do navegador não tem erro
+  (o c912981 quebrou a semanal em produção com "caixaAtividade is not defined" — import removido, que build e testes
+  por script não pegam). Conferir também nomes usados e não importados nos arquivos alterados.
 - Python é `py`, não `python`.
 - Não leia `.env.local` nem `automacao/.env` (credenciais). Para consultar o banco, use as rotas GET do
   dashboard (`npx next dev`) ou o `importar.js` sem `--confirmar`.

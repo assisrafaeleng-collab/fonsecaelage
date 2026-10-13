@@ -9,7 +9,7 @@
 // cabeçalho e confirmação DENTRO da página (sem alert/confirm/prompt).
 import React, { useEffect, useState } from 'react'
 import { fmtMoeda } from '../lib/constants'
-import { calcularTermino, planoPeriodo, horasDaLinha, aplicarCicloEstrutura, PREMISSA } from '../lib/pontos-atencao'
+import { calcularTermino, planoPeriodo, caixaAtividade, horasDaLinha, aplicarCicloEstrutura, PREMISSA } from '../lib/pontos-atencao'
 import { fetchComSenhaSemJanela, temSenha } from '../lib/fetch-com-senha'
 import Desbloqueio from './Desbloqueio'
 
