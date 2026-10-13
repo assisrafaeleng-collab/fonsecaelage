@@ -67,6 +67,39 @@ fica em `automacao/` — leia `automacao/LEIAME.md` antes de mexer nela.
   (`ETAPA_NF:` em `regras_manuais.csv`, pavimento por `etapa.csv`; 3º pav desde 22/09/26). "Prev. Financ."
   abre pelos itens da OC citada no histórico.
 
+## Pontos de atenção (decisões de 13/10/26; cópia do painel do Sirius 60)
+- Painel na página semanal, logo abaixo do Diário de ocorrências, recolhido. Lógica pura em `lib/pontos-atencao.js`
+  (a tela usa as mesmas funções para recalcular ao editar), leitura em `lib/pontos-atencao-servidor.js` (reaproveita
+  `calcularPainelSemanal`: % da linha, pago/a pagar por linha, herda_de, curva), rota `pages/api/pontos-atencao.js`
+  (GET; POST com `DASHBOARD_SENHA` em `x-dashboard-senha`, confirmação dentro da página, sem alert/confirm/prompt).
+  Tabelas: `supabase/planejamento/1-tabelas-pontos-atencao.sql` e `2-edicao-no-site.sql` (+ desfazer), RLS sem grant.
+- REGRA DE OURO: não inventar índice, equipe, prazo, feriado ou jornada. Faltou → "dado pendente" (campo amarelo).
+- Atividade = linha do orçamento (código + pavimento) com hh e entra_evm, grupos 1–16; 2.1.6 fora. "Hoje" = fim da
+  semana do filtro; horizontes: próxima semana e próximos 30 dias. Cronograma = janela do banco (mes_inicio/mes_fim),
+  linear pelos dias, a mesma do avanço.
+- Índice = Hh do OFICIAL por unidade, o do cronograma (mesma base do avanço). Capacidade de 1 equipe = nº de oficiais
+  × 8 h/dia. A CPU (horas do oficial) só aparece como referência. Armação 0,18 Hh/kg. Pendentes (o Rafael preenche no
+  site): forma, lançamento, vergas, concreto usinado em diárias; equipes de concretagem e escada; durações (escadas,
+  elevador, SPDA, alarme, GLP, bombas, cisterna, limpeza final); calha/rufo/condutor e grupo 16 sem tipo de equipe.
+  Por duração: piso polido 1 dia, escada marinheiro 1 dia; infra hidráulica/elétrica 40 h por andar (como está).
+- "Conferir" só nas divergências reais: cronograma × horas do oficial na CPU > 50% (metade da CPU é o padrão).
+- Equipes padrão: 1 oficial + 1 ajudante por tipo (armação, forma, pedreiro p/ alvenaria-reboco-pisos, hidráulica,
+  elétrica, gás/incêndio, impermeabilização, gesso, esquadrias, pintura, louças, urbanização). Equipes sugeridas =
+  coluna "Equipes" do `Cronograma_FLAT_BH_Reorganizado.xlsx` (forma 2, 3 no 3º pav; alvenaria, chapisco, gesso,
+  contrapiso, pintura 2; reboco externo e textura 3); sem ela, as necessárias para cima.
+- Jornada 8 h/dia, seg–sex, sem sábado. Feriados: nacionais + Belo Horizonte a confirmar (Paixão, Corpus Christi,
+  15/08, 08/12 — o Rafael confere no decreto da PBH); Carnaval não entra.
+- Caixa do período = atividades (% a executar × orçado do serviço e dos materiais vinculados, menos o já pago/a pagar
+  além do executado, na própria linha e nos materiais; concreto usinado conta como material; cabeamento 7.1.8/7.1.9
+  entra com os pontos 7.1.2–7.1.4 do mesmo pavimento) + contas a pagar com vencimento (ou previsão) no período
+  (vencido antes = pago) + recorrentes DIRETOS (17 sem a bandeja, 18, 1.1.6) e INDIRETOS (mes_desembolso = 0, inclusive
+  a Taxa ADM 19.1.24) pelo planejado diluído + indiretos pontuais do período. Curva do cronograma em cinza.
+  % a executar: com equipes, (equipes × oficiais × 8 h × dias úteis) ÷ horas por 1%, limitado ao que falta; equipe só
+  sugerida → as necessárias com fração; sem índice/equipe → ritmo do cronograma + atraso diluído em 30 dias.
+- 2.1.11, 2.1.12 e 15.1.1: aguardando a medição real — não contam como atraso até lá.
+- Compras: data projetada = início planejado − adiantamento da obra (mesma conta do card); pedir até = projetada −
+  antecedência. Elevador: 12 meses (ainda não contratado; aparece vencido). Os outros itens: antecedência no site.
+
 ## Ambiente
 - Python é `py`, não `python`.
 - Não leia `.env.local` nem `automacao/.env` (credenciais). Para consultar o banco, use as rotas GET do

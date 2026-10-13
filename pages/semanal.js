@@ -7,6 +7,7 @@ import { Line } from 'react-chartjs-2'
 import { fmtMoeda } from '../lib/constants'
 import { fetchComSenha, garantirSenha } from '../lib/fetch-com-senha'
 import DiarioOcorrencias from '../components/DiarioOcorrencias'
+import PontosAtencao from '../components/PontosAtencao'
 import ContasAPagarDetalhe from '../components/ContasAPagarDetalhe'
 import {
   Chart as ChartJS,
@@ -1903,6 +1904,7 @@ export default function Semanal() {
       )}
 
       <DiarioOcorrencias />
+      <PontosAtencao semana={p.semana} />
     </div>
   )
 }
