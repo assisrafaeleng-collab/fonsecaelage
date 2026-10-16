@@ -144,6 +144,23 @@ fica em `automacao/` — leia `automacao/LEIAME.md` antes de mexer nela.
 - Compras: data projetada = início planejado − adiantamento da obra (mesma conta do card); pedir até = projetada −
   antecedência. Elevador: 12 meses (ainda não contratado; aparece vencido). Os outros itens: antecedência no site.
 
+## Relatório gerencial em PDF por período (decisões de 16/10/26; mesmo do Sirius 60, adaptado)
+- Botão "Gerar relatório" na semanal, ao lado de "Avanço físico" (`components/GerarRelatorio.jsx`, datas dd/mm/aaaa; padrão
+  mês anterior; atalhos última semana, último mês, desde o início) → `/relatorio?de=&ate=` (`pages/relatorio.js`). "Baixar
+  PDF" = impressão do navegador; A4 retrato com cabeçalho/rodapé "Flats Pampulha · período · página X de Y". Sem pacote novo.
+- Mesmas contas do site: `/api/dashboard-semanal`, `/api/pontos-atencao`, `/api/contas-a-pagar`; `lib/relatorio.js` só
+  organiza. Período → semanas do calendário (semana da data final); "no período" = fim da semana final − fim da semana
+  anterior à inicial. Sem medição no período: cinza "sem medição desde DD/MM" e AMARELO "medição desatualizada".
+- CONTAS A PAGAR DINÂMICO: cada semana do site e do relatório usa a carga do fechamento do próprio mês (a última carga
+  até o mês do fim da semana), não a mais recente (`lib/painel-semanal.js`).
+- Custo final = custo até a data (pago + a pagar) + o que falta do direto pelo orçado + indireto pelo orçamento ±
+  custos fixos recorrentes da semana (`kpis.projecao.custo_calendario_semana`) × semanas que a obra está atrasada
+  (soma) ou ADIANTADA no cronograma (desconta — decisão do Rafael, 16/10/26). Sem reserva separada neste orçamento.
+  "Adiantada" aqui é PRAZO (card Adiantamento), nunca adiantamento a fornecedor.
+- Dias de atraso da atividade = (previsto − feito) × dias da janela do cronograma. Próximos 30 dias pela janela
+  projetada do painel Pontos de atenção. Faixas do semáforo escritas na página (rendimento 1,00/0,95; prazo 2 semanas;
+  indireto e custo final 5%; atividade 7 dias).
+
 ## Ambiente
 - Toda mudança na TELA (components/, pages/) é testada no NAVEGADOR antes do commit, não só por script: `npm run
   build && npm start`, abrir a página, clicar no que mudou e conferir que o console do navegador não tem erro

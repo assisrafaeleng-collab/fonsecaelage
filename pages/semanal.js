@@ -9,6 +9,7 @@ import { fetchComSenha, garantirSenha } from '../lib/fetch-com-senha'
 import DiarioOcorrencias from '../components/DiarioOcorrencias'
 import PontosAtencao from '../components/PontosAtencao'
 import CampoData from '../components/CampoData'
+import GerarRelatorio from '../components/GerarRelatorio'
 import ContasAPagarDetalhe from '../components/ContasAPagarDetalhe'
 import {
   Chart as ChartJS,
@@ -109,6 +110,8 @@ export default function Semanal() {
     })
   const [abertura, setAbertura] = useState(null)
   const [somas, setSomas] = useState(null)
+  // Contas a pagar da semana SELECIONADA (a carga do mês dela; decisão de 16/10/2026)
+  const [contasSel, setContasSel] = useState(null)
   const [carregandoGrupos, setCarregandoGrupos] = useState(false)
 
   // Dados do servidor: carregados ao abrir e de novo depois de lançar ou excluir
@@ -169,6 +172,7 @@ export default function Semanal() {
       setAvancoGrupos(dados.avanco_grupos || null)
       setMapa(dados.mapa_avanco || null)
       setSomas(dados.consistencia || null)
+      setContasSel(dados.contas_a_pagar || null)
       return
     }
     let cancelado = false
@@ -182,6 +186,7 @@ export default function Semanal() {
         setAvancoGrupos(j.avanco_grupos || null)
         setMapa(j.mapa_avanco || null)
         setSomas(j.consistencia || null)
+        setContasSel(j.contas_a_pagar || null)
       })
       .catch(() => {
         if (!cancelado) setAbertura(null)
@@ -281,7 +286,7 @@ export default function Semanal() {
   const indiretoReal = p.indireto_realizado
   // Contas a pagar do ultimo fechamento (relatorio do TOTVS, classificado por
   // EAP). Direto = com NF e "Prev. Financ."; entra no IPC. Sem carga, zero.
-  const contas = dados.contas_a_pagar || { disponivel: false, direto: 0, indireto: 0 }
+  const contas = contasSel || dados.contas_a_pagar || { disponivel: false, direto: 0, indireto: 0 }
   const aPagarDireto = contas.direto || 0
   const aPagarIndireto = contas.indireto || 0
   const saldoIndireto = indiretoReal == null ? null : indiretoPlan - indiretoReal - aPagarIndireto
@@ -497,6 +502,7 @@ export default function Semanal() {
         <button className={base === 'hh' ? 'btn-primary' : 'btn-sm'} onClick={() => setBase('hh')}>
           Avanço físico
         </button>
+        <GerarRelatorio curva={dados.curva} />
         <span style={{ font: "500 11px 'IBM Plex Sans'", color: '#8b919c' }}>
           avanço físico = horas executadas ÷ {dados.consistencia.hh_total_evm.toLocaleString('pt-BR')} h orçadas (parcela de produção)
         </span>
