@@ -6,6 +6,9 @@ fica em `automacao/` — leia `automacao/LEIAME.md` antes de mexer nela.
 ## Regras de fechamento do mês (custos)
 1. Fonte oficial = relatório ACUMULADO do TOTVS (decisão de 14/10/26), salvo sempre com a data no nome, sem
    substituir o anterior (`automacao/entrada/TOTVS_acumulado_AAAA-MM-DD.xlsx`); o fechamento usa o mais recente.
+   A data no nome é o dia em que o arquivo foi salvo; os pagamentos vão até a última Data de Baixa do arquivo
+   ("data de corte", que as prévias sempre mostram). Carga parcial do mês é permitida: o resto entra pelo
+   acumulado seguinte e o ref evita duplicidade (decisão de 16/10/26).
    Chave única = "Ref. Lançamento" (`custos_lancamentos.ref_totvs` + `ref_parte`; `contas_a_pagar.ref_totvs`;
    `supabase/custos/8-ref-totvs.sql` e `9-preencher-ref-totvs.sql`). Pago = Valor Baixado > 0; zerado com Data de
    Baixa = NF que quitou adiantamento (fora); zerado sem Data de Baixa = a pagar. Fechamento do mês M: só títulos

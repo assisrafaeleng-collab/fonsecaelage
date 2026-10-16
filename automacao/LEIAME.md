@@ -20,6 +20,12 @@
 ## Fechamento pelo ACUMULADO do TOTVS — chave Ref. Lançamento (decisão de 14/10/2026)
 Fonte: o relatório acumulado da obra (todos os títulos, pagos e a pagar). Salve SEMPRE com a data no nome,
 sem substituir o anterior: entrada/TOTVS_acumulado_AAAA-MM-DD.xlsx. O fechamento usa o mais recente.
+A data no nome é o dia em que o arquivo foi salvo; os pagamentos vão até a última Data de Baixa do arquivo
+(DATA DE CORTE, mostrada pelo classificador, pelo contas_a_pagar.py e pela prévia do importar.js). Carga
+parcial do mês é permitida (ex.: outubro até 13/10): o resto entra pelo acumulado seguinte, sem duplicidade
+pelo ref (decisão de 16/10/2026).
+Simulação do dashboard antes da carga: o importar.js com --salvar-linhas ARQ.json (só na prévia) grava as linhas
+exatamente como iriam para o banco (custos ou contas a pagar).
 - "Ref. Lançamento" é único por título/parcela: é a chave para nunca lançar em duplicidade. Fica em
   custos_lancamentos.ref_totvs (título aberto em várias linhas: ref_parte 1..n), com data_baixa e
   baixa_retroativa; no contas a pagar, contas_a_pagar.ref_totvs (supabase/custos/8-ref-totvs.sql). O banco

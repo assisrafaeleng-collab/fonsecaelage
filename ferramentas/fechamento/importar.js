@@ -77,6 +77,14 @@ const ARQ_REFS_SIMULADOS = arg('--refs-simulados')
 // --exportar ARQUIVO.xlsx: grava (so no disco) a lista do custo direto a pagar
 // por entrega, para conferencia. Nao mexe no banco.
 const ARQ_EXPORTAR = arg('--exportar')
+// --salvar-linhas ARQUIVO.json: so na previa, grava (no disco) as linhas exatamente como iriam para o banco
+// (classificador e contas), para simular o dashboard antes da carga. Nao mexe no banco.
+const ARQ_SALVAR_LINHAS = arg('--salvar-linhas')
+const salvarLinhas = (linhas) => {
+  if (!ARQ_SALVAR_LINHAS) return
+  fs.writeFileSync(ARQ_SALVAR_LINHAS, JSON.stringify(linhas.map(({ __linha, __chave, __rec, ...l }) => l), null, 1))
+  console.log(`  linhas da prévia salvas em ${ARQ_SALVAR_LINHAS} (${linhas.length})`)
+}
 // Tabela do contas a pagar por titulo (supabase/contas/1-contas-a-pagar.sql).
 // Mesmo nome em lib/contas-a-pagar.js. (Conferido em out/26: a tabela nao
 // existia no banco; o modo antigo --contas, que gravaria nela com outro
@@ -677,6 +685,12 @@ async function classificadorAcumulado(db, validos, pavimento, brutas) {
   const erro = (m) => erros.push(m)
 
   console.log(`\nFechamento ${competencia} pelo acumulado (Ref. Lançamento) · ${path.basename(ARQ_CLASSIF)}${simulado ? '  [SIMULAÇÃO: refs de ' + path.basename(ARQ_REFS_SIMULADOS) + ', o banco ainda não tem ref_totvs]' : ''}`)
+  // data de corte = ultima Data de Baixa do arquivo (a data no nome e o dia em que foi salvo; decisao de 16/10/2026)
+  if (conf.data_corte) {
+    const [ay, am] = competencia.split('-').map(Number)
+    const parcial = conf.data_corte < new Date(Date.UTC(ay, am, 0)).toISOString().slice(0, 10)
+    console.log(`  DATA DE CORTE: pagamentos até ${conf.data_corte.split('-').reverse().join('/')} (última Data de Baixa de ${path.basename(conf.arquivo || '')})${parcial ? ` — carga parcial de ${competencia}` : ''}`)
+  }
   console.log(`  arquivo: ${titulos.size} título(s) novo(s) · ${linhas.length} lançamentos · ${fmt(total)}`)
   console.log(`  banco: ${somaRef.size} títulos com ref · ${manuais.length} linha(s) manuais sem ref · ${competencia} já tem ${existentes.length} lançamento(s) ${soma(existentes)} (continuam: nada é substituído)`)
   resumoPavimento(linhas, pavimento)
@@ -739,6 +753,7 @@ async function classificadorAcumulado(db, validos, pavimento, brutas) {
   erros.forEach((m) => console.log(`  ✗ ${m}`))
 
   if (simulado) console.log('  ✗ SIMULAÇÃO: o banco ainda não tem ref_totvs. Rode os SQL 8 e 9, exporte os refs (--refs-do-banco), rode o classificador e a prévia de novo')
+  salvarLinhas(linhas)
   if (!CONFIRMAR) return console.log(`\n  PRÉVIA: nada foi gravado.${erros.length || simulado ? ' Resolva os itens marcados com ✗ antes de gravar.' : ' Para gravar, rode de novo com --confirmar'}\n`)
   if (erros.length) throw new Error(`${erros[0]}: nada foi gravado`)
 
@@ -1068,6 +1083,7 @@ async function contasClassificador(db, validos, pavimento) {
 
   const travaPend = pend.length > 0 && !ACEITAR_PENDENCIAS
   if (travaPend) console.log(`  ✗ ${pend.length} título(s) sem EAP. Decida e rode o contas_a_pagar.py de novo, ou grave assim com --aceitar-pendencias (ficam fora do IPC)`)
+  salvarLinhas(linhas)
   if (!CONFIRMAR) return console.log(`\n  PRÉVIA: nada foi gravado.${ok && !travaPend && destino.existe ? ' Para gravar, rode de novo com --confirmar' : ' Resolva os itens marcados com ✗ antes de gravar.'}\n`)
   if (!destino.existe) throw new Error(`a tabela ${TABELA_CONTAS} não existe: nada foi gravado`)
   if (!ok) throw new Error('há códigos EAP inválidos: nada foi gravado')

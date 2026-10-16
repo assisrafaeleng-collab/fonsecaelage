@@ -158,6 +158,7 @@ if __name__ == '__main__':
     alvo = em_aberto[mes(em_aberto.competencia).values >= fechamento].reset_index(drop=True)
     antigos = em_aberto[mes(em_aberto.competencia).values < fechamento]
     print(f'Fechamento {fechamento} -> vencimentos a partir de {fechamento} (Previsão de Baixa; sem ela, Vencimento)')
+    print(f'  DATA DE CORTE: pagamentos até {pd.to_datetime(todos.data_baixa).max():%d/%m/%Y} (última Data de Baixa do arquivo)')
     print(f'  {len(alvo)} título(s) sem pagamento a partir de {fechamento} | R$ {alvo.valor.sum():,.2f}')
     for m, g in alvo.groupby(mes(alvo.competencia).values):
         print(f'    {m}: {len(g):3d} título(s) | R$ {g.valor.sum():,.2f}')

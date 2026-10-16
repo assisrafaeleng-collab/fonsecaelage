@@ -511,6 +511,10 @@ def fechamento_acumulado(totvs, pasta_oc, fechamento, arq_refs):
     cand = tit[(pago_ate | taxa) & ~no_banco].copy()
 
     print(f'Fechamento {fechamento} pelo acumulado {totvs} (baixa até {fim:%d/%m/%Y})')
+    # data de corte = última Data de Baixa do arquivo (a data no nome é o dia em que foi salvo; decisão de 16/10/2026)
+    corte = pd.to_datetime(tit.data_baixa).max()
+    print(f'  DATA DE CORTE: pagamentos até {corte:%d/%m/%Y} (última Data de Baixa do arquivo)'
+          + (f' — carga parcial de {fechamento}: o resto do mês entra pelo próximo acumulado' if corte < fim else ''))
     print(f'  arquivo: {len(tit)} títulos · {pago_ate.sum()} pagos até {fim:%d/%m/%Y} · banco: {soma_banco.size} títulos com ref, '
           f'{len(sem_ref)} linha(s) sem ref (lançamento manual, pagos fora do TOTVS) {brl(pd.to_numeric(sem_ref.valor).sum())}')
     fora_arquivo = sorted(set(soma_banco.index) - set(tit.ref_totvs))
@@ -598,7 +602,7 @@ def fechamento_acumulado(totvs, pasta_oc, fechamento, arq_refs):
         for (ref, doc, forn), g in retro.groupby(['ref_totvs', 'documento', 'fornecedor']):
             print(f'    ref {ref} {doc} {forn[:34]} {brl(g.valor.sum())} baixa {pd.to_datetime(g.data_baixa.iloc[0]):%d/%m/%Y}')
 
-    conf = dict(fechamento=fechamento, arquivo=str(totvs), ok=bool(ok), total_pago=total_P, ja_importado=A_db,
+    conf = dict(fechamento=fechamento, arquivo=str(totvs), data_corte=f'{corte:%Y-%m-%d}', ok=bool(ok), total_pago=total_P, ja_importado=A_db,
                 diferenca_aceita=dif_aceita, novos=B, nao_custo=round(C.valor.sum(), 2), fora_dashboard=round(D.valor.sum(), 2),
                 diferenca=falta, taxa_sem_pagamento=round(taxa_sem_pag.valor.sum(), 2),
                 refs_ja_importados={str(int(r)): float(soma_banco[int(r)]) for r in A.ref_totvs},
