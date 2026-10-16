@@ -3,6 +3,7 @@ import { competenciaDoLancamento } from '../../lib/competencia'
 import { carregarRetratos, fotoAteMes, ultimoMesMedido } from '../../lib/avanco-historico'
 import { carregarAvancoHh, avancoNoMes, curvaMensalHh } from '../../lib/avanco-hh'
 import { calcularPainelSemanal } from '../../lib/painel-semanal'
+import { chavesDeMedicao } from '../../lib/medicao-linha'
 import { getHHPlanejadoAcumulado, getTotalPlanejadoHH, getPlanejadoHhByItem, getPlanejadoHhBySubgrupo } from '../../lib/cronograma-hh'
 
 export default async function handler(req, res) {
@@ -37,7 +38,7 @@ export default async function handler(req, res) {
       // mesmas fontes da pagina semanal (lib/avanco-hh.js)
       carregarAvancoHh(supabase, obra_id),
       supabase.from('custos_indiretos_planejados').select('valor_total').eq('obra_id', obra_id),
-      supabase.from('orcamento_planejado').select('preco_total, grupo_numero, grupo_nome, cod_eap, hh, mes_inicio, mes_fim').eq('obra_id', obra_id),
+      supabase.from('orcamento_planejado').select('preco_total, grupo_numero, grupo_nome, cod_eap, pavimento, hh, mes_inicio, mes_fim').eq('obra_id', obra_id),
       supabase.from('orcamento_planejado').select('hh, mes_inicio, mes_fim').eq('obra_id', obra_id),
     ])
 
@@ -172,28 +173,33 @@ export default async function handler(req, res) {
       const k = chaveSub(it.cod_eap)
       hhOrcPorSub[k] = (hhOrcPorSub[k] || 0) + (parseFloat(it.hh) || 0)
     })
+    // Por LINHA (codigo + pavimento quando o codigo se repete, a chave da
+    // medicao): antes era por codigo e o Hh da ultima linha do codigo repetido
+    // valia para todos os pavimentos (decisao de 16/10/2026)
+    const { chave: chaveLinha } = chavesDeMedicao(itensDiretosOrc)
     const hhAtualPorItem = {}
     itensDiretosOrc.forEach(it => {
       const hhItem = parseFloat(it.hh) || 0
       const mSub = getPlanejadoHhBySubgrupo(it.cod_eap)
+      const k = chaveLinha(it.cod_eap, it.pavimento)
       if (mSub) {
         const totalSub = mSub.reduce((s, v) => s + (Number(v) || 0), 0)
         const base = hhOrcPorSub[chaveSub(it.cod_eap)] || 0
-        hhAtualPorItem[it.cod_eap] = (totalSub > 0 && base > 0) ? hhItem * (totalSub / base) : hhItem
+        hhAtualPorItem[k] = (hhAtualPorItem[k] || 0) + ((totalSub > 0 && base > 0) ? hhItem * (totalSub / base) : hhItem)
       } else {
-        hhAtualPorItem[it.cod_eap] = hhItem * (fatorPorGrupo[it.grupo_numero] || 1)
+        hhAtualPorItem[k] = (hhAtualPorItem[k] || 0) + hhItem * (fatorPorGrupo[it.grupo_numero] || 1)
       }
     })
 
     const ultimoRealizadoPorItem = new Map()
     avancoRealData.forEach(item => {
-      const key = item.codigo_eap || `${item.atividade_nome || 'atividade'}|${item.pavimento || ''}`
+      const key = item.chave_linha || item.codigo_eap || `${item.atividade_nome || 'atividade'}|${item.pavimento || ''}`
       const atual = ultimoRealizadoPorItem.get(key)
       const novo = {
         ...item,
-        // Calculado na hora: % lancado x Hh atual do item (nao usa o valor gravado)
-        hh_realizado: (hhAtualPorItem[item.codigo_eap] != null)
-          ? (parseFloat(item.percentual_realizado || 0) / 100) * hhAtualPorItem[item.codigo_eap]
+        // Calculado na hora: % lancado x Hh atual da linha (nao usa o valor gravado)
+        hh_realizado: (hhAtualPorItem[key] != null)
+          ? (parseFloat(item.percentual_realizado || 0) / 100) * hhAtualPorItem[key]
           : parseFloat(item.hh_realizado || 0),
         hh_planejado: parseFloat(item.hh_planejado || 0),
         mes_numero: parseInt(item.mes_numero || 0)

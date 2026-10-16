@@ -5,6 +5,7 @@
 
 import { useEffect, useState } from 'react'
 import { fetchComSenha, garantirSenha } from '../lib/fetch-com-senha'
+import CampoData from './CampoData'
 
 const CATEGORIAS = [
   'Atraso de fornecedor',
@@ -106,10 +107,9 @@ function FormOcorrencia({ onSaved, onCancelar, initialData = null }) {
       <div className="form-grid-3">
         <div className="field">
           <label>Data</label>
-          <input
-            type="date"
+          <CampoData
             value={form.data_ocorrencia}
-            onChange={e => setField('data_ocorrencia', e.target.value)}
+            onChange={iso => setField('data_ocorrencia', iso)}
           />
         </div>
         <div className="field">

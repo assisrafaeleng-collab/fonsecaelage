@@ -91,18 +91,19 @@ export default async function handler(req, res) {
       .eq('obra_id', obra_id)
     if (e2) return res.status(500).json({ error: e2.message })
 
-    // recalcula o acumulado do item a partir do que sobrou
-    const { data: restantes, error: e3 } = await supabase
-      .from('avanco_fisico_historico')
-      .select('percentual_realizado, hh_planejado')
-      .eq('obra_id', obra_id)
-      .eq('codigo_eap', reg.codigo_eap)
-      .eq('pavimento', reg.pavimento)
+    // recalcula o acumulado do item a partir do que sobrou: a ÚLTIMA medição da linha (percentual_realizado é
+    // acumulado), a mesma regra do painel semanal — antes somava as medições (decisão de 16/10/2026)
+    const { data: restantes, error: e3 } = await carregarMedicoes(supabase, obra_id, {
+      campos: 'id, codigo_eap, pavimento, percentual_realizado, semana_numero, data_lancamento, hh_planejado',
+      comSemana: false,
+      filtro: (q) => (reg.pavimento == null ? q.eq('codigo_eap', reg.codigo_eap).is('pavimento', null)
+        : q.eq('codigo_eap', reg.codigo_eap).eq('pavimento', reg.pavimento)),
+    })
     if (e3) return res.status(500).json({ error: e3.message })
 
-    const soma = (restantes || []).reduce((s, r) => s + (parseFloat(r.percentual_realizado) || 0), 0)
-    const acumulado = Math.min(100, soma)
-    const hh_plan = restantes && restantes[0] ? parseFloat(restantes[0].hh_planejado) || 0 : 0
+    const ultima = Object.values(ultimaMedicaoPorLinha(restantes, (eap, pav) => `${eap}|${pav || ''}`))[0] || null
+    const acumulado = ultima ? parseFloat(ultima.percentual_realizado) || 0 : 0
+    const hh_plan = ultima ? parseFloat(ultima.hh_planejado) || 0 : 0
     const hh_real = hh_plan * (acumulado / 100)
 
     // atualiza a "foto atual" na tabela principal (espelho do acumulado)

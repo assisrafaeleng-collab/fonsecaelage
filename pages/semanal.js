@@ -8,6 +8,7 @@ import { fmtMoeda } from '../lib/constants'
 import { fetchComSenha, garantirSenha } from '../lib/fetch-com-senha'
 import DiarioOcorrencias from '../components/DiarioOcorrencias'
 import PontosAtencao from '../components/PontosAtencao'
+import CampoData from '../components/CampoData'
 import ContasAPagarDetalhe from '../components/ContasAPagarDetalhe'
 import {
   Chart as ChartJS,
@@ -1671,10 +1672,9 @@ export default function Semanal() {
                                           }}
                                           onClick={(e) => e.stopPropagation()}
                                         >
-                                          <input
-                                            type="date"
+                                          <CampoData
                                             value={form.data}
-                                            onChange={(e) => setForm({ ...form, data: e.target.value })}
+                                            onChange={(iso) => setForm({ ...form, data: iso })}
                                             style={{ width: 150 }}
                                           />
                                           <div className="field" style={{ width: 130 }}>

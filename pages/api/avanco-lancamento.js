@@ -89,6 +89,13 @@ export default async function handler(req, res) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(dataISO)) {
         return res.status(400).json({ error: 'data inválida' })
       }
+      // Medição é do executado: data depois de hoje é erro de digitação (12/10 gravado como 10/12 pelo
+      // campo em formato americano, 16/10/2026)
+      const hoje = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())
+      if (dataISO > hoje) {
+        const br = (d) => `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}`
+        return res.status(400).json({ error: `data da medição (${br(dataISO)}) é depois de hoje (${br(hoje)}): confira o dia e o mês` })
+      }
 
       const { semana, item } = await contexto(obra_id, dataISO, codigo_eap, pavimento || null)
       const hh = item ? parseFloat(item.hh) || 0 : 0
