@@ -3,7 +3,7 @@
 //   A  producao: percentual medido x custo total do item
 //   B  locacao: incorrido, limitado ao orcado do item
 //   C  funcionarios: tempo decorrido (planejado da curva)
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/router'
 import { fmtMoeda } from '../lib/constants'
 
@@ -184,19 +184,47 @@ export default function ValorAgregado() {
   // contas a pagar, que vem do relatorio do TOTVS. 'a-pagar' e o nome antigo.
   const soAPagar = router.query.filtro === 'nao-pago' || router.query.filtro === 'a-pagar'
 
+  // Recarga (decisão de 16/10/2026): botão "atualizar" e ao voltar para a aba
+  // depois de 1 minuto — uma aba aberta antes de lançar medição ficava com o
+  // número antigo. O topo mostra de quando são os dados.
+  const [versao, setVersao] = useState(0)
+  const [atualizadoEm, setAtualizadoEm] = useState(null)
+  const atualizadoRef = useRef(0)
+  const semanaCarregada = useRef(undefined)
   useEffect(() => {
     if (!router.isReady) return
-    setDados(null)
+    if (semanaCarregada.current !== semana) setDados(null)
+    semanaCarregada.current = semana
     const q = semana ? `semana=${semana}&memoria=1` : 'memoria=1'
-    fetch(`/api/dashboard-semanal?${q}`)
+    fetch(`/api/dashboard-semanal?${q}`, { cache: 'no-store' })
       .then(async (r) => {
         const j = await r.json()
         if (!r.ok) throw new Error(j.message || 'Falha ao carregar')
         return j
       })
-      .then(setDados)
+      .then((j) => {
+        setDados(j)
+        atualizadoRef.current = Date.now()
+        setAtualizadoEm(new Date())
+      })
       .catch((e) => setErro(e.message))
-  }, [router.isReady, semana])
+  }, [router.isReady, semana, versao])
+  useEffect(() => {
+    const aoVoltar = () => {
+      if (document.visibilityState !== 'visible' || !atualizadoRef.current) return
+      if (Date.now() - atualizadoRef.current >= 60000) setVersao((v) => v + 1)
+    }
+    document.addEventListener('visibilitychange', aoVoltar)
+    return () => document.removeEventListener('visibilitychange', aoVoltar)
+  }, [])
+  const linhaAtualizacao = (
+    <div className="obra-info" style={{ marginTop: 4 }}>
+      {`Dados de ${atualizadoEm ? atualizadoEm.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'} · `}
+      <a onClick={() => setVersao((v) => v + 1)} style={{ cursor: 'pointer', textDecoration: 'underline' }}>
+        atualizar
+      </a>
+    </div>
+  )
 
   const m = dados && dados.memoria_agregado
 
@@ -356,6 +384,7 @@ export default function ValorAgregado() {
                 Flats Pampulha · até {s2(m.semana)} ({dmy(m.data_fim)}) · serviço executado cujo custo ainda não foi
                 pago (boleto a vencer, parcela, medição do empreiteiro)
               </div>
+              {linhaAtualizacao}
             </div>
           </div>
         </div>
@@ -469,6 +498,7 @@ export default function ValorAgregado() {
             <div className="obra-info">
               Flats Pampulha · até {s2(m.semana)} ({dmy(m.data_fim)}) · serviço executado a preço de orçamento
             </div>
+            {linhaAtualizacao}
           </div>
           <div className="sel-wrap">
             <div className="sel-lbl">Semana</div>

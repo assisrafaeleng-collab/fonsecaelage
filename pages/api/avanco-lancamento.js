@@ -110,9 +110,16 @@ export default async function handler(req, res) {
         hh_realizado: hh ? parseFloat(((hh * perc) / 100).toFixed(2)) : null,
       }
 
-      const resposta = id
-        ? await supabase.from('avanco_fisico_historico').update(registro).eq('id', id).select()
-        : await supabase.from('avanco_fisico_historico').insert(registro).select()
+      // gravado_em: desempate de duas medicoes do mesmo item no mesmo dia (vale a
+      // ultima gravada; supabase/avanco/2-gravado-em.sql). Sem a coluna no banco,
+      // grava sem ela.
+      const gravar = (reg) =>
+        id
+          ? supabase.from('avanco_fisico_historico').update(reg).eq('id', id).select()
+          : supabase.from('avanco_fisico_historico').insert(reg).select()
+      let resposta = await gravar({ ...registro, gravado_em: new Date().toISOString() })
+      if (resposta.error && /gravado_em/.test(resposta.error.message) && /does not exist|could not find|schema cache/i.test(resposta.error.message))
+        resposta = await gravar(registro)
 
       if (resposta.error) throw new Error(resposta.error.message)
       return res.status(200).json({ ok: true, registro: resposta.data?.[0] || null })

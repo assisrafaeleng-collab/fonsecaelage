@@ -3,37 +3,39 @@
 import { supabase } from '../../lib/supabase'
 import { senhaOk } from '../../lib/senha-servidor'
 import { carregarCalendario, semanaDoCalendario } from '../../lib/calendario'
+import { carregarMedicoes, ultimaMedicaoPorLinha } from '../../lib/medicao-linha'
 
 export default async function handler(req, res) {
   if (req.method !== 'GET' && !senhaOk(req, res)) return
   const obra_id = req.query.obra_id || 'flats_pampulha'
 
-  // GET: lista os lançamentos (incrementos) de um item específico
-  // Uso: /api/avanco-fisico-historico?codigo_eap=3.1.1&pavimento=1º
+  // GET: lista as medições de um item, na ordem em que valem, e o acumulado = a ÚLTIMA medição da linha até a
+  // data (percentual_realizado é ACUMULADO, não incremento; mesma regra do painel semanal, lib/medicao-linha.js).
+  // Antes esta rota somava as medições (decisão de 16/10/2026).
+  // Uso: /api/avanco-fisico-historico?codigo_eap=3.1.1&pavimento=1º[&ate=AAAA-MM-DD]
   if (req.method === 'GET') {
     const { codigo_eap, pavimento } = req.query
     if (!codigo_eap) return res.status(400).json({ error: 'codigo_eap obrigatorio' })
+    const ate = /^\d{4}-\d{2}-\d{2}$/.test(req.query.ate || '') ? req.query.ate : null
 
-    let query = supabase
-      .from('avanco_fisico_historico')
-      .select('id, codigo_eap, pavimento, percentual_realizado, semana_numero, mes_numero, data_lancamento')
-      .eq('obra_id', obra_id)
-      .eq('codigo_eap', codigo_eap)
-      .order('data_lancamento', { ascending: true })
-
-    if (pavimento) query = query.eq('pavimento', pavimento)
-
-    const { data, error } = await query
+    const { data, error } = await carregarMedicoes(supabase, obra_id, {
+      campos: 'id, codigo_eap, pavimento, percentual_realizado, semana_numero, mes_numero, data_lancamento',
+      comSemana: false,
+      filtro: (q) => (pavimento ? q.eq('codigo_eap', codigo_eap).eq('pavimento', pavimento) : q.eq('codigo_eap', codigo_eap)),
+    })
     if (error) return res.status(500).json({ error: error.message })
 
-    // soma dos incrementos (travada em 100)
-    const soma = (data || []).reduce((s, r) => s + (parseFloat(r.percentual_realizado) || 0), 0)
-    const acumulado = Math.min(100, soma)
+    // Código repetido por pavimento sem ?pavimento=: uma linha por pavimento (sem somar nem misturar)
+    const porLinha = ultimaMedicaoPorLinha(data, (eap, pav) => `${eap}|${pav || ''}`, ate)
+    const ultimas = Object.values(porLinha)
+    const acumulado = ultimas.length === 1 ? parseFloat(ultimas[0].percentual_realizado) || 0 : null
 
+    res.setHeader('Cache-Control', 'no-store')
     return res.status(200).json({
       data: data || [],
-      soma,
+      ate,
       acumulado,
+      por_pavimento: Object.fromEntries(ultimas.map((r) => [r.pavimento || '', parseFloat(r.percentual_realizado) || 0])),
       count: (data || []).length
     })
   }

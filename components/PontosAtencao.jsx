@@ -35,7 +35,8 @@ const num = { textAlign: 'right', fontFamily: 'var(--mono)', fontSize: 11, white
 const diasUt = (n) => `${n} dia${n === 1 ? '' : 's'} út${n === 1 ? 'il' : 'eis'}`
 const NCOL = 10
 
-export default function PontosAtencao({ semana }) {
+// versao: a página semanal aumenta depois de lançar/excluir medição ou atualizar — o painel aberto recalcula
+export default function PontosAtencao({ semana, versao = 0 }) {
   // ---- hooks: todos aqui em cima, antes de qualquer return ----
   const [aberto, setAberto] = useState(false)
   const [d, setD] = useState(null)
@@ -59,11 +60,11 @@ export default function PontosAtencao({ semana }) {
     if (!aberto || semana == null) return
     let vivo = true
     setErro(null)
-    fetch(`/api/pontos-atencao?semana=${semana}`).then((r) => r.json())
+    fetch(`/api/pontos-atencao?semana=${semana}`, { cache: 'no-store' }).then((r) => r.json())
       .then((j) => { if (vivo) (j.error ? setErro(j.message || j.error) : setD(j)) })
       .catch((e) => vivo && setErro(e.message))
     return () => { vivo = false }
-  }, [aberto, semana, recarga])
+  }, [aberto, semana, recarga, versao])
 
   const ed = (k) => edit[k] || {}
   const setCampo = (k, campo, v) => setEdit((e) => ({ ...e, [k]: { ...(e[k] || {}), [campo]: v } }))

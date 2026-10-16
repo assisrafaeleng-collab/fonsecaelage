@@ -2,6 +2,7 @@
 // Curva fisica SEMANAL. Sem ?mes= retorna as 80 semanas.
 // Com ?mes=N retorna só as ~4 semanas daquele mes (zoom), com resumo do desvio.
 import { supabase } from '../../lib/supabase'
+import { carregarMedicoes } from '../../lib/medicao-linha'
 
 const mesDaSemana = (s) => Math.floor((s - 1) / 4) + 1
 
@@ -21,8 +22,7 @@ export default async function handler(req, res) {
       supabase.from('cronograma_fisico_semanal')
         .select('semana_numero, hh_semana, percentual_acumulado')
         .eq('obra_id', obra_id).order('semana_numero'),
-      supabase.from('avanco_fisico_historico')
-        .select('semana_numero, hh_realizado').eq('obra_id', obra_id),
+      carregarMedicoes(supabase, obra_id, { campos: 'id, semana_numero, hh_realizado', comSemana: false }),
       supabase.from('cronograma_horas_planejado')
         .select('horas_totais').eq('obra_id', obra_id),
     ])

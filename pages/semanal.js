@@ -1,7 +1,7 @@
 // pages/semanal.js
 // Acompanhamento semanal — mesma linguagem visual do Dashboard mensal:
 // classes de styles/globals.css, paleta e formatadores de components/Dashboard.jsx.
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/router'
 import { Line } from 'react-chartjs-2'
 import { fmtMoeda } from '../lib/constants'
@@ -95,7 +95,6 @@ export default function Semanal() {
   const [form, setForm] = useState({ data: '', incremento: '', acumulado: '' })
   const [salvando, setSalvando] = useState(false)
   const [erroSalvar, setErroSalvar] = useState(null)
-  const [recarregar, setRecarregar] = useState(0)
   const [indiretos, setIndiretos] = useState(null)
   const [grupoAberto, setGrupoAberto] = useState(null)
   // Pavimentos abertos no painel de custo direto ('3|3.2', '7|2º'); começam recolhidos
@@ -111,8 +110,21 @@ export default function Semanal() {
   const [somas, setSomas] = useState(null)
   const [carregandoGrupos, setCarregandoGrupos] = useState(false)
 
-  useEffect(() => {
-    fetch('/api/dashboard-semanal')
+  // Dados do servidor: carregados ao abrir e de novo depois de lançar ou excluir
+  // medição, no botão "atualizar" e ao voltar para a aba depois de 1 minuto
+  // (decisão de 16/10/2026: antes, na semana atual, nada atualizava sem
+  // recarregar a página). O topo mostra de quando são os dados.
+  const [atualizadoEm, setAtualizadoEm] = useState(null)
+  const [atualizando, setAtualizando] = useState(false)
+  const [erroAtualizar, setErroAtualizar] = useState(null)
+  const [versaoPontos, setVersaoPontos] = useState(0)
+  const semanaRef = useRef(null)
+  semanaRef.current = semana
+  const atualizadoRef = useRef(0)
+  const carregarBase = useCallback(() => {
+    setAtualizando(true)
+    setErroAtualizar(null)
+    return fetch('/api/dashboard-semanal', { cache: 'no-store' })
       .then(async (r) => {
         const j = await r.json()
         if (!r.ok) throw new Error(j.message || 'Falha ao carregar')
@@ -120,25 +132,47 @@ export default function Semanal() {
       })
       .then((j) => {
         setDados(j)
-        setSemana(j.semana_atual)
-        setAbertura(j.grupos || null)
-        setIndiretos(j.indiretos || null)
-        setAvancoGrupos(j.avanco_grupos || null)
-        setMapa(j.mapa_avanco || null)
-        setSomas(j.consistencia || null)
+        if (semanaRef.current == null) setSemana(j.semana_atual)
+        atualizadoRef.current = Date.now()
+        setAtualizadoEm(new Date())
       })
-      .catch((e) => setErro(e.message))
+      .catch((e) => (atualizadoRef.current ? setErroAtualizar(e.message) : setErro(e.message)))
+      .finally(() => setAtualizando(false))
   }, [])
+  const recarregarTudo = useCallback(() => {
+    setVersaoPontos((v) => v + 1)
+    return carregarBase()
+  }, [carregarBase])
+  useEffect(() => {
+    carregarBase()
+  }, [carregarBase])
+  useEffect(() => {
+    const aoVoltar = () => {
+      if (document.visibilityState !== 'visible' || !atualizadoRef.current) return
+      if (Date.now() - atualizadoRef.current < 60000) return
+      recarregarTudo()
+    }
+    document.addEventListener('visibilitychange', aoVoltar)
+    return () => document.removeEventListener('visibilitychange', aoVoltar)
+  }, [recarregarTudo])
 
-  // A abertura por grupo e calculada no servidor para UMA semana. Trocar de
-  // semana no seletor exige pedir de novo — a curva ate o fim ja esta em
-  // memoria, mas o acumulado por grupo nao.
+  // A abertura por grupo e calculada no servidor para UMA semana. A semana
+  // atual vem na mesma resposta da pagina (dados); outra semana exige pedir
+  // de novo — a curva ate o fim ja esta em memoria, mas o acumulado por grupo
+  // nao. Roda de novo a cada recarga (dados novo).
   useEffect(() => {
     if (!dados || semana == null) return
-    if (semana === dados.semana_atual && abertura) return
+    if (semana === dados.semana_atual) {
+      setAbertura(dados.grupos || null)
+      setIndiretos(dados.indiretos || null)
+      setAvancoGrupos(dados.avanco_grupos || null)
+      setMapa(dados.mapa_avanco || null)
+      setSomas(dados.consistencia || null)
+      return
+    }
     let cancelado = false
     setCarregandoGrupos(true)
-    fetch(`/api/dashboard-semanal?semana=${semana}`)
+    fetch(`/api/dashboard-semanal?semana=${semana}`, { cache: 'no-store' })
       .then((r) => r.json())
       .then((j) => {
         if (cancelado) return
@@ -158,7 +192,7 @@ export default function Semanal() {
       cancelado = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [semana, dados, recarregar])
+  }, [semana, dados])
 
   // Pede a senha de lançamento (conferida no servidor) antes de editar medições.
   const exigirSenha = async (acao) => {
@@ -179,7 +213,7 @@ export default function Semanal() {
       if (!r.ok) throw new Error(j.message || j.error || 'Falha ao salvar')
       setEditando(null)
       setForm({ data: '', incremento: '', acumulado: '' })
-      setRecarregar((v) => v + 1)
+      await recarregarTudo()
     } catch (e) {
       setErroSalvar(e.message)
     } finally {
@@ -198,7 +232,7 @@ export default function Semanal() {
       })
       const j = await r.json()
       if (!r.ok) throw new Error(j.message || j.error || 'Falha ao excluir')
-      setRecarregar((v) => v + 1)
+      await recarregarTudo()
     } catch (e) {
       setErroSalvar(e.message)
     } finally {
@@ -383,6 +417,16 @@ export default function Semanal() {
             <div className="obra-info">
               Orçamento: {fmtMoeda(dados.totais.obra)} · {dados.curva.length} semanas ·{' '}
               {dmy(primeira)} a {dmy(ultima)} · Até S{String(p.semana).padStart(2, '0')}
+            </div>
+            <div className="obra-info" style={{ marginTop: 4 }}>
+              {atualizando
+                ? 'Atualizando os dados...'
+                : `Dados de ${atualizadoEm ? atualizadoEm.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}`}
+              {' · '}
+              <a onClick={() => !atualizando && recarregarTudo()} style={{ cursor: atualizando ? 'default' : 'pointer', textDecoration: 'underline' }}>
+                atualizar
+              </a>
+              {erroAtualizar ? <span style={{ color: VERMELHO }}>{` · não atualizou: ${erroAtualizar}`}</span> : null}
             </div>
           </div>
 
@@ -1904,7 +1948,7 @@ export default function Semanal() {
       )}
 
       <DiarioOcorrencias />
-      <PontosAtencao semana={p.semana} />
+      <PontosAtencao semana={p.semana} versao={versaoPontos} />
     </div>
   )
 }
