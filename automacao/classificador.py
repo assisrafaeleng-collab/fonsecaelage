@@ -2,6 +2,13 @@
 Classificador de custos TOTVS -> EAP  (protótipo, obra Flats BH)
 Uso: python classificador.py <relatorio_totvs.xlsx> <pasta_com_relatorios_OC>
 Saída: lancamentos.csv, pendencias.csv
+
+Fechamento pelo ACUMULADO do TOTVS (decisão de 14/10/2026), chave = Ref. Lançamento:
+    py classificador.py entrada/TOTVS_acumulado_AAAA-MM-DD.xlsx oc --fechamento AAAA-MM --refs refs_no_banco.csv
+  refs_no_banco.csv vem do importar.js --refs-do-banco (só leitura). Entram só os títulos PAGOS
+  (Valor Baixado > 0, baixa até o fim do mês) cujo ref ainda não está no banco, mais a Taxa ADM (regra
+  de sempre). Baixa em mês já fechado entra no mês do fechamento marcada como baixa retroativa.
+  Gera também conferencia.json (total pago = já importado + novos + NAO_CUSTO + fora do dashboard).
 """
 import sys, glob, re
 import pandas as pd, unicodedata
@@ -29,6 +36,7 @@ SINONIMOS = {
     'prev_baixa': ['data de previsao de baixa', 'previsao de baixa', 'previsaobaixa'],
     'pago':       ['valor pago'],
     'baixado':    ['valor baixado'],
+    'ref':        ['ref. lancamento', 'ref lancamento'],   # chave única do título/parcela no TOTVS
 }
 OBRIGATORIAS = ['documento', 'nome', 'vencimento', 'cc', 'liquido', 'cnpj']
 
@@ -62,11 +70,17 @@ def ler_totvs(path):
         'valor_original': t['original'].astype(float) if 'original' in t else None,
         'valor': t['liquido'].astype(float).round(2),
         'pago': pago(t),
+        'ref_totvs': pd.to_numeric(t['ref'], errors='coerce').astype('Int64') if 'ref' in t else pd.NA,
+        'data_baixa': pd.to_datetime(t['baixa'], errors='coerce').dt.date if 'baixa' in t else None,
     }).reset_index(drop=True)
 
 def pago(t):
-    """True/False por título; None se o relatório não tem a coluna VALOR PAGO (não dá para conferir)"""
+    """True/False por título; None se o relatório não tem a coluna VALOR PAGO (não dá para conferir).
+    Acumulado (sem VALOR PAGO, com Valor Baixado): pago = Valor Baixado > 0 (decisão de 14/10/2026);
+    zerado com Data de Baixa = NF que quitou adiantamento; zerado sem Data de Baixa = a pagar."""
     if 'pago' not in t:
+        if 'baixado' in t:
+            return pd.to_numeric(t['baixado'], errors='coerce').fillna(0) > 0
         return None
     p = pd.to_numeric(t['pago'], errors='coerce').fillna(0) > 0
     if 'baixado' in t:
@@ -82,9 +96,9 @@ def e_taxa_adm(tit):
     texto = tit.documento.str.upper() + ' ' + tit.historico.astype(str)
     return (tit.cnpj == CNPJ_TAXA_ADM) & texto.str.contains(r'TAXA\s*ADM', regex=True)
 
-def avisos_taxa_adm(tit):
+def avisos_taxa_adm(tit, avisar_ausente=True):
     tx = tit[e_taxa_adm(tit)]
-    if len(tx) == 0:
+    if len(tx) == 0 and avisar_ausente:
         print('AVISO: nenhuma Taxa ADM da Fonseca & Lage no relatório — confira (a do mês anterior entra neste mês)')
     elif len(tx) > 1:
         print(f'AVISO: {len(tx)} Taxas ADM no relatório (deveria ser no máximo uma): '
@@ -93,22 +107,63 @@ def avisos_taxa_adm(tit):
         if r.pago is not None and not r.pago:
             print(f'Taxa ADM incluída sem marcação de pago: {r.documento} R$ {r.valor:,.2f}')
 
+# Mês de referência da Taxa ADM pelo histórico/documento ("TAXA ADM AGO-2026", "TAXA ADM 08-2026",
+# "TAXA ADM FEV/2026 A JUN/2026" -> o último mês citado). A do mês M entra em M+1; se aparecer depois
+# (ex.: a de setembro ainda não emitida no fechamento de outubro), entra no fechamento em que aparecer,
+# marcada com atraso (decisão de 16/10/2026).
+MESES = {'JAN': 1, 'FEV': 2, 'MAR': 3, 'ABR': 4, 'MAI': 5, 'JUN': 6, 'JUL': 7, 'AGO': 8, 'SET': 9, 'OUT': 10, 'NOV': 11, 'DEZ': 12}
+def mes_ref_taxa(texto):
+    achados = [(int(a), MESES[m] if m in MESES else int(m))
+               for m, a in re.findall(r'\b(' + '|'.join(MESES) + r'|0?[1-9]|1[0-2])\s*[-/.]\s*(20\d\d)\b', norm(texto))]
+    return pd.Period(year=achados[-1][0], month=achados[-1][1], freq='M') if achados else None
+
+def atrasos_taxa_adm(cand, fechamento):
+    """{ref_totvs: texto do alerta} das Taxas ADM que entram depois de M+1; avisa também a que falta."""
+    m = pd.Period(fechamento, freq='M')
+    tx = cand[e_taxa_adm(cand)]
+    alertas = {}
+    if len(tx) == 0:
+        print(f'AVISO: a Taxa ADM de {m - 1} não está no acumulado (ainda não emitida?): o fechamento de {m} segue sem ela; '
+              f'ela entra no fechamento em que aparecer, marcada com atraso')
+    for r in tx.itertuples():
+        ref = mes_ref_taxa(f'{r.documento} {r.historico}')
+        if ref is None:
+            print(f'AVISO: Taxa ADM {r.documento} sem mês de referência no histórico — confira')
+        elif ref + 1 < m:
+            alertas[r.ref_totvs] = f'Taxa ADM de {ref} com atraso: entra em {m} (deveria em {ref + 1})'
+            print(f'AVISO: {alertas[r.ref_totvs]}')
+    return alertas
+
 # não são custo (decisão out/26): previsão financeira de OC ainda sem NF e aporte de sócio.
 # Saem da classificação e vão para nao_custo.csv (base do futuro card de contas a pagar).
 NAO_CUSTO = {'previsão financeira': r'PREV\.?\s*FINANC', 'aporte': r'\bAPORTE\b'}
+
+def decisoes_nao_custo():
+    """decisoes_pontuais.csv com eap = NAO_CUSTO. Coluna opcional ref_totvs (Ref. Lançamento do TOTVS):
+    preenchida, a decisão vale para aquele título pelo ref (decisão de 14/10/2026); vazia, vale pelo
+    cnpj + documento, como as decisões antigas."""
+    try:
+        dp = pd.read_csv('decisoes_pontuais.csv', dtype=str).fillna('')
+    except FileNotFoundError:
+        return pd.DataFrame(columns=['cnpj', 'documento', 'eap', 'obs', 'ref_totvs'])
+    if 'ref_totvs' not in dp:
+        dp['ref_totvs'] = ''
+    dp['ref_totvs'] = dp.ref_totvs.str.replace(r'\.0$', '', regex=True).str.strip()
+    return dp[dp.eap == 'NAO_CUSTO']
+
+def mascara_decisao(tit, r):
+    """títulos de uma linha de decisoes_pontuais.csv: pelo ref quando a decisão tem ref, senão cnpj + documento"""
+    if r.ref_totvs and 'ref_totvs' in tit:
+        return tit.ref_totvs.astype('Int64').astype(str) == r.ref_totvs
+    return (tit.cnpj == r.cnpj) & (tit.documento == r.documento)
 
 def separar_nao_custo(tit):
     tipo = pd.Series('', index=tit.index)
     for nome, padrao in NAO_CUSTO.items():
         tipo[(tipo == '') & tit.historico.str.contains(padrao, regex=True)] = nome
     # título que você marcou em decisoes_pontuais.csv com eap = NAO_CUSTO (ex.: NF já paga por adiantamento)
-    try:
-        dp = pd.read_csv('decisoes_pontuais.csv', dtype={'cnpj': str, 'documento': str, 'eap': str}).fillna('')
-        dp = dp[dp.eap == 'NAO_CUSTO']
-        for r in dp.itertuples():
-            tipo[(tipo == '') & (tit.cnpj == r.cnpj) & (tit.documento == r.documento)] = r.obs or 'decisão: não é custo'
-    except FileNotFoundError:
-        pass
+    for r in decisoes_nao_custo().itertuples():
+        tipo[(tipo == '') & mascara_decisao(tit, r)] = r.obs or 'decisão: não é custo'
     # só entra como custo o que consta como pago no relatório (decisão out/26), exceto a Taxa ADM
     if tit.pago.notna().all():
         tipo[(tipo == '') & (tit.pago == False) & ~e_taxa_adm(tit)] = 'sem pagamento no relatório'
@@ -317,6 +372,12 @@ def parcela_anterior(pontuais, t):
     primeira = min(irm.documento.unique(), key=lambda d: int(d.split('/')[-1]))
     return irm[irm.documento == primeira], primeira
 
+def ref_do_titulo(t):
+    """Ref. Lançamento e Data de Baixa do título, para as linhas do classificador (vazios no relatório mensal)"""
+    ref = getattr(t, 'ref_totvs', None)
+    return dict(ref_totvs='' if ref is None or pd.isna(ref) else int(ref),
+                data_baixa=getattr(t, 'data_baixa', None))
+
 def classificar(tit, ocs, regras):
     lanc, pend = [], []
     try:
@@ -343,7 +404,7 @@ def classificar(tit, ocs, regras):
                            competencia=t.competencia, valor=v, eap=r.eap, vinculo_oc='decisão pontual',
                            regra=f'decisão: {r.obs}' + (f' (herdada da parcela {herdada})' if herdada else ''),
                            alerta=getattr(r, 'alerta', ''),
-                           data_emissao=t.emissao, cnpj=t.cnpj,
+                           data_emissao=t.emissao, cnpj=t.cnpj, **ref_do_titulo(t),
                            classificacao=getattr(r, 'classificacao', ''),   # opcional, vai para o banco
                            pavimento=str(getattr(r, 'pavimento', '') or ''))  # opcional: decisão sua de pavimento
                 (lanc if r.eap else pend).append(row)
@@ -361,7 +422,7 @@ def classificar(tit, ocs, regras):
                 lanc.append(dict(documento=t.documento, fornecedor=t.fornecedor, item=t.historico, oc='',
                                  competencia=t.competencia, valor=v, eap=e, vinculo_oc='parcela anterior',
                                  regra='mesmo rateio da parcela anterior da NF', alerta='',
-                                 data_emissao=t.emissao, cnpj=t.cnpj))
+                                 data_emissao=t.emissao, cnpj=t.cnpj, **ref_do_titulo(t)))
             continue
         linhas_oc, conf = vincular_oc(t, ocs)
         if linhas_oc is not None:
@@ -381,7 +442,7 @@ def classificar(tit, ocs, regras):
                 row = dict(documento=t.documento, fornecedor=t.fornecedor, item=item, oc=oc,
                            competencia=t.competencia, valor=valor_r, eap=eap_r or '',
                            vinculo_oc=conf or 'sem OC', regra=motivo, alerta=alerta,
-                           data_emissao=t.emissao, cnpj=t.cnpj)
+                           data_emissao=t.emissao, cnpj=t.cnpj, **ref_do_titulo(t))
                 (lanc if eap_r else pend).append(row)
     # Pavimento: o da decisão pontual (coluna opcional pavimento) ou o em
     # execução na data da nota (etapa.csv). Decisão out/26.
@@ -390,7 +451,180 @@ def classificar(tit, ocs, regras):
             row['pavimento'] = pavimento_na_data(row.get('data_emissao'))
     return pd.DataFrame(lanc), pd.DataFrame(pend)
 
+def argumento(nome):
+    if nome in sys.argv:
+        i = sys.argv.index(nome)
+        if i + 1 < len(sys.argv):
+            return sys.argv[i + 1]
+    return None
+
+def pagos_no_arquivo(path, fim):
+    """Títulos pagos (Valor Baixado > 0) com baixa até `fim`, direto do arquivo, ANTES de qualquer filtro
+    do ler_totvs (documento excluído, sem valor líquido): é a base da conferência ao centavo."""
+    t = padronizar(pd.read_excel(path)).dropna(subset=['documento'])
+    t = t[t['cc'].astype(str).str.strip() == CENTRO_CUSTO]
+    vb = pd.to_numeric(t['baixado'], errors='coerce').fillna(0)
+    b = pd.to_datetime(t['baixa'], errors='coerce')
+    t = t[(vb > 0) & (b <= fim)]
+    return pd.DataFrame({'ref_totvs': pd.to_numeric(t['ref'], errors='coerce').astype('Int64'),
+                         'documento': t['documento'].astype(str).str.strip(), 'fornecedor': t['nome'].map(norm),
+                         'valor': pd.to_numeric(t['baixado'], errors='coerce').round(2)}).reset_index(drop=True)
+
+def diferencas_aceitas():
+    """diferencas_ref.csv (ref_totvs, diferenca, obs): diferença conhecida entre o TOTVS e o banco num título
+    já importado (ex.: juros pagos que não entraram no lançamento). Sem ela a conferência para."""
+    try:
+        d = pd.read_csv('diferencas_ref.csv', dtype=str).fillna('')
+    except FileNotFoundError:
+        return {}
+    return {int(r.ref_totvs): (round(float(r.diferenca), 2), r.obs) for r in d.itertuples() if r.ref_totvs.strip()}
+
+def brl(v):
+    return f'R$ {v:,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.')
+
+def fechamento_acumulado(totvs, pasta_oc, fechamento, arq_refs):
+    """Fechamento do mês pelo acumulado do TOTVS (decisão de 14/10/2026). Chave = Ref. Lançamento."""
+    import json
+    ini = pd.Timestamp(f'{fechamento}-01')
+    fim = ini + pd.offsets.MonthEnd(0)
+    tit = ler_totvs(totvs)
+    if tit.ref_totvs.isna().any():
+        sys.exit(f'O arquivo tem {tit.ref_totvs.isna().sum()} título(s) sem Ref. Lançamento: não é o acumulado do TOTVS.')
+    if tit.ref_totvs.duplicated().any():
+        sys.exit(f'Ref. Lançamento repetido no arquivo: {sorted(tit.ref_totvs[tit.ref_totvs.duplicated()].tolist())}')
+
+    # banco: uma linha por lançamento (importar.js --refs-do-banco); ref vazio = lançamento manual
+    banco = pd.read_csv(arq_refs, dtype=str).fillna('')
+    if 'status' in banco:
+        banco = banco[banco.status == 'Normal']
+    com_ref = banco[banco.ref_totvs != '']
+    soma_banco = com_ref.assign(v=pd.to_numeric(com_ref.valor)).groupby(com_ref.ref_totvs.astype(int)).v.sum().round(2)
+    comp_banco = com_ref.groupby(com_ref.ref_totvs.astype(int)).competencia.agg(lambda s: ', '.join(sorted(set(s))))
+    sem_ref = banco[banco.ref_totvs == '']
+
+    baixa = pd.to_datetime(tit.data_baixa)
+    emissao = pd.to_datetime(tit.emissao)
+    pago_ate = tit.pago.fillna(False).astype(bool) & (baixa <= fim)
+    no_banco = tit.ref_totvs.isin(soma_banco.index)
+    # Taxa ADM: entra no fechamento em que aparece (a do mês M em M+1), mesmo sem pagamento; só a já emitida
+    taxa = e_taxa_adm(tit) & (emissao <= fim)
+    cand = tit[(pago_ate | taxa) & ~no_banco].copy()
+
+    print(f'Fechamento {fechamento} pelo acumulado {totvs} (baixa até {fim:%d/%m/%Y})')
+    print(f'  arquivo: {len(tit)} títulos · {pago_ate.sum()} pagos até {fim:%d/%m/%Y} · banco: {soma_banco.size} títulos com ref, '
+          f'{len(sem_ref)} linha(s) sem ref (lançamento manual, pagos fora do TOTVS) {brl(pd.to_numeric(sem_ref.valor).sum())}')
+    fora_arquivo = sorted(set(soma_banco.index) - set(tit.ref_totvs))
+    if fora_arquivo:
+        print(f'PARE: {len(fora_arquivo)} ref(s) do banco não estão no arquivo (arquivo cortado ou de outra obra?): {fora_arquivo}')
+    avisos_taxa_adm(cand, avisar_ausente=False)    # a ausência é avisada em atrasos_taxa_adm
+    atraso_taxa = atrasos_taxa_adm(cand, fechamento)
+    cand, nao_custo = separar_nao_custo(cand.reset_index(drop=True))
+    nao_custo.to_csv('nao_custo.csv', index=False, encoding='utf-8-sig')
+    for tp, g in nao_custo.groupby('tipo'):
+        print(f'Ignorado (não é custo) — {tp}: {len(g)} título(s) | {brl(g.valor.sum())}  -> nao_custo.csv')
+
+    ocs, regras = ler_ocs(pasta_oc), carregar_regras()
+    lanc, pend = classificar(cand, ocs, regras)
+    n = len(lanc)
+    tudo = pd.concat([lanc, pend], ignore_index=True)
+    assert abs(round(cand.valor.sum(), 2) - round(tudo.valor.sum() if len(tudo) else 0, 2)) < 0.01, 'Total não fecha'
+    if len(tudo):
+        # O lançamento entra no mês do fechamento. Data que o dashboard usa (coluna competencia -> data_vencimento):
+        # a baixa, quando é no mês; baixa retroativa (mês já fechado) e Taxa ADM sem baixa -> último dia do mês.
+        b = pd.to_datetime(tudo.data_baixa)
+        tudo['baixa_retroativa'] = (b < ini).fillna(False)
+        tudo['competencia'] = b.where((b >= ini) & (b <= fim), fim).dt.date
+        tudo['ref_parte'] = tudo.groupby('ref_totvs').cumcount() + 1     # título aberto em várias linhas: 1..n
+    lanc, pend = tudo.iloc[:n].copy(), tudo.iloc[n:].copy()
+    try:
+        orc = set(pd.read_csv('orcamento.csv', dtype=str).eap)
+        fora = ~lanc.eap.isin(orc) if len(lanc) else pd.Series(dtype=bool)
+        if fora.any():
+            lanc.loc[fora, 'alerta'] = 'EAP não existe no orçamento'
+            print(f'AVISO: {fora.sum()} lançamento(s) com EAP fora do orçamento')
+    except FileNotFoundError:
+        pass
+    for ref, texto in atraso_taxa.items():
+        lanc.loc[lanc.ref_totvs == ref, 'alerta'] = texto
+    lanc.to_csv('lancamentos.csv', index=False, encoding='utf-8-sig')
+    (pend if len(pend) else pd.DataFrame(columns=list(lanc.columns))).to_csv('pendencias.csv', index=False, encoding='utf-8-sig')
+
+    # ── CONFERÊNCIA AO CENTAVO ──
+    P = pagos_no_arquivo(totvs, fim)
+    refs_P = set(P.ref_totvs.dropna().astype(int))
+    titP = tit[tit.ref_totvs.isin(refs_P)]
+    A = titP[titP.ref_totvs.isin(soma_banco.index)]
+    novos_pagos = cand[cand.pago.fillna(False).astype(bool) & cand.ref_totvs.isin(refs_P)]
+    taxa_sem_pag = cand[~cand.ref_totvs.isin(refs_P)]
+    C = nao_custo[nao_custo.ref_totvs.isin(refs_P)]
+    D = P[~P.ref_totvs.isin(set(tit.ref_totvs))]            # pagos que o ler_totvs deixa fora (EXCLUIR_DOCS, sem líquido)
+    aceitas = diferencas_aceitas()
+    difs = []
+    for r in A.itertuples():
+        d = round(r.valor - soma_banco[int(r.ref_totvs)], 2)
+        if abs(d) >= 0.005:
+            ok = int(r.ref_totvs) in aceitas and abs(aceitas[int(r.ref_totvs)][0] - d) < 0.005
+            difs.append(dict(ref=int(r.ref_totvs), documento=r.documento, fornecedor=r.fornecedor, arquivo=float(r.valor),
+                             banco=float(soma_banco[int(r.ref_totvs)]), diferenca=float(d), aceita=bool(ok),
+                             obs=aceitas.get(int(r.ref_totvs), (0, ''))[1]))
+    A_db = round(sum(soma_banco[int(x)] for x in A.ref_totvs), 2)
+    dif_aceita = round(sum(x['diferenca'] for x in difs if x['aceita']), 2)
+    B = round(novos_pagos.valor.sum(), 2)
+    total_P = round(P.valor.sum(), 2)
+    soma = round(A_db + dif_aceita + B + C.valor.sum() + D.valor.sum(), 2)
+    falta = round(total_P - soma, 2)
+    # refs do banco que não entram em P (Taxa ADM gravada sem baixa, baixa depois do fim do mês)
+    fora_periodo = sorted(set(soma_banco.index) - refs_P)
+    retro = tudo[tudo.baixa_retroativa == True] if len(tudo) else tudo
+    ok = abs(falta) < 0.005 and not fora_arquivo
+    print(f'\nCONFERÊNCIA {fechamento} (pagos com baixa até {fim:%d/%m/%Y}):')
+    print(f'  total pago no arquivo            {brl(total_P):>18}  ({len(P)} títulos)')
+    print(f'  = já importado (banco)           {brl(A_db):>18}  ({len(A)} títulos)')
+    if difs:
+        print(f'    + diferença aceita (TOTVS - banco) {brl(dif_aceita):>14}')
+        for x in difs:
+            print(f'      {"ok" if x["aceita"] else "X "} ref {x["ref"]} {x["documento"]} {x["fornecedor"][:30]}: arquivo {brl(x["arquivo"])} × banco {brl(x["banco"])} '
+                  f'({brl(x["diferenca"])}){" — " + x["obs"] if x["obs"] else " — sem explicação (diferencas_ref.csv)"}')
+    print(f'  + novos deste fechamento         {brl(B):>18}  ({len(novos_pagos)} títulos; {novos_pagos.ref_totvs.isin(retro.ref_totvs).sum() if len(retro) else 0} com baixa retroativa)')
+    print(f'  + não é custo (NAO_CUSTO etc.)   {brl(C.valor.sum()):>18}  ({len(C)} títulos)')
+    print(f'  + pagos fora do dashboard        {brl(D.valor.sum()):>18}  ({len(D)} títulos: documento excluído / sem valor líquido)')
+    print(f'  {"FECHA AO CENTAVO" if ok else "NÃO FECHA — PARE: diferença " + brl(falta)}')
+    if len(taxa_sem_pag):
+        print(f'  fora da conta (Taxa ADM sem pagamento, entra pela regra): {brl(taxa_sem_pag.valor.sum())} ({len(taxa_sem_pag)} título)')
+    if fora_periodo:
+        print(f'  no banco, fora do período (não pagos até {fim:%d/%m/%Y}): refs {fora_periodo}')
+    if len(retro):
+        print(f'\n  BAIXA RETROATIVA (pagos em mês já fechado; entram em {fechamento}):')
+        for (ref, doc, forn), g in retro.groupby(['ref_totvs', 'documento', 'fornecedor']):
+            print(f'    ref {ref} {doc} {forn[:34]} {brl(g.valor.sum())} baixa {pd.to_datetime(g.data_baixa.iloc[0]):%d/%m/%Y}')
+
+    conf = dict(fechamento=fechamento, arquivo=str(totvs), ok=bool(ok), total_pago=total_P, ja_importado=A_db,
+                diferenca_aceita=dif_aceita, novos=B, nao_custo=round(C.valor.sum(), 2), fora_dashboard=round(D.valor.sum(), 2),
+                diferenca=falta, taxa_sem_pagamento=round(taxa_sem_pag.valor.sum(), 2),
+                refs_ja_importados={str(int(r)): float(soma_banco[int(r)]) for r in A.ref_totvs},
+                refs_fora_periodo={str(r): float(soma_banco[r]) for r in fora_periodo},
+                refs_novos=sorted(int(r) for r in cand.ref_totvs), refs_nao_custo=sorted(int(r) for r in C.ref_totvs),
+                refs_fora_arquivo=[int(r) for r in fora_arquivo], diferencas=difs,
+                pendencias=int(len(pend)), total_lancamentos=round(lanc.valor.sum(), 2) if len(lanc) else 0.0)
+    json.dump(conf, open('conferencia.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
+
+    print(f'\n{len(cand)} título(s) novos | {brl(cand.valor.sum())}')
+    print(f'Classificados automaticamente: {len(lanc)} lançamentos | {brl(lanc.valor.sum() if len(lanc) else 0)}')
+    print(f'Pendências: {len(pend)} | {brl(pend.valor.sum() if len(pend) else 0)}  (a carga recusa enquanto houver pendência)')
+    print(f'-> lancamentos.csv, pendencias.csv, nao_custo.csv, conferencia.json')
+    if not len(cand):
+        print('Nada novo para importar neste fechamento: todos os pagos já estão no banco ou não são custo.')
+    if not ok:
+        sys.exit(1)
+
 if __name__ == '__main__':
+    sys.stdout.reconfigure(errors='replace')   # console do Windows (cp1252)
+    if '--fechamento' in sys.argv:
+        fech, refs = argumento('--fechamento'), argumento('--refs')
+        if not re.fullmatch(r'\d{4}-\d{2}', fech or '') or not refs:
+            sys.exit('Uso: py classificador.py <TOTVS acumulado.xlsx> <pasta OC> --fechamento AAAA-MM --refs refs_no_banco.csv')
+        fechamento_acumulado(sys.argv[1], sys.argv[2], fech, refs)
+        sys.exit(0)
     totvs, pasta_oc = sys.argv[1], sys.argv[2]
     tit, ocs, regras = ler_totvs(totvs), ler_ocs(pasta_oc), carregar_regras()
     total_totvs = round(tit.valor.sum(), 2)

@@ -4,13 +4,28 @@ Next.js (deploy automático na Vercel a partir da `main`), banco Supabase. A aut
 fica em `automacao/` — leia `automacao/LEIAME.md` antes de mexer nela.
 
 ## Regras de fechamento do mês (custos)
-1. Fonte oficial do mês = relatório TOTVS de títulos PAGOS no mês (ex.: `automacao/entrada/setembro-26.xlsx`).
-   Título sem pagamento não entra; entra no mês em que constar como pago.
+1. Fonte oficial = relatório ACUMULADO do TOTVS (decisão de 14/10/26), salvo sempre com a data no nome, sem
+   substituir o anterior (`automacao/entrada/TOTVS_acumulado_AAAA-MM-DD.xlsx`); o fechamento usa o mais recente.
+   Chave única = "Ref. Lançamento" (`custos_lancamentos.ref_totvs` + `ref_parte`; `contas_a_pagar.ref_totvs`;
+   `supabase/custos/8-ref-totvs.sql` e `9-preencher-ref-totvs.sql`). Pago = Valor Baixado > 0; zerado com Data de
+   Baixa = NF que quitou adiantamento (fora); zerado sem Data de Baixa = a pagar. Fechamento do mês M: só títulos
+   PAGOS com baixa até o fim de M e ref ainda não gravado (ref já gravado = ignorado; o banco recusa ref repetido);
+   baixa em mês já fechado entra em M com `baixa_retroativa` (não reabre mês). Título novo com mesmo fornecedor e
+   valor de lançamento manual sem ref (salários do José Rodrigues e adiantamento Assis de julho, terreno) = possível
+   duplicidade, não entra sem decisão. Conferência obrigatória ao centavo: total pago no arquivo até o fim de M =
+   já importado + novos + NAO_CUSTO + pagos fora do dashboard (diferença conhecida só via `diferencas_ref.csv`).
+   Fluxo: `importar.js --refs-do-banco` → `classificador.py <acumulado> oc --fechamento AAAA-MM --refs` →
+   `importar.js --classificador` (prévia; acrescenta, não substitui) → `--confirmar`. Ver `automacao/LEIAME.md`.
 2. Taxa ADM da Fonseca & Lage: a do mês M sempre entra no mês M+1 (a de agosto entra em setembro).
    Ela vem no relatório de custos do mês; o classificador a inclui mesmo sem marcação de pago.
    No máximo uma por mês: se a prévia avisar que veio mais de uma, ou nenhuma, confira antes de gravar.
+   Taxa ainda não emitida (a de setembro, no fechamento de outubro): o fechamento segue sem ela, com aviso; ela
+   entra no fechamento em que aparecer no acumulado, marcada com atraso (mês pelo histórico; decisão de 16/10/26).
 3. Não são custo: "Prev. Financ.", APORTE e NF já paga por adiantamento (`NAO_CUSTO` em
-   `decisoes_pontuais.csv`).
+   `decisoes_pontuais.csv`; pela coluna `ref_totvs` quando preenchida). Fatura 215 da Fonseca & Lage (ref 6699,
+   R$ 43.953,27, baixa 12/06/26): NAO_CUSTO, desconsiderada pelo Rafael em 14/10/2026. Frete pago além do
+   adiantamento é custo, na EAP do material da nota (SD Injetados 068581129/01, R$ 28,41 → 3.1.7, baixa retroativa);
+   o que o adiantamento pagou a mais por frete fica como está (LCPlast 9902, R$ 78,99) (decisões de 16/10/26).
 4. Mantenha as classificações e rateios já decididos (`regras_manuais.csv`, `decisoes_pontuais.csv`);
    não altere a lógica de classificação sem perguntar.
 5. Nada vai para o banco sem prévia: `importar.js` sem `--confirmar` primeiro, e `--confirmar` só com
@@ -27,6 +42,7 @@ fica em `automacao/` — leia `automacao/LEIAME.md` antes de mexer nela.
    agregado por tempo (1.1.6), e indireto diluído na obra (`mes_desembolso = 0`: 19.1.18, 19.1.21, 19.1.23 a
    19.1.26). O realizado não muda: recorrente pago continua no custo do mês.
    Fluxo: `automacao/contas_a_pagar.py` → `importar.js --contas-classificador` (prévia) → `--confirmar`.
+   Sai do mesmo acumulado do fechamento; título cujo ref já é custo realizado sai do a pagar.
 
 ## Indicadores (decisões out/26)
 - Avanço físico, em todas as telas = horas executadas ÷ horas orçadas (parcela de produção). Nunca ponderado

@@ -10,19 +10,67 @@
     regras_parcelas.csv rateio de NFs já fechadas (parcela /02 repete a /01)
     etapa.csv          EAP do pavimento em execução p/ itens VOLÁTEIS (aço, arame, espaçador, forma) — atualize quando a obra subir de pavimento
     orcamento.csv      orçamento por EAP (238 linhas, R$ 6.042.242,03) — base do Orçado × Realizado
-    decisoes_pontuais.csv decisão para UM título específico (cnpj + documento → EAP)
+    decisoes_pontuais.csv decisão para UM título específico (cnpj + documento → EAP); coluna ref_totvs
+                       (Ref. Lançamento) opcional: preenchida, a decisão vale pelo ref (NAO_CUSTO)
+    diferencas_ref.csv diferença aceita entre TOTVS e banco num título já importado (ref, diferença, obs)
+    refs_no_banco.csv  saída do importar.js --refs-do-banco (lançamentos do banco com o ref) — não editar
+    conferencia.json   saída do classificador --fechamento (conferência ao centavo) — não editar
     oc/                TODOS os relatórios de OC, nomeados OC_AAAA-MM.xls (ex.: OC_2026-09.xls)
+
+## Fechamento pelo ACUMULADO do TOTVS — chave Ref. Lançamento (decisão de 14/10/2026)
+Fonte: o relatório acumulado da obra (todos os títulos, pagos e a pagar). Salve SEMPRE com a data no nome,
+sem substituir o anterior: entrada/TOTVS_acumulado_AAAA-MM-DD.xlsx. O fechamento usa o mais recente.
+- "Ref. Lançamento" é único por título/parcela: é a chave para nunca lançar em duplicidade. Fica em
+  custos_lancamentos.ref_totvs (título aberto em várias linhas: ref_parte 1..n), com data_baixa e
+  baixa_retroativa; no contas a pagar, contas_a_pagar.ref_totvs (supabase/custos/8-ref-totvs.sql). O banco
+  recusa gravar o mesmo ref duas vezes (índice único obra + ref + parte; toda carga traz a parte 1).
+- Pago = Valor Baixado > 0. Valor Baixado zerado COM Data de Baixa = NF que quitou adiantamento (não entra:
+  o adiantamento já é custo). Valor Baixado zerado SEM Data de Baixa = a pagar (contas a pagar).
+- Fechamento do mês M: entram só os títulos PAGOS com baixa até o fim de M cujo ref ainda NÃO está no banco,
+  mais a Taxa ADM (regra de sempre: a do mês M entra em M+1, mesmo sem pagamento). Ref já importado = ignorado.
+  Baixa dentro de M = normal. Baixa em mês já fechado = entra em M marcada "baixa retroativa" (data no dashboard =
+  último dia de M; a baixa real fica em data_baixa). Meses fechados não são reabertos.
+- Não entram: "Prev. Financ.", APORTE e NAO_CUSTO (decisoes_pontuais.csv; pela coluna ref_totvs quando
+  preenchida). Ex.: fatura 215 da Fonseca & Lage (ref 6699), desconsiderada pelo Rafael em 14/10/2026.
+- Título novo com mesmo fornecedor (CNPJ, ou nome sem CNPJ) e valor de um lançamento MANUAL sem ref (salários
+  pagos fora do TOTVS, terreno, histórico de fev–jul), com o mesmo documento ou sem documento = possível
+  duplicidade: não entra sem decisão sua (--aceitar-duplicidade).
+- Pendência de EAP trava a carga: o título só pode entrar inteiro (depois de gravado, o ref fica "importado").
+- CONFERÊNCIA OBRIGATÓRIA (classificador e prévia): total pago no arquivo até o fim de M = já importado (banco)
+  + novos de M + NAO_CUSTO + pagos fora do dashboard (documento excluído). Diferença entre TOTVS e banco num
+  título já importado só passa se estiver em diferencas_ref.csv (ex.: Madeireira BH 2126/01, ref 6471,
+  R$ 44,97 de juros). Se não fechar ao centavo, o classificador para e mostra a diferença.
+- Lançamentos manuais sem ref, pagos fora do TOTVS (decisão de 14/10/2026): terreno, salários do José Rodrigues
+  e "Ref Adto Forn Assis Engenharia" de julho.
+Uso (prévias; nada vai para o banco sem --confirmar):
+    node ../ferramentas/fechamento/importar.js --refs-do-banco refs_no_banco.csv          (só leitura)
+    py classificador.py entrada/TOTVS_acumulado_AAAA-MM-DD.xlsx oc --fechamento AAAA-MM --refs refs_no_banco.csv
+    node ../ferramentas/fechamento/importar.js --classificador lancamentos.csv            (prévia)
+    node ../ferramentas/fechamento/importar.js --classificador lancamentos.csv --confirmar
+    py contas_a_pagar.py entrada/TOTVS_acumulado_AAAA-MM-DD.xlsx oc --fechamento AAAA-MM
+    node ../ferramentas/fechamento/importar.js --contas-classificador contas_a_pagar.csv  (prévia; depois --confirmar)
+A carga ACRESCENTA os títulos novos (não substitui a competência) e pode ser desfeita com --desfazer <id>.
+O importar.js confere de novo com o banco de agora: se o banco mudou depois do --refs-do-banco, recusa.
+No contas a pagar, título cujo ref já é custo realizado sai do a pagar.
 
 ## Regras de fechamento (decisão out/26)
 1. Fonte oficial do mês = relatório TOTVS de títulos PAGOS no mês (ex.: entrada/setembro-26.xlsx).
+   Desde 14/10/2026 o fechamento usa o ACUMULADO com a chave Ref. Lançamento (seção acima).
    Título sem pagamento não entra; entra no mês em que constar como pago. O classificador confere:
    título sem VALOR PAGO, sem Valor Baixado e sem Data de Baixa vai para nao_custo.csv como
    "sem pagamento no relatório" (só quando o relatório tem a coluna VALOR PAGO; sem ela, avisa).
 2. Taxa ADM da Fonseca & Lage: a do mês M sempre entra no mês M+1 (a Taxa ADM de agosto entra em
    setembro). Ela vem no relatório de custos do mês e o classificador a inclui mesmo sem marcação
    de pago. No máximo uma por mês: a prévia avisa se vier mais de uma, ou se não vier nenhuma.
+   Taxa ainda não emitida (decisão de 16/10/2026; a de setembro no fechamento de outubro): o fechamento
+   segue sem ela, com aviso; ela entra no fechamento em que aparecer no acumulado, marcada com atraso
+   (alerta "Taxa ADM de AAAA-MM com atraso" no lancamentos.csv, na prévia e na observação da importação;
+   o mês vem do histórico/documento, ex.: "TAXA ADM SET/2026").
 3. Não são custo: "Prev. Financ." (OC sem NF), APORTE e NF já paga por adiantamento (marcada em
    decisoes_pontuais.csv com eap = NAO_CUSTO). Vão para nao_custo.csv.
+   Frete pago além do adiantamento é custo, na EAP do material da nota (SD Injetados 068581129/01,
+   R$ 28,41 → 3.1.7); frete que o adiantamento pagou a mais fica como está (LCPlast 9902, R$ 78,99)
+   (decisões de 16/10/2026).
 
 ## Contas a pagar (decisão out/26)
 Card separado do custo realizado: nada daqui vai para custos_lancamentos.
@@ -87,7 +135,7 @@ Título sem EAP só grava com --aceitar-pendencias (fica fora do IPC).
                                  gravada (ele recusa com 96 semanas, mas não dependa disso)
 - Mantenha as tabelas *_bkp_20261006 no banco.
 
-## Uso mensal
+## Uso mensal (relatório do mês, sem Ref. Lançamento — substituído pelo acumulado em 14/10/2026)
     pip install pandas openpyxl xlrd
     python classificador.py "setembro-26.xlsx" oc
 Competência = Data de Baixa; se vazia, Data de Previsão de Baixa; por último, Vencimento.

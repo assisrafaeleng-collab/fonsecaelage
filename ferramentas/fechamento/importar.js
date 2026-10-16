@@ -32,6 +32,20 @@
 //   node ferramentas/fechamento/importar.js --desfazer <id da importacao> [--confirmar]
 //      apaga as linhas daquela carga e devolve as que ela substituiu.
 //
+// Fechamento pelo ACUMULADO do TOTVS (decisao de 14/10/2026). Chave unica =
+// Ref. Lancamento (custos_lancamentos.ref_totvs, supabase/custos/8 e 9):
+//   node ferramentas/fechamento/importar.js --refs-do-banco automacao/refs_no_banco.csv
+//      so leitura: lista os lancamentos do banco com o ref (vazio = manual)
+//      para o classificador saber o que ja foi importado.
+//   node ferramentas/fechamento/importar.js --classificador automacao/lancamentos.csv [--confirmar]
+//      com ref_totvs no arquivo: ACRESCENTA so os titulos novos (nao substitui
+//      a competencia), confere com o automacao/conferencia.json (total pago =
+//      ja importado + novos + NAO_CUSTO + fora do dashboard), recusa ref ja
+//      gravado, pendencia e possivel duplicidade com lancamento manual sem ref
+//      (esta so com --aceitar-duplicidade). O banco tambem recusa ref repetido.
+//   --refs-simulados ARQ: so na previa, antes de rodar os SQL 8 e 9 (refs como
+//      o 9 vai gravar). Nunca com --confirmar.
+//
 // Precisa no .env.local do repositorio (nunca no GitHub):
 //   NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY (aceita tambem o nome antigo SUPABASE_SERVICE_ROLE_KEY)
 'use strict'
@@ -58,6 +72,8 @@ const ACEITAR_SAIDAS = args.includes('--aceitar-saidas')
 const ACEITAR_DUPLICIDADE = args.includes('--aceitar-duplicidade')
 const ARQ_CONTAS_CLASSIF = arg('--contas-classificador')
 const ACEITAR_PENDENCIAS = args.includes('--aceitar-pendencias')
+const ARQ_REFS = arg('--refs-do-banco')
+const ARQ_REFS_SIMULADOS = arg('--refs-simulados')
 // --exportar ARQUIVO.xlsx: grava (so no disco) a lista do custo direto a pagar
 // por entrega, para conferencia. Nao mexe no banco.
 const ARQ_EXPORTAR = arg('--exportar')
@@ -129,8 +145,8 @@ async function todos(q) {
 }
 
 async function main() {
-  if (!ARQ_CUSTOS && !ARQ_CONTAS && !ARQ_CLASSIF && !ARQ_CONTAS_CLASSIF && !DESFAZER) {
-    console.error('Uso: --custos ARQUIVO --competencia AAAA-MM  |  --contas ARQUIVO --data AAAA-MM-DD  |  --classificador lancamentos.csv  |  --contas-classificador contas_a_pagar.csv  |  --desfazer ID  [--confirmar]')
+  if (!ARQ_CUSTOS && !ARQ_CONTAS && !ARQ_CLASSIF && !ARQ_CONTAS_CLASSIF && !DESFAZER && !ARQ_REFS) {
+    console.error('Uso: --custos ARQUIVO --competencia AAAA-MM  |  --contas ARQUIVO --data AAAA-MM-DD  |  --classificador lancamentos.csv  |  --contas-classificador contas_a_pagar.csv  |  --refs-do-banco refs_no_banco.csv  |  --desfazer ID  [--confirmar]')
     process.exit(1)
   }
   const env = lerEnv()
@@ -168,6 +184,7 @@ async function main() {
   if (ARQ_CLASSIF) await classificador(db, validos, pavimento)
   if (ARQ_CONTAS_CLASSIF) await contasClassificador(db, validos, pavimento)
   if (DESFAZER) await desfazer(db)
+  if (ARQ_REFS) await exportarRefs(db)
 }
 
 // Previa: codigo repetido por pavimento com e sem pavimento definido
@@ -379,6 +396,8 @@ async function classificador(db, validos, pavimento) {
   if (!brutas.length) throw new Error(`${ARQ_CLASSIF} está vazio`)
   const faltando = ['documento', 'fornecedor', 'item', 'competencia', 'valor', 'eap', 'data_emissao', 'cnpj'].filter((c) => !(c in brutas[0]))
   if (faltando.length) throw new Error(`${path.basename(ARQ_CLASSIF)} sem as colunas: ${faltando.join(', ')} (rode o classificador atualizado)`)
+  // Arquivo do fechamento pelo acumulado (com Ref. Lancamento): so acrescenta os titulos novos
+  if (brutas.some((b) => txt(b.ref_totvs))) return classificadorAcumulado(db, validos, pavimento, brutas)
 
   const comps = [...new Set(brutas.map((b) => txt(b.competencia).slice(0, 7)))]
   if (comps.length !== 1 || !/^\d{4}-\d{2}$/.test(comps[0])) throw new Error(`o arquivo deve ter UMA competência; tem: ${comps.join(', ')}`)
@@ -528,6 +547,218 @@ async function classificador(db, validos, pavimento) {
   }
   await db.from('importacoes').update({ status: 'ok' }).eq('id', importacao_id)
   console.log(`\n  ✓ ${novas.length} lançamentos gravados em ${competencia}; ${ids.length} antigos substituídos.`)
+  console.log(`  importação: ${importacao_id}  (para desfazer: --desfazer ${importacao_id})\n`)
+}
+
+// ── Fechamento pelo acumulado do TOTVS: chave Ref. Lancamento ────────────
+//
+// Decisao de 14/10/2026. Cada titulo/parcela do TOTVS tem um Ref. Lancamento
+// unico, gravado em custos_lancamentos.ref_totvs (titulo aberto em varias
+// linhas: ref_parte 1..n). O fechamento do mes M acrescenta so os titulos
+// pagos ate o fim de M cujo ref ainda nao esta no banco; meses fechados nao
+// sao reabertos (baixa em mes ja fechado entra em M com baixa_retroativa).
+
+const COLUNAS_REFS = 'id, ref_totvs, ref_parte, competencia, valor, cnpj, fornecedor, num_documento, data_baixa, status'
+
+// Lancamentos do banco com o ref (vazio = lancamento manual). Antes dos SQL 8
+// e 9 o banco nao tem a coluna: so a previa pode usar --refs-simulados.
+async function lancamentosComRef(db) {
+  const t = await db.from('custos_lancamentos').select('ref_totvs').limit(1)
+  if (!t.error) return { simulado: false, linhas: await todos(() => db.from('custos_lancamentos').select(COLUNAS_REFS).eq('obra_id', OBRA).order('id')) }
+  if (!ARQ_REFS_SIMULADOS)
+    throw new Error(`custos_lancamentos ainda não tem ref_totvs: rode supabase/custos/8-ref-totvs.sql e 9-preencher-ref-totvs.sql (${t.error.message})`)
+  if (CONFIRMAR) throw new Error('--refs-simulados é só para a prévia: rode os SQL 8 e 9 antes de gravar. Nada foi gravado.')
+  const linhas = lerCsv(ARQ_REFS_SIMULADOS).map((l) => ({ ...l, valor: num(l.valor), ref_totvs: txt(l.ref_totvs) ? Number(l.ref_totvs) : null }))
+  return { simulado: true, linhas }
+}
+
+async function exportarRefs(db) {
+  const { linhas } = await lancamentosComRef(db)
+  const cab = COLUNAS_REFS.split(', ')
+  const ws = XLSX.utils.json_to_sheet(linhas.map((l) => Object.fromEntries(cab.map((c) => [c, l[c] == null ? '' : l[c]]))), { header: cab })
+  fs.mkdirSync(path.dirname(path.resolve(ARQ_REFS)), { recursive: true })
+  fs.writeFileSync(ARQ_REFS, '﻿' + XLSX.utils.sheet_to_csv(ws), 'utf8')
+  const com = linhas.filter((l) => l.ref_totvs != null)
+  console.log(`\n  ✓ ${ARQ_REFS}: ${linhas.length} lançamentos · ${new Set(com.map((l) => l.ref_totvs)).size} títulos com ref (${com.length} linhas) · ${linhas.length - com.length} linha(s) sem ref (manuais)`)
+  console.log('  Só leitura: nada foi gravado no banco.\n')
+}
+
+// Titulo novo x lancamento manual sem ref (salarios, terreno, historico de
+// fev-jul): mesmo fornecedor (CNPJ, ou nome quando falta o CNPJ) e mesmo valor,
+// com o mesmo documento ou sem documento no lancamento manual.
+function duplicidadesManuais(titulos, manuais) {
+  const raiz = (c) => txt(c).replace(/\D/g, '').slice(0, 8)
+  const mesmoForn = (t, m) => (raiz(t.cnpj) && raiz(m.cnpj) ? raiz(t.cnpj) === raiz(m.cnpj) : semAcento(t.fornecedor).slice(0, 12) === semAcento(m.fornecedor).slice(0, 12))
+  // lancamento manual com documento: soma das linhas do documento; sem documento: cada linha
+  const grupos = {}
+  manuais.forEach((m) => {
+    const k = txt(m.num_documento) ? `${m.competencia}|${chaveDoc(m.num_documento, m.fornecedor)}` : `id|${m.id}`
+    if (!grupos[k]) grupos[k] = { ...m, valor: 0, linhas: 0 }
+    grupos[k].valor = r2(grupos[k].valor + Number(m.valor))
+    grupos[k].linhas++
+  })
+  const out = {}
+  titulos.forEach((t) => {
+    const achou = Object.values(grupos).filter(
+      (m) => mesmoForn(t, m) && Math.abs(m.valor - t.valor) < 0.005 && (!txt(m.num_documento) || chaveDoc(m.num_documento, m.fornecedor) === chaveDoc(t.num_documento, t.fornecedor))
+    )
+    if (achou.length) out[t.ref] = achou
+  })
+  return out
+}
+
+async function classificadorAcumulado(db, validos, pavimento, brutas) {
+  const comps = [...new Set(brutas.map((b) => txt(b.competencia).slice(0, 7)))]
+  if (comps.length !== 1 || !/^\d{4}-\d{2}$/.test(comps[0])) throw new Error(`o arquivo deve ter UMA competência; tem: ${comps.join(', ')}`)
+  const competencia = comps[0]
+  if (competencia <= ULTIMA_COMPETENCIA_MANUAL)
+    throw new Error(`${competencia} tem histórico lançado à mão no banco. Nada foi feito.`)
+  const arqConf = path.join(path.dirname(path.resolve(ARQ_CLASSIF)), 'conferencia.json')
+  if (!fs.existsSync(arqConf)) throw new Error(`falta ${arqConf}: rode o classificador com --fechamento ${competencia} --refs ...`)
+  const conf = JSON.parse(fs.readFileSync(arqConf, 'utf8'))
+  if (conf.fechamento !== competencia) throw new Error(`conferencia.json é do fechamento ${conf.fechamento}, o arquivo é de ${competencia}`)
+
+  const { simulado, linhas: banco } = await lancamentosComRef(db)
+  const normais = banco.filter((l) => !txt(l.status) || l.status === 'Normal')
+  const somaRef = new Map()
+  normais.filter((l) => l.ref_totvs != null).forEach((l) => somaRef.set(Number(l.ref_totvs), r2((somaRef.get(Number(l.ref_totvs)) || 0) + Number(l.valor))))
+  const manuais = normais.filter((l) => l.ref_totvs == null)
+
+  const existentes = (await todos(() => db.from('custos_lancamentos').select('*').eq('obra_id', OBRA).eq('competencia', competencia))).filter((l) => l.status === 'Normal')
+  const classif = await classificacaoPorEap(db)
+  const grupoDoMes = {}
+  existentes.forEach((e) => {
+    const n = txt(e.grupo_custo).split('.')[0]
+    if (n && n === txt(e.codigo_eap).split('.')[0]) grupoDoMes[n] = grupoDoMes[n] || e.grupo_custo
+  })
+  const linhas = brutas.map((b, i) => {
+    const eap = txt(b.eap)
+    let [classificacao, grupo_custo, fase_obra] = classif(eap)
+    grupo_custo = grupoDoMes[txt(grupo_custo).split('.')[0]] || grupo_custo
+    if (txt(b.classificacao)) classificacao = txt(b.classificacao)
+    return {
+      __linha: i + 2,
+      obra_id: OBRA,
+      competencia,
+      codigo_eap: eap,
+      valor: r2(num(b.valor)),
+      data_emissao: iso(txt(b.data_emissao)),
+      data_vencimento: iso(txt(b.competencia)), // o dashboard usa como data de baixa (retroativa: ultimo dia do mes)
+      fornecedor: txt(b.fornecedor) || null,
+      historico: txt(b.item) || null,
+      num_documento: txt(b.documento) || null,
+      cnpj: txt(b.cnpj) || null,
+      classificacao, grupo_custo, fase_obra,
+      pavimento: pavimento(eap, b.pavimento),
+      status: 'Normal',
+      ref_totvs: txt(b.ref_totvs) ? Number(b.ref_totvs) : null,
+      ref_parte: parseInt(b.ref_parte, 10) || null,
+      data_baixa: iso(txt(b.data_baixa)),
+      baixa_retroativa: /^(true|1|verdadeiro)$/i.test(txt(b.baixa_retroativa)),
+    }
+  })
+
+  // Um registro por titulo (ref)
+  const titulos = new Map()
+  linhas.forEach((l) => {
+    if (!titulos.has(l.ref_totvs)) titulos.set(l.ref_totvs, { ref: l.ref_totvs, cnpj: l.cnpj, fornecedor: l.fornecedor, num_documento: l.num_documento, data_baixa: l.data_baixa, retro: l.baixa_retroativa, valor: 0, linhas: [] })
+    const t = titulos.get(l.ref_totvs)
+    t.valor = r2(t.valor + l.valor)
+    t.linhas.push(l)
+  })
+  // Taxa ADM que entra depois de M+1 (o classificador marca no alerta; decisao de 16/10/2026)
+  brutas.forEach((b) => {
+    const t = titulos.get(Number(b.ref_totvs))
+    if (t && /atraso/i.test(txt(b.alerta))) t.atraso = txt(b.alerta)
+  })
+  const total = r2(linhas.reduce((t, l) => t + l.valor, 0))
+  const soma = (ls) => fmt(r2(ls.reduce((t, l) => t + Number(l.valor), 0)))
+  const erros = []
+  const erro = (m) => erros.push(m)
+
+  console.log(`\nFechamento ${competencia} pelo acumulado (Ref. Lançamento) · ${path.basename(ARQ_CLASSIF)}${simulado ? '  [SIMULAÇÃO: refs de ' + path.basename(ARQ_REFS_SIMULADOS) + ', o banco ainda não tem ref_totvs]' : ''}`)
+  console.log(`  arquivo: ${titulos.size} título(s) novo(s) · ${linhas.length} lançamentos · ${fmt(total)}`)
+  console.log(`  banco: ${somaRef.size} títulos com ref · ${manuais.length} linha(s) manuais sem ref · ${competencia} já tem ${existentes.length} lançamento(s) ${soma(existentes)} (continuam: nada é substituído)`)
+  resumoPavimento(linhas, pavimento)
+
+  // 1. ref
+  const semRef = linhas.filter((l) => !l.ref_totvs || !l.ref_parte)
+  if (semRef.length) erro(`${semRef.length} linha(s) sem ref_totvs/ref_parte: ${semRef.map((l) => l.__linha).join(', ')}`)
+  const chaves = new Set()
+  linhas.forEach((l) => {
+    const k = `${l.ref_totvs}#${l.ref_parte}`
+    if (chaves.has(k)) erro(`ref ${l.ref_totvs} parte ${l.ref_parte} repetido no arquivo (linha ${l.__linha})`)
+    chaves.add(k)
+  })
+  const ja = [...titulos.values()].filter((t) => somaRef.has(t.ref))
+  if (ja.length) erro(`${ja.length} título(s) com ref JÁ no banco (exporte os refs e rode o classificador de novo): ${ja.map((t) => t.ref).join(', ')}`)
+
+  // 2. conferencia do classificador x banco de agora
+  console.log(`\n  CONFERÊNCIA (classificador, ${path.basename(conf.arquivo || '')}):`)
+  console.log(`    total pago no arquivo         ${fmt(conf.total_pago)}`)
+  console.log(`    = já importado               ${fmt(conf.ja_importado)}${conf.diferenca_aceita ? ` + diferença aceita ${fmt(conf.diferenca_aceita)}` : ''}`)
+  console.log(`    + novos                      ${fmt(conf.novos)}${conf.taxa_sem_pagamento ? `  (+ Taxa ADM sem pagamento ${fmt(conf.taxa_sem_pagamento)}, pela regra)` : ''}`)
+  console.log(`    + não é custo                ${fmt(conf.nao_custo)}`)
+  console.log(`    + pagos fora do dashboard    ${fmt(conf.fora_dashboard)}`)
+  console.log(`    ${conf.ok ? '✓ fecha ao centavo' : `✗ NÃO FECHA: diferença ${fmt(conf.diferenca)}`}`)
+  if (!conf.ok) erro('a conferência do classificador não fecha ao centavo')
+  if (conf.pendencias) erro(`${conf.pendencias} pendência(s) no classificador: decida (regra ou decisão pontual) e rode de novo — um título só pode entrar inteiro`)
+  const conhecidos = new Set([...Object.keys(conf.refs_ja_importados || {}), ...Object.keys(conf.refs_fora_periodo || {})].map(Number))
+  const mudou = []
+  Object.entries({ ...conf.refs_ja_importados, ...conf.refs_fora_periodo }).forEach(([r, v]) => {
+    if (!somaRef.has(Number(r))) mudou.push(`ref ${r} saiu do banco`)
+    else if (Math.abs(somaRef.get(Number(r)) - v) >= 0.005) mudou.push(`ref ${r}: ${fmt(v)} na conferência × ${fmt(somaRef.get(Number(r)))} no banco`)
+  })
+  ;[...somaRef.keys()].filter((r) => !conhecidos.has(r)).forEach((r) => mudou.push(`ref ${r} entrou no banco depois da conferência`))
+  if (mudou.length) erro(`o banco mudou desde o --refs-do-banco (${mudou.slice(0, 5).join('; ')}${mudou.length > 5 ? '…' : ''}): exporte os refs e rode o classificador de novo`)
+  const novosConf = new Set((conf.refs_novos || []).map(Number))
+  const difRefs = [...titulos.keys()].filter((r) => !novosConf.has(r)).concat([...novosConf].filter((r) => !titulos.has(r)))
+  if (difRefs.length || Math.abs(total - conf.total_lancamentos) >= 0.005)
+    erro(`lancamentos.csv não é o da conferência (refs diferentes: ${difRefs.join(', ') || 'nenhum'}; total ${fmt(total)} × ${fmt(conf.total_lancamentos)})`)
+
+  // 3. titulos que entram
+  console.log(`\n  ENTRA (${titulos.size} título(s) novo(s), ${linhas.length} lançamentos · ${fmt(total)}):`)
+  const dup = duplicidadesManuais([...titulos.values()], manuais)
+  ;[...titulos.values()]
+    .sort((a, b) => txt(a.data_baixa).localeCompare(txt(b.data_baixa)) || b.valor - a.valor)
+    .forEach((t) => {
+      const quando = t.data_baixa ? `baixa ${t.data_baixa.split('-').reverse().join('/')}` : 'sem baixa (Taxa ADM)'
+      console.log(`    + ref ${t.ref} · ${t.num_documento} · ${t.fornecedor} · ${fmt(t.valor)} · ${textoEaps(porEap(t.linhas))} · ${quando}${t.retro ? ' · BAIXA RETROATIVA' : ''}${t.atraso ? ` · ${t.atraso.toUpperCase()}` : ''}`)
+      ;(dup[t.ref] || []).forEach((m) =>
+        console.log(`        ⚠ possível duplicidade com lançamento manual sem ref: ${m.competencia} ${m.fornecedor} ${fmt(m.valor)} (documento ${m.num_documento || 'vazio'}${m.linhas > 1 ? `, ${m.linhas} linhas` : `, id ${m.id}`})`)
+      )
+    })
+  const retro = [...titulos.values()].filter((t) => t.retro)
+  console.log(`  baixa retroativa: ${retro.length} título(s)${retro.length ? ` · ${fmt(r2(retro.reduce((s, t) => s + t.valor, 0)))}` : ''}`)
+  const comps2 = [...new Set(linhas.map((l) => txt(l.data_vencimento).slice(0, 7)))]
+  if (comps2.some((c) => c !== competencia)) erro(`data de baixa fora de ${competencia} em lançamento: ${comps2.join(', ')}`)
+  const nDup = Object.keys(dup).length
+  const travaDuplic = nDup > 0 && !ACEITAR_DUPLICIDADE
+  if (travaDuplic) erro(`${nDup} possível(is) duplicidade(s) com lançamento manual sem ref (⚠ acima). Se não for, rode com --aceitar-duplicidade`)
+  if (!checar(linhas, validos)) erro('há códigos EAP inválidos')
+  erros.forEach((m) => console.log(`  ✗ ${m}`))
+
+  if (simulado) console.log('  ✗ SIMULAÇÃO: o banco ainda não tem ref_totvs. Rode os SQL 8 e 9, exporte os refs (--refs-do-banco), rode o classificador e a prévia de novo')
+  if (!CONFIRMAR) return console.log(`\n  PRÉVIA: nada foi gravado.${erros.length || simulado ? ' Resolva os itens marcados com ✗ antes de gravar.' : ' Para gravar, rode de novo com --confirmar'}\n`)
+  if (erros.length) throw new Error(`${erros[0]}: nada foi gravado`)
+
+  const imp = await db.from('importacoes').insert({
+    obra_id: OBRA, competencia, origem: 'classificador-acumulado', arquivo: path.basename(conf.arquivo || ARQ_CLASSIF),
+    linhas: linhas.length, total, linhas_substituidas: 0, total_substituido: 0, substituidos: [],
+    observacao: `refs ${[...titulos.keys()].join(', ')}${[...titulos.values()].filter((t) => t.atraso).map((t) => ` · ref ${t.ref}: ${t.atraso}`).join('')}`,
+  }).select('id').single()
+  if (imp.error) throw new Error(`não consegui registrar a importação: ${imp.error.message}. Nada foi gravado.`)
+  const importacao_id = imp.data.id
+  const novas = linhas.map(({ __linha, ...l }) => ({ ...l, importacao_id }))
+  const r = await db.from('custos_lancamentos').insert(novas)
+  if (r.error) {
+    await db.from('custos_lancamentos').delete().eq('importacao_id', importacao_id)
+    await db.from('importacoes').delete().eq('id', importacao_id)
+    const repetido = /duplicate key|custos_lancamentos_ref_totvs_uq/i.test(r.error.message)
+    throw new Error(`${repetido ? 'o banco RECUSOU: ref já gravado' : 'inserção falhou'} (${r.error.message}). Nada foi gravado.`)
+  }
+  await db.from('importacoes').update({ status: 'ok' }).eq('id', importacao_id)
+  console.log(`\n  ✓ ${titulos.size} título(s), ${novas.length} lançamentos gravados em ${competencia} (nada substituído).`)
   console.log(`  importação: ${importacao_id}  (para desfazer: --desfazer ${importacao_id})\n`)
 }
 
@@ -720,7 +951,21 @@ async function contasClassificador(db, validos, pavimento) {
     vinculo_oc: txt(b.vinculo_oc) || null,
     regra: txt(b.regra) || null,
     alertas: txt(b.alertas) ? txt(b.alertas).split(' | ') : [],
+    ref_totvs: txt(b.ref_totvs) ? Number(b.ref_totvs) : null,
   }))
+
+  // Ref. Lancamento ja gravado como custo realizado (ex.: Taxa ADM, que entra
+  // no custo mesmo sem pagamento) nao pode estar tambem no contas a pagar.
+  const custosTemRef = !(await db.from('custos_lancamentos').select('ref_totvs').limit(1)).error
+  if (custosTemRef && todas.some((l) => l.ref_totvs)) {
+    const refsCusto = new Set((await todos(() => db.from('custos_lancamentos').select('ref_totvs').eq('obra_id', OBRA).not('ref_totvs', 'is', null))).map((l) => Number(l.ref_totvs)))
+    const jaCusto = todas.filter((l) => l.ref_totvs && refsCusto.has(l.ref_totvs))
+    if (jaCusto.length) {
+      console.log(`\n  JÁ É CUSTO REALIZADO (ref no custos_lancamentos), sai do a pagar: ${new Set(jaCusto.map((l) => l.ref_totvs)).size} título(s) · ${fmt(r2(jaCusto.reduce((t, l) => t + l.valor, 0)))}`)
+      new Set(jaCusto.map((l) => `${l.ref_totvs} · ${l.num_documento} · ${l.fornecedor}`)).forEach((x) => console.log(`    - ref ${x}`))
+      jaCusto.forEach((l) => todas.splice(todas.indexOf(l), 1))
+    }
+  }
 
   // Titulos (uma chave por cnpj + documento) para os alertas do banco
   const titulos = {}
@@ -753,6 +998,10 @@ async function contasClassificador(db, validos, pavimento) {
   // Coluna pavimento (supabase/custos/6-pavimento-do-custo.sql)
   const temPavimento = destino.existe && !(await db.from(TABELA_CONTAS).select('pavimento').limit(1)).error
   const comPavimento = todas.filter((l) => l.pavimento).length
+  // Coluna ref_totvs (supabase/custos/8-ref-totvs.sql)
+  const temRef = destino.existe && !(await db.from(TABELA_CONTAS).select('ref_totvs').limit(1)).error
+  if (destino.existe && !temRef && todas.some((l) => l.ref_totvs))
+    console.log(`  ! a tabela ${TABELA_CONTAS} ainda não tem a coluna ref_totvs: rode o supabase/custos/8-ref-totvs.sql (sem ela, grava sem o ref)`)
 
   const soma = (ls) => r2(ls.reduce((t, l) => t + l.valor, 0))
   const nTit = (ls) => new Set(ls.map((l) => l.__chave)).size
@@ -831,6 +1080,7 @@ async function contasClassificador(db, validos, pavimento) {
   const novas = linhas.map(({ __linha, __chave, __rec, ...l }) => {
     const n = { ...l, carga_id }
     if (!temPavimento) delete n.pavimento
+    if (!temRef) delete n.ref_totvs
     return n
   })
   const r = await db.from(TABELA_CONTAS).insert(novas)

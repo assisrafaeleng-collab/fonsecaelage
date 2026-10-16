@@ -1,7 +1,11 @@
 """
 Contas a pagar a partir do mês do fechamento (card do dashboard; NÃO é custo realizado).
 Uso: py contas_a_pagar.py <TOTVS da obra toda.xlsx> <pasta_com_relatorios_OC> --fechamento AAAA-MM
-Saída: contas_a_pagar.csv (classificado) e pendencias_contas.csv (precisam de decisão sua)
+     (o mesmo acumulado do fechamento serve: entrada/TOTVS_acumulado_AAAA-MM-DD.xlsx)
+Saída: contas_a_pagar.csv (classificado, com o Ref. Lançamento em ref_totvs) e pendencias_contas.csv
+
+No acumulado (sem VALOR PAGO): a pagar = Valor Baixado zerado e SEM Data de Baixa; zerado COM Data de Baixa
+é NF que quitou adiantamento e não entra (decisão de 14/10/2026).
 
 Regras (decisão out/26):
 - entra todo título SEM pagamento cuja Previsão de Baixa (ou Vencimento) cai a partir do mês do
@@ -44,13 +48,9 @@ def natureza(tit):
     n = pd.Series('nf', index=tit.index)
     n[tit.historico.str.contains(c.NAO_CUSTO['aporte'], regex=True)] = 'aporte'
     n[(n == 'nf') & tit.historico.str.contains(c.NAO_CUSTO['previsão financeira'], regex=True)] = 'previsto_sem_nf'
-    try:
-        dp = pd.read_csv('decisoes_pontuais.csv', dtype={'cnpj': str, 'documento': str, 'eap': str}).fillna('')
-        for r in dp[dp.eap == 'NAO_CUSTO'].itertuples():
-            # vale para NF e para "Prev. Financ." (ex.: previsão de OC já faturada)
-            n[n.isin(['nf', 'previsto_sem_nf']) & (tit.cnpj == r.cnpj) & (tit.documento == r.documento)] = 'nao_custo'
-    except FileNotFoundError:
-        pass
+    for r in c.decisoes_nao_custo().itertuples():
+        # vale para NF e para "Prev. Financ." (ex.: previsão de OC já faturada); pelo ref quando a decisão tem ref
+        n[n.isin(['nf', 'previsto_sem_nf']) & c.mascara_decisao(tit, r)] = 'nao_custo'
     return n
 
 
@@ -153,7 +153,8 @@ if __name__ == '__main__':
     ocs, regras = c.ler_ocs(pasta_oc), c.carregar_regras()
     faturadas = previsoes_de_oc_faturada(todos, ocs)
     todos.loc[(todos.cnpj + '|' + todos.documento).isin(faturadas.keys()), 'natureza'] = 'oc_faturada'
-    em_aberto = todos[todos.pago == False]
+    # a pagar = sem pagamento e sem Data de Baixa (zerado COM baixa = NF que quitou adiantamento: não entra)
+    em_aberto = todos[(todos.pago == False) & pd.to_datetime(todos.data_baixa).isna()]
     alvo = em_aberto[mes(em_aberto.competencia).values >= fechamento].reset_index(drop=True)
     antigos = em_aberto[mes(em_aberto.competencia).values < fechamento]
     print(f'Fechamento {fechamento} -> vencimentos a partir de {fechamento} (Previsão de Baixa; sem ela, Vencimento)')
@@ -197,7 +198,7 @@ if __name__ == '__main__':
         pass
     colunas = ['competencia_fechamento', 'competencia_vencimento', 'cnpj', 'fornecedor', 'documento', 'seq',
                'historico', 'item', 'oc', 'data_emissao', 'data_vencimento', 'data_previsao', 'valor_titulo',
-               'valor', 'eap', 'classe', 'natureza', 'vinculo_oc', 'regra', 'alerta', 'alertas', 'pavimento']
+               'valor', 'eap', 'classe', 'natureza', 'vinculo_oc', 'regra', 'alerta', 'alertas', 'pavimento', 'ref_totvs']
     linhas[colunas].to_csv('contas_a_pagar.csv', index=False, encoding='utf-8-sig')
     p = linhas[linhas.classe == 'pendente']
     (p if len(p) else linhas.iloc[0:0])[[x for x in pend.columns] if len(pend) else colunas] \
