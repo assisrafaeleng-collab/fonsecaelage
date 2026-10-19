@@ -1075,14 +1075,14 @@ export default function Semanal() {
                         <tr
                           key={i.cod_eap}
                           onClick={() => setItemAberto(itemAberto === `c${i.cod_eap}|${i.pavimento || ''}` ? null : `c${i.cod_eap}|${i.pavimento || ''}`)}
-                          style={{ cursor: (i.lancamentos || []).length ? 'pointer' : 'default' }}
+                          style={{ cursor: temDetalhe(i) ? 'pointer' : 'default' }}
                         >
                           <td style={{ fontFamily: 'var(--mono)', color: '#8b919c' }}>{i.cod_eap}</td>
                           <td>
                             {i.descricao}
-                            {(i.lancamentos || []).length > 0 && (
+                            {temDetalhe(i) && (
                               <span style={{ color: '#8b919c', fontSize: 11, marginLeft: 8 }}>
-                                {itemAberto === `c${i.cod_eap}|${i.pavimento || ''}` ? '▴' : '▾'} {i.lancamentos.length} lanç.
+                                {itemAberto === `c${i.cod_eap}|${i.pavimento || ''}` ? '▴' : '▾'} {rotuloDetalhe(i)}
                               </span>
                             )}
                           </td>
@@ -1124,36 +1124,10 @@ export default function Semanal() {
                             {i.mes_inicio ? `M${i.mes_inicio}–M${i.mes_fim}` : ''}
                           </td>
                         </tr>
-                        {itemAberto === `c${i.cod_eap}|${i.pavimento || ''}` && (i.lancamentos || []).length > 0 && (
+                        {itemAberto === `c${i.cod_eap}|${i.pavimento || ''}` && temDetalhe(i) && (
                           <tr key={`${i.cod_eap}-det`}>
                             <td colSpan={9} style={{ padding: 0 }}>
-                              <div style={{ background: 'var(--bg)', borderRadius: 8, padding: '10px 14px', margin: '0 0 8px' }}>
-                                {i.lancamentos.map((l, k) => (
-                                  <div
-                                    key={k}
-                                    style={{
-                                      display: 'grid',
-                                      gridTemplateColumns: '80px 60px 1fr 1fr 110px',
-                                      gap: 10,
-                                      padding: '5px 0',
-                                      fontSize: 12,
-                                      borderBottom: k < i.lancamentos.length - 1 ? '1px solid var(--border)' : 'none',
-                                    }}
-                                  >
-                                    <span style={{ fontFamily: 'var(--mono)', color: '#8b919c' }}>
-                                      {l.data ? l.data.slice(8, 10) + '/' + l.data.slice(5, 7) + '/' + l.data.slice(2, 4) : l.competencia}
-                                    </span>
-                                    <span style={{ fontFamily: 'var(--mono)', color: '#8b919c' }}>
-                                      S{String(l.semana).padStart(2, '0')}
-                                    </span>
-                                    <span>{l.fornecedor}</span>
-                                    <span style={{ color: '#8b919c' }}>{l.historico}</span>
-                                    <span style={{ textAlign: 'right', fontFamily: 'var(--mono)' }}>
-                                      {fmtMoeda(l.valor)}
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
+                              <DetalheCustos item={i} fechamento={contas.fechamento} />
                             </td>
                           </tr>
                         )}
@@ -1234,7 +1208,7 @@ export default function Semanal() {
             <tbody>
               {(indiretos || []).map((i) => {
                 const chave = `i${i.cod_eap || i.categoria}`
-                const temLanc = (i.lancamentos || []).length > 0
+                const temLanc = temDetalhe(i)
                 return (
                   <React.Fragment key={i.cod_eap || i.categoria}>
                   <tr
@@ -1249,7 +1223,7 @@ export default function Semanal() {
                       </span>
                       {temLanc && (
                         <span style={{ color: '#8b919c', fontSize: 11, marginLeft: 8 }}>
-                          {itemAberto === chave ? '▴' : '▾'} {i.lancamentos.length} lanç.
+                          {itemAberto === chave ? '▴' : '▾'} {rotuloDetalhe(i)}
                         </span>
                       )}
                     </td>
@@ -1282,33 +1256,7 @@ export default function Semanal() {
                   {itemAberto === chave && temLanc && (
                     <tr>
                       <td colSpan={6} style={{ padding: 0 }}>
-                        <div style={{ background: 'var(--bg)', borderRadius: 8, padding: '10px 14px', margin: '0 0 8px' }}>
-                          {i.lancamentos.map((l, k) => (
-                            <div
-                              key={k}
-                              style={{
-                                display: 'grid',
-                                gridTemplateColumns: '80px 60px 1fr 1fr 110px',
-                                gap: 10,
-                                padding: '5px 0',
-                                fontSize: 12,
-                                borderBottom: k < i.lancamentos.length - 1 ? '1px solid var(--border)' : 'none',
-                              }}
-                            >
-                              <span style={{ fontFamily: 'var(--mono)', color: '#8b919c' }}>
-                                {l.data
-                                  ? l.data.slice(8, 10) + '/' + l.data.slice(5, 7) + '/' + l.data.slice(2, 4)
-                                  : l.competencia}
-                              </span>
-                              <span style={{ fontFamily: 'var(--mono)', color: '#8b919c' }}>
-                                S{String(l.semana).padStart(2, '0')}
-                              </span>
-                              <span>{l.fornecedor}</span>
-                              <span style={{ color: '#8b919c' }}>{l.historico}</span>
-                              <span style={{ textAlign: 'right', fontFamily: 'var(--mono)' }}>{fmtMoeda(l.valor)}</span>
-                            </div>
-                          ))}
-                        </div>
+                        <DetalheCustos item={i} fechamento={contas.fechamento} />
                       </td>
                     </tr>
                   )}
@@ -1978,6 +1926,58 @@ function estouroDe(agregado, custo) {
 const corEstouro = (e) => (e == null || Math.abs(e.rs) < 0.005 ? '#8b919c' : e.rs > 0 ? VERMELHO : VERDE)
 const fmtEstouroRs = (rs) => (rs > 0.005 ? '+' : '') + fmtMoeda(Math.abs(rs) < 0.005 ? 0 : rs)
 const fmtEstouroPerc = (p) => (p == null ? '—' : `${p > 0.05 ? '+' : ''}${p.toFixed(1).replace('.', ',')}%`)
+// Detalhe do item (custo direto por grupo e indireto por categoria): os
+// lancamentos pagos e os titulos a pagar do fechamento da semana.
+const temDetalhe = (i) => (i.lancamentos || []).length + (i.a_pagar_titulos || []).length > 0
+const rotuloDetalhe = (i) => {
+  const n = (i.lancamentos || []).length
+  const a = (i.a_pagar_titulos || []).length
+  return [n ? `${n} lanç.` : null, a ? `${a} a pagar` : null].filter(Boolean).join(' · ')
+}
+const ddmmaa = (d) => (d ? d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(2, 4) : '')
+const GRADE_DETALHE = { display: 'grid', gridTemplateColumns: '80px 60px 1fr 1fr 110px', gap: 10, padding: '5px 0', fontSize: 12 }
+function DetalheCustos({ item, fechamento }) {
+  const pagos = item.lancamentos || []
+  const aPagar = item.a_pagar_titulos || []
+  const linha = (k, n) => ({ ...GRADE_DETALHE, borderBottom: k < n - 1 ? '1px solid var(--border)' : 'none' })
+  const titulo = { fontFamily: 'var(--mono)', fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#8b919c', padding: '4px 0' }
+  return (
+    <div style={{ background: 'var(--bg)', borderRadius: 8, padding: '10px 14px', margin: '0 0 8px' }}>
+      {pagos.length > 0 && aPagar.length > 0 && <div style={titulo}>Pago</div>}
+      {pagos.map((l, k) => (
+        <div key={`p${k}`} style={linha(k, pagos.length)}>
+          <span style={{ fontFamily: 'var(--mono)', color: '#8b919c' }}>{l.data ? ddmmaa(l.data) : l.competencia}</span>
+          <span style={{ fontFamily: 'var(--mono)', color: '#8b919c' }}>S{String(l.semana).padStart(2, '0')}</span>
+          <span>{l.fornecedor}</span>
+          <span style={{ color: '#8b919c' }}>{l.historico}</span>
+          <span style={{ textAlign: 'right', fontFamily: 'var(--mono)' }}>{fmtMoeda(l.valor)}</span>
+        </div>
+      ))}
+      {aPagar.length > 0 && (
+        <div style={{ ...titulo, color: AMBAR, paddingTop: pagos.length ? 10 : 4 }}>
+          A pagar{fechamento ? ` · fechamento ${fechamento}` : ''}
+        </div>
+      )}
+      {aPagar.map((t, k) => (
+        <div key={`a${k}`} style={linha(k, aPagar.length)}>
+          <span style={{ fontFamily: 'var(--mono)', color: '#8b919c' }} title="Vencimento (ou previsão de baixa)">
+            {t.vencimento ? ddmmaa(t.vencimento) : t.competencia}
+          </span>
+          <span style={{ fontFamily: 'var(--mono)', fontSize: 10, color: AMBAR }}>
+            {t.natureza === 'previsto_sem_nf' ? 'previsto' : 'NF'}
+          </span>
+          <span>{t.fornecedor}</span>
+          <span style={{ color: '#8b919c' }}>
+            {t.documento}
+            {t.historico && t.historico !== t.fornecedor ? ` · ${t.historico}` : ''}
+          </span>
+          <span style={{ textAlign: 'right', fontFamily: 'var(--mono)', color: AMBAR }}>{fmtMoeda(t.valor)}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 const tituloEstouro = (e, agregado, pago, aPagar) =>
   e == null
     ? 'Sem valor agregado e sem custo'
