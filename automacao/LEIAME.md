@@ -20,8 +20,9 @@
 ## Fechamento pelo ACUMULADO do TOTVS — chave Ref. Lançamento (decisão de 14/10/2026)
 Fonte: o relatório acumulado da obra (todos os títulos, pagos e a pagar). Salve SEMPRE com a data no nome,
 sem substituir o anterior: entrada/TOTVS_acumulado_AAAA-MM-DD.xlsx. O fechamento usa o mais recente.
-A data no nome é o dia em que o arquivo foi salvo; os pagamentos vão até a última Data de Baixa do arquivo
-(DATA DE CORTE, mostrada pelo classificador, pelo contas_a_pagar.py e pela prévia do importar.js). Carga
+A data no nome é a DATA DE CORTE: a última Data de Baixa do arquivo, não o dia em que ele foi salvo
+(decisão de 19/10/2026; o classificador, o contas_a_pagar.py e a prévia do importar.js mostram a data de corte —
+confira que bate com o nome antes de rodar). Carga
 parcial do mês é permitida (ex.: outubro até 13/10): o resto entra pelo acumulado seguinte, sem duplicidade
 pelo ref (decisão de 16/10/2026).
 Simulação do dashboard antes da carga: o importar.js com --salvar-linhas ARQ.json (só na prévia) grava as linhas
