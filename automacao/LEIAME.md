@@ -117,6 +117,9 @@ Título sem EAP só grava com --aceitar-pendencias (fica fora do IPC).
 ## Indicadores do dashboard (decisão out/26)
 - Valor agregado do material (aço e material de forma "Apenas Material"; concreto fica fora): o maior entre
   avanço do serviço × orçado e custo da linha (pago + a pagar) limitado ao orçado.
+- Alvenaria em bloco cerâmico (4.x.1, decisão de 29/10/2026): a mesma regra, só na parte do material da linha
+  (52,04 de 95,04/m²) e só com o custo dos fornecedores do bloco (Cerâmica Ferreira: regra em regras_manuais.csv,
+  1º e 2º pav pela proporção das verbas). Bloco comprado antes da execução fica neutro no IPC.
 - Avanço físico = horas executadas ÷ horas orçadas, em todas as telas. Nunca ponderado por valor.
 - Bandeja (17.1.10, verba R$ 41.887,00): avanço por unidade, 3 bandejas = 33,33% cada (a primária medida em
   30/09/26; a 2ª e a 3ª como 66,67% e 100%). Agregado = % medido × verba. Compra por entrega (entra_evm = true):
@@ -199,8 +202,9 @@ como a medição; os códigos da EAP não mudam.
   A prévia mostra o valor por código + pavimento e o que ficou sem pavimento.
 - Banco: supabase/custos/6-pavimento-do-custo.sql (coluna em contas_a_pagar; custos_lancamentos.pavimento
   passa a aceitar vazio).
-- 7.1.7 (Loja Elétrica, fechamento 2026-09): 2º pav, a mesma linha da medição; a NF 13626 (25/09, já no 3º pela
-  etapa) está no 2º por decisão pontual.
+- 7.1.7 (Loja Elétrica, fechamento 2026-09): 2º pav, a mesma linha da medição; a NF 13626 (25/09) fica no 3º
+  (decisão de 29/10/2026). O documento da decisão pontual tem de ser igual ao do TOTVS ("13626/01", não
+  "000013626/01"): com zeros a mais, a decisão não é aplicada.
 
 ## Pedidos de aço (pedidos_aco.csv)
 Uma linha por SC e EAP, com a proporção em kg das pranchas do pedido (planilha em projetos/Pedidos de Aço.xlsx):

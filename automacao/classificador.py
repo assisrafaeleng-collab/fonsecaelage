@@ -23,7 +23,7 @@ EXCLUIR_DOCS = {'000000229/01'}          # títulos que você retira do fechamen
 
 # nomes de coluna variam entre exportações do TOTVS: mapeia por sinônimo, não por posição
 SINONIMOS = {
-    'documento':  ['numero do documento', 'numero documento'],
+    'documento':  ['numero do documento', 'numero documento', 'documento'],
     'nome':       ['nome'],
     'historico':  ['historico'],
     'emissao':    ['data de emissao', 'emissao'],

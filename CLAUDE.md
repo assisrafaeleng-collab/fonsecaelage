@@ -63,6 +63,9 @@ fica em `automacao/` — leia `automacao/LEIAME.md` antes de mexer nela.
   concreto usinado fica FORA e entra pela medição): agregado = o MAIOR entre (a) avanço do serviço × orçado
   (herança) e (b) custo da linha (pago + a pagar) limitado ao orçado. Linha executada mostra a economia real;
   material comprado antes da execução fica neutro; o que passar do orçado aparece no IPC.
+  Alvenaria em bloco cerâmico (4.x.1; decisão de 29/10/26): mesma regra, só na PARTE DO MATERIAL da linha
+  (orçado × 52,04/95,04, do `orcamento.csv`), com o custo só dos fornecedores do bloco (nome com cerâmica,
+  tijolo ou bloco); a MO segue o avanço. Bloco comprado antes fica neutro (`lib/valor-agregado.js`).
 - Bandeja (17.1.10, verba R$ 41.887,00): avanço por UNIDADE — são 3 bandejas; medição de 33,33% por bandeja
   pronta (a primária em 30/09/26; a 2ª e a 3ª entram como 66,67% e 100%, lançadas pelo usuário). Valor agregado
   = % medido × verba da linha. É compra POR ENTREGA (`entra_evm = true`): entra no contas a pagar e no IPC e NÃO
