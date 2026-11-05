@@ -77,10 +77,10 @@ fica em `automacao/` — leia `automacao/LEIAME.md` antes de mexer nela.
   dos destinos, porque a madeira é usada também no bandejamento e nas escadas. Madeira já comprada até out/26
   (decisões pontuais 2067/01 a 2444/01): forma do 2º ao 7º pav (cada um pela sua verba), bandeja primária
   (17.1.10, verba R$ 13.029,00) e forma da escada do 1º pav (3.1.5, R$ 1.263,87) — todos no mesmo % da verba;
-  a parte da 2067/01 na 3.1.6 (R$ 3.780,48) fica. Compra nova: só entre os destinos ainda não executados —
-  forma do 3º ao 7º pav, 2ª e 3ª bandejas (17.1.10, 2 × R$ 13.029,00) e escadas 3.2.5, 3.3.6, 3.4.6, 3.5.5
-  (R$ 1.263,87 cada) — na regra dos dois fornecedores em `regras_manuais.csv`. Quando um destino for
-  executado, ele sai do rateio das compras novas.
+  a parte da 2067/01 na 3.1.6 (R$ 3.780,48) fica. Compra nova: forma do 3º ao 7º pav, 2ª e 3ª bandejas
+  (17.1.10, 2 × R$ 13.029,00) e escadas 3.2.5, 3.3.6, 3.4.6, 3.5.5 (R$ 1.263,87 cada) — na regra dos dois
+  fornecedores em `regras_manuais.csv`. A lista fica FIXA: destino já executado continua no rateio, a madeira
+  é dividida por todas essas linhas, feitas ou não (decisão de 05/11/26; antes saía do rateio).
 - Parcelas seguintes de uma NF seguem a decisão pontual da primeira parcela (2141/02 usa a de 2141/01).
 - Aço (Takono, Santa Mônica): compra dividida pelo pedido (SC da OC) e pelas pranchas, em kg, conforme
   `automacao/pedidos_aco.csv` (planilha de pedidos em `automacao/projetos`). Pedido fora da planilha ou

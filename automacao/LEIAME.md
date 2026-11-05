@@ -184,9 +184,9 @@ com --confirmar; a carga substitui a competência inteira e pode ser desfeita co
   out/26: "madeira usada também no bandejamento e na escada do 1º pav, redistribuída pela proporção das verbas").
   Já comprada (decisões pontuais 2067/01 a 2444/01; as parcelas /02 herdam): forma 2º ao 7º pav + bandeja
   primária 17.1.10 (R$ 13.029,00) + forma da escada 1º pav 3.1.5 (R$ 1.263,87), todos no mesmo % da verba; a
-  parte da 2067/01 na 3.1.6 fica. Compra nova (regra '*' dos dois fornecedores): só destinos ainda não
-  executados — forma 3º ao 7º pav, 2ª e 3ª bandejas (17.1.10, 2 × R$ 13.029,00) e escadas 3.2.5, 3.3.6, 3.4.6,
-  3.5.5 (R$ 1.263,87 cada). Destino executado sai do rateio: refaça as proporções da regra.
+  parte da 2067/01 na 3.1.6 fica. Compra nova (regra '*' dos dois fornecedores): forma 3º ao 7º pav, 2ª e 3ª
+  bandejas (17.1.10, 2 × R$ 13.029,00) e escadas 3.2.5, 3.3.6, 3.4.6, 3.5.5 (R$ 1.263,87 cada). Lista FIXA:
+  destino já executado continua no rateio, não refaça as proporções (decisão de 05/11/2026).
 - eap = 'ETAPA_NF:CAT' → como ETAPA:, mas o pavimento é o de etapa.csv na DATA DE EMISSÃO da nota, não na
   competência. Prego (CONTEM:PREGO) = FORMA_MATERIAL; arame (CONTEM:ARAME) = ACO_MATERIAL (decisão out/26)
 - "Prev. Financ. OC 0001826 ...": o título abre pelos itens da OC do histórico (vínculo "ALTA (OC no histórico)")
