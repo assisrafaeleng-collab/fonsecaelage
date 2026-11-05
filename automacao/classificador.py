@@ -32,8 +32,8 @@ SINONIMOS = {
     'original':   ['valor original'],
     'liquido':    ['valor liquido', 'valor liquido-quitado'],
     'cnpj':       ['cnpj/cpf'],
-    'baixa':      ['data de baixa'],
-    'prev_baixa': ['data de previsao de baixa', 'previsao de baixa', 'previsaobaixa'],
+    'baixa':      ['data de baixa', 'data baixa'],
+    'prev_baixa': ['data de previsao de baixa', 'previsao de baixa', 'previsao baixa', 'previsaobaixa'],
     'pago':       ['valor pago'],
     'baixado':    ['valor baixado'],
     'ref':        ['ref. lancamento', 'ref lancamento'],   # chave única do título/parcela no TOTVS

@@ -86,8 +86,14 @@ fica em `automacao/` — leia `automacao/LEIAME.md` antes de mexer nela.
   `automacao/pedidos_aco.csv` (planilha de pedidos em `automacao/projetos`). Pedido fora da planilha ou
   título sem OC = pendência para o usuário informar.
 - Prego = material de forma; arame = material de aço; os dois do pavimento em execução na DATA DA NOTA
-  (`ETAPA_NF:` em `regras_manuais.csv`, pavimento por `etapa.csv`; 3º pav desde 22/09/26). "Prev. Financ."
-  abre pelos itens da OC citada no histórico.
+  (`ETAPA_NF:` em `regras_manuais.csv`, pavimento por `etapa.csv`; 3º pav desde 22/09/26, 4º pav desde 15/10/26 =
+  início do BM 7 da Bernardes). "Prev. Financ." abre pelos itens da OC citada no histórico.
+- Sarrafeamento de laje (Hemerson Gomes da Mota) = lançamento do concreto (3.x.3) do pavimento em execução na data
+  da nota (`ETAPA_NF:LANCAMENTO_MO`; decisão de 05/11/26).
+- Nº de documento nas decisões pontuais igual ao do TOTVS de hoje: o acumulado traz "2211/01", não "000002211/01"
+  (com zeros a mais a decisão não é aplicada; corrigido na 2211/01 e na 2444/01 em 05/11/26).
+- O acumulado do TOTVS mudou os nomes de colunas em 30/10/26 ("Data Baixa", " Previsão Baixa", " Vencimento",
+  "Centro Custo"); o classificador aceita os dois conjuntos.
 
 ## Pontos de atenção (decisões de 13/10/26; cópia do painel do Sirius 60)
 - Painel na página semanal, logo abaixo do Diário de ocorrências, recolhido. Lógica pura em `lib/pontos-atencao.js`
