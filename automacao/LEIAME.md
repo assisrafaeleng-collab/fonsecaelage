@@ -14,6 +14,7 @@
                        (Ref. Lançamento) opcional: preenchida, a decisão vale pelo ref (NAO_CUSTO)
     diferencas_ref.csv diferença aceita entre TOTVS e banco num título já importado (ref, diferença, obs)
     refs_no_banco.csv  saída do importar.js --refs-do-banco (lançamentos do banco com o ref) — não editar
+    medicoes_concreto.csv saída do mesmo --refs-do-banco (medições do concreto 3.x.2, regra CONCRETO_MEDICAO) — não editar
     conferencia.json   saída do classificador --fechamento (conferência ao centavo) — não editar
     oc/                TODOS os relatórios de OC, nomeados OC_AAAA-MM.xls (ex.: OC_2026-09.xls)
 
@@ -189,6 +190,10 @@ com --confirmar; a carga substitui a competência inteira e pode ser desfeita co
   destino já executado continua no rateio, não refaça as proporções (decisão de 05/11/2026).
 - eap = 'ETAPA_NF:CAT' → como ETAPA:, mas o pavimento é o de etapa.csv na DATA DE EMISSÃO da nota, não na
   competência. Prego (CONTEM:PREGO) = FORMA_MATERIAL; arame (CONTEM:ARAME) = ACO_MATERIAL (decisão out/26)
+- eap = 'CONCRETO_MEDICAO' → concreto usinado (Supermix): linha 3.x.2 do último pavimento com concreto 100% medido
+  ANTES da data de emissão da nota (decisão de 05/11/2026: 4664/01 de 06/10 → 3.2.2; 4939/01 de 03/11 → 3.3.2).
+  As medições vêm de medicoes_concreto.csv, gerado junto com o refs_no_banco.csv pelo --refs-do-banco (não editar);
+  sem medição concluída antes da nota = pendência
 - "Prev. Financ. OC 0001826 ...": o título abre pelos itens da OC do histórico (vínculo "ALTA (OC no histórico)")
 
 ## Pavimento do custo (decisão out/26)

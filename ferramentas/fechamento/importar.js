@@ -588,6 +588,19 @@ async function exportarRefs(db) {
   fs.writeFileSync(ARQ_REFS, '﻿' + XLSX.utils.sheet_to_csv(ws), 'utf8')
   const com = linhas.filter((l) => l.ref_totvs != null)
   console.log(`\n  ✓ ${ARQ_REFS}: ${linhas.length} lançamentos · ${new Set(com.map((l) => l.ref_totvs)).size} títulos com ref (${com.length} linhas) · ${linhas.length - com.length} linha(s) sem ref (manuais)`)
+  // Medicoes do concreto usinado (3.N.2), ao lado do arquivo de refs: o classificador
+  // escolhe o pavimento do concreto pela data da nota (CONCRETO_MEDICAO; decisao de 05/11/2026)
+  const med = await todos(() =>
+    db.from('avanco_fisico_historico').select('codigo_eap, pavimento, percentual_realizado, data_lancamento').eq('obra_id', OBRA).like('codigo_eap', '3.%').order('id')
+  )
+  const conc = med
+    .filter((m) => /^3\.\d+\.2$/.test(m.codigo_eap))
+    .map((m) => ({ ...m, data_lancamento: String(m.data_lancamento || '').slice(0, 10) }))
+    .sort((a, b) => (a.codigo_eap + a.data_lancamento).localeCompare(b.codigo_eap + b.data_lancamento))
+  const arqMed = path.join(path.dirname(path.resolve(ARQ_REFS)), 'medicoes_concreto.csv')
+  const cabMed = ['codigo_eap', 'pavimento', 'percentual_realizado', 'data_lancamento']
+  fs.writeFileSync(arqMed, '﻿' + XLSX.utils.sheet_to_csv(XLSX.utils.json_to_sheet(conc, { header: cabMed })), 'utf8')
+  console.log(`  ✓ ${path.relative(process.cwd(), arqMed)}: ${conc.length} medição(ões) do concreto (3.x.2)`)
   console.log('  Só leitura: nada foi gravado no banco.\n')
 }
 

@@ -90,6 +90,9 @@ fica em `automacao/` — leia `automacao/LEIAME.md` antes de mexer nela.
   início do BM 7 da Bernardes). "Prev. Financ." abre pelos itens da OC citada no histórico.
 - Sarrafeamento de laje (Hemerson Gomes da Mota) = lançamento do concreto (3.x.3) do pavimento em execução na data
   da nota (`ETAPA_NF:LANCAMENTO_MO`; decisão de 05/11/26).
+- Concreto usinado (Supermix) = linha de concreto (3.x.2) do ÚLTIMO pavimento com concreto 100% medido ANTES da data
+  da nota (`CONCRETO_MEDICAO`; decisão de 05/11/26: 4664/01 de 06/10 → 3.2.2, 4939/01 de 03/11 → 3.3.2). As
+  medições vêm do `importar.js --refs-do-banco` (`automacao/medicoes_concreto.csv`); sem medição = pendência.
 - Nº de documento nas decisões pontuais igual ao do TOTVS de hoje: o acumulado traz "2211/01", não "000002211/01"
   (com zeros a mais a decisão não é aplicada; corrigido na 2211/01 e na 2444/01 em 05/11/26).
 - O acumulado do TOTVS mudou os nomes de colunas em 30/10/26 ("Data Baixa", " Previsão Baixa", " Vencimento",

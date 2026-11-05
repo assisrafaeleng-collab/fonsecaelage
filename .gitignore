@@ -39,6 +39,7 @@ automacao/contas_a_pagar.csv
 automacao/pendencias_contas.csv
 # fechamento pelo acumulado (Ref. Lançamento): refs do banco, conferência e diferenças aceitas
 automacao/refs_no_banco.csv
+automacao/medicoes_concreto.csv
 automacao/refs_simulados.csv
 automacao/conferencia.json
 automacao/diferencas_ref.csv

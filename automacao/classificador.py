@@ -288,9 +288,36 @@ try:
 except FileNotFoundError:
     ETAPA = pd.DataFrame(columns=['categoria', 'eap', 'vigente_desde'])
 
+# Medições do concreto usinado (3.N.2), exportadas pelo importar.js --refs-do-banco
+try:
+    MED_CONCRETO = pd.read_csv('medicoes_concreto.csv', dtype=str).fillna('')
+except FileNotFoundError:
+    MED_CONCRETO = None
+
+def concreto_pela_medicao(data):
+    """EAP 'CONCRETO_MEDICAO' (decisão de 05/11/2026): o concreto da nota vai para o ÚLTIMO pavimento cuja
+    concretagem já estava 100% medida ANTES da data da nota (4664/01 de 06/10 -> 3.2.2; 4939/01 de 03/11 -> 3.3.2)."""
+    if MED_CONCRETO is None:
+        return None, 'concreto: sem medicoes_concreto.csv (rode o importar.js --refs-do-banco antes)'
+    if data is None or pd.isna(data) or str(data).strip() == '':
+        return None, 'concreto: nota sem data'
+    d = str(pd.to_datetime(data).date())
+    m = MED_CONCRETO[MED_CONCRETO.codigo_eap.str.match(r'^3\.\d+\.2$')].copy()
+    m = m[pd.to_numeric(m.percentual_realizado, errors='coerce') >= 100]
+    concluido = m.groupby('codigo_eap').data_lancamento.min()          # dia em que o concreto chegou a 100%
+    antes = concluido[concluido < d]
+    if not len(antes):
+        return None, f'concreto: nenhum pavimento com concreto 100% medido antes de {d}'
+    eap = max(antes.index, key=lambda e: int(e.split('.')[1]))
+    return eap, f'concreto pela medição: último pavimento concluído antes da nota de {d} ({eap}, 100% em {antes[eap]})'
+
 def resolver_etapa(eap, alerta, competencia=None, emissao=None):
     """EAP 'ETAPA:ACO_MATERIAL' -> linha do pavimento em execução na competência do título (etapa.csv).
-    'ETAPA_NF:...' usa a data de emissão da nota (prego e arame, decisão out/26); sem ela, a competência."""
+    'ETAPA_NF:...' usa a data de emissão da nota (prego e arame, decisão out/26); sem ela, a competência.
+    'CONCRETO_MEDICAO' -> concreto_pela_medicao na data de emissão da nota."""
+    if eap == 'CONCRETO_MEDICAO':
+        e, msg = concreto_pela_medicao(emissao if emissao is not None and not pd.isna(emissao) else competencia)
+        return e, (alerta + ' | ' if alerta else '') + msg
     if eap and eap.startswith(('ETAPA:', 'ETAPA_NF:')):
         por_nota = eap.startswith('ETAPA_NF:')
         cat = eap.split(':', 1)[1]
