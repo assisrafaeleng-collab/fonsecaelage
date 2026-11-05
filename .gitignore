@@ -53,3 +53,6 @@ automacao/conciliacao_*.xlsx
 
 # python
 __pycache__/
+
+# instruções do Rafael para o Claude (local)
+pedidos.txt
